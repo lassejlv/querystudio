@@ -13,7 +13,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
-import { useLicenseStatus } from "@/lib/hooks";
+import { useLicenseValidation } from "@/lib/hooks";
 import type { SavedConnection } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
@@ -26,8 +26,8 @@ function App() {
   const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(null);
   const connection = useConnectionStore((s) => s.connection);
   
-  // License status check
-  const { data: licenseStatus, isLoading: licenseLoading, refetch: refetchLicense } = useLicenseStatus();
+  // License status check with startup and periodic revalidation
+  const { licenseStatus, isLoading: licenseLoading, refetch: refetchLicense } = useLicenseValidation();
   const isLicensed = !!licenseStatus;
   
   // Active tab from store for cross-component navigation

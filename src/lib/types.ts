@@ -73,7 +73,7 @@ export interface LicenseInfo {
 
 export interface StoredLicense {
   licenseKey: string;
-  activationId: string;
+  activationId?: string | null;
   deviceId: string;
   licenseInfo: LicenseInfo;
   validatedAt: string;

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { api } from "./api";
 import { useConnectionStore } from "./store";
 import type { ConnectionConfig, SavedConnection } from "./types";
@@ -316,4 +317,68 @@ export function useRevalidateLicense() {
       queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
     },
   });
+}
+
+const REVALIDATION_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Hook that manages license validation:
+ * - Checks license status on mount
+ * - Revalidates on startup if license exists
+ * - Periodically revalidates every 5 minutes
+ * - Returns current license status and loading state
+ */
+export function useLicenseValidation() {
+  const queryClient = useQueryClient();
+  const { data: licenseStatus, isLoading, refetch } = useLicenseStatus();
+  const revalidate = useRevalidateLicense();
+  const hasRevalidatedOnStartup = useRef(false);
+
+  // Revalidate on startup (once) if we have a stored license
+  useEffect(() => {
+    if (hasRevalidatedOnStartup.current) return;
+    if (isLoading) return;
+    
+    if (licenseStatus) {
+      hasRevalidatedOnStartup.current = true;
+      // Revalidate with the server
+      revalidate.mutate(undefined, {
+        onSuccess: (isValid) => {
+          if (!isValid) {
+            // License is no longer valid, refetch status to clear it
+            refetch();
+          }
+        },
+        onError: () => {
+          // If revalidation fails (network error), keep the cached license
+          // It will be checked again on the next interval
+          console.warn("License revalidation failed, will retry later");
+        },
+      });
+    }
+  }, [licenseStatus, isLoading, revalidate, refetch]);
+
+  // Periodic revalidation every 5 minutes
+  useEffect(() => {
+    if (!licenseStatus) return;
+
+    const interval = setInterval(() => {
+      revalidate.mutate(undefined, {
+        onSuccess: (isValid) => {
+          if (!isValid) {
+            queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
+          }
+        },
+      });
+    }, REVALIDATION_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [licenseStatus, revalidate, queryClient]);
+
+  return {
+    licenseStatus,
+    isLoading,
+    isRevalidating: revalidate.isPending,
+    refetch,
+  };
 }

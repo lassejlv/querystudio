@@ -50,9 +50,11 @@ pub struct DeactivateLicenseResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StoredLicense {
     pub license_key: String,
-    pub activation_id: String,
+    #[serde(default)]
+    pub activation_id: Option<String>,
     pub device_id: String,
     pub license_info: LicenseInfo,
     pub validated_at: String,
@@ -113,6 +115,27 @@ impl LicenseManager {
         }
     }
 
+    /// Validate and store a license locally (for licenses that don't support activations)
+    pub async fn validate_and_store_license(&self, license_key: &str) -> Result<ValidateLicenseResponse, String> {
+        let result = self.validate_license(license_key).await?;
+
+        if result.valid {
+            if let Some(license_info) = result.license.clone() {
+                let stored = StoredLicense {
+                    license_key: license_key.to_string(),
+                    activation_id: None,
+                    device_id: Self::get_device_id(),
+                    license_info,
+                    validated_at: chrono::Utc::now().to_rfc3339(),
+                };
+                self.set_license(stored);
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Try to activate with the API, fall back to validate-only if activations not supported
     pub async fn activate_license(
         &self,
         license_key: &str,
@@ -146,12 +169,10 @@ impl LicenseManager {
 
             // Store the license if activation was successful
             if result.success {
-                if let (Some(activation_id), Some(license_info)) =
-                    (result.activation_id.clone(), result.license.clone())
-                {
+                if let Some(license_info) = result.license.clone() {
                     let stored = StoredLicense {
                         license_key: license_key.to_string(),
-                        activation_id,
+                        activation_id: result.activation_id.clone(),
                         device_id,
                         license_info,
                         validated_at: chrono::Utc::now().to_rfc3339(),
@@ -162,7 +183,21 @@ impl LicenseManager {
 
             Ok(result)
         } else {
+            // Check if this is a "NotPermitted" error (activations not supported)
             let error_body = response.text().await.unwrap_or_default();
+            
+            if error_body.contains("NotPermitted") || error_body.contains("does not support activations") {
+                // Fall back to validate-only flow
+                let validate_result = self.validate_and_store_license(license_key).await?;
+                
+                return Ok(ActivateLicenseResponse {
+                    success: validate_result.valid,
+                    activation_id: None,
+                    license: validate_result.license,
+                    error: validate_result.error,
+                });
+            }
+            
             Err(format!("License activation failed: {}", error_body))
         }
     }
@@ -171,6 +206,16 @@ impl LicenseManager {
         let stored = self
             .get_license()
             .ok_or_else(|| "No active license".to_string())?;
+
+        // If there's no activation_id, this was a validate-only license
+        // Just clear it locally without calling the API
+        if stored.activation_id.is_none() {
+            self.clear_license();
+            return Ok(DeactivateLicenseResponse {
+                success: true,
+                error: None,
+            });
+        }
 
         let url = format!("{}/api/license/deactivate", LICENSE_API_URL);
 
