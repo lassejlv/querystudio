@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Database, Plus, Trash2 } from "lucide-react";
+import { Database, Plus, Trash2, RefreshCw, LayoutGrid, Terminal, Sparkles, LogOut, Moon, Sparkle } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -8,8 +8,10 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command";
-import { useSavedConnections, useDeleteSavedConnection } from "@/lib/hooks";
+import { useSavedConnections, useDeleteSavedConnection, useDisconnect } from "@/lib/hooks";
+import { useConnectionStore, useAIQueryStore, useThemeStore } from "@/lib/store";
 import type { SavedConnection } from "@/lib/types";
 
 interface CommandPaletteProps {
@@ -17,6 +19,7 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   onSelectConnection: (connection: SavedConnection) => void;
   onNewConnection: () => void;
+  onRefresh?: () => void;
 }
 
 export function CommandPalette({
@@ -24,9 +27,14 @@ export function CommandPalette({
   onOpenChange,
   onSelectConnection,
   onNewConnection,
+  onRefresh,
 }: CommandPaletteProps) {
   const { data: savedConnections } = useSavedConnections();
   const deleteConnection = useDeleteSavedConnection();
+  const disconnect = useDisconnect();
+  const connection = useConnectionStore((s) => s.connection);
+  const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
+  const { theme, setTheme } = useThemeStore();
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -68,34 +76,67 @@ export function CommandPalette({
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput
-        placeholder="Search connections..."
+        placeholder="Search commands..."
         value={search}
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>No connections found.</CommandEmpty>
+        <CommandEmpty>No results found.</CommandEmpty>
+
+        {/* Quick Actions - only when connected */}
+        {connection && (
+          <>
+            <CommandGroup heading="Quick Actions">
+              <CommandItem onSelect={() => { onRefresh?.(); onOpenChange(false); }}>
+                <RefreshCw className="h-4 w-4" />
+                <span>Refresh Data</span>
+                <CommandShortcut>⌘R</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => { setActiveTab("data"); onOpenChange(false); }}>
+                <LayoutGrid className="h-4 w-4" />
+                <span>Go to Table Data</span>
+                <CommandShortcut>⌘1</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => { setActiveTab("query"); onOpenChange(false); }}>
+                <Terminal className="h-4 w-4" />
+                <span>Go to Query Editor</span>
+                <CommandShortcut>⌘2</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => { setActiveTab("ai"); onOpenChange(false); }}>
+                <Sparkles className="h-4 w-4" />
+                <span>Go to AI Assistant</span>
+                <CommandShortcut>⌘3</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => { disconnect.mutate(); onOpenChange(false); }}>
+                <LogOut className="h-4 w-4" />
+                <span>Disconnect</span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
 
         {savedConnections && savedConnections.length > 0 && (
           <CommandGroup heading="Saved Connections">
-            {savedConnections.map((connection) => (
+            {savedConnections.map((conn) => (
               <CommandItem
-                key={connection.id}
-                value={connection.name}
-                onSelect={() => handleSelect(connection)}
+                key={conn.id}
+                value={conn.name}
+                onSelect={() => handleSelect(conn)}
                 className="group"
               >
                 <Database className="h-4 w-4" />
                 <div className="flex flex-1 flex-col">
-                  <span>{connection.name}</span>
-                  <span className="text-xs text-zinc-500">
-                    {getConnectionDescription(connection)}
+                  <span>{conn.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {getConnectionDescription(conn)}
                   </span>
                 </div>
                 <button
-                  onClick={(e) => handleDelete(e, connection.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded"
+                  onClick={(e) => handleDelete(e, conn.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-secondary rounded"
                 >
-                  <Trash2 className="h-3 w-3 text-zinc-500" />
+                  <Trash2 className="h-3 w-3 text-muted-foreground" />
                 </button>
               </CommandItem>
             ))}
@@ -108,6 +149,28 @@ export function CommandPalette({
           <CommandItem onSelect={handleNewConnection}>
             <Plus className="h-4 w-4" />
             <span>New Connection</span>
+            <CommandShortcut>⌘N</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Theme">
+          <CommandItem 
+            onSelect={() => { setTheme("dark"); onOpenChange(false); }}
+            className={theme === "dark" ? "bg-accent" : ""}
+          >
+            <Moon className="h-4 w-4" />
+            <span>Dark</span>
+            {theme === "dark" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+          </CommandItem>
+          <CommandItem 
+            onSelect={() => { setTheme("tokyo-night"); onOpenChange(false); }}
+            className={theme === "tokyo-night" ? "bg-accent" : ""}
+          >
+            <Sparkle className="h-4 w-4" />
+            <span>Tokyo Night</span>
+            {theme === "tokyo-night" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
           </CommandItem>
         </CommandGroup>
       </CommandList>

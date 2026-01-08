@@ -105,7 +105,7 @@ export function PasswordPromptDialog({
           <DialogDescription>
             {connection?.name && (
               <>
-                Connecting to <span className="font-medium text-zinc-200">{connection.name}</span>
+                Connecting to <span className="font-medium text-foreground">{connection.name}</span>
               </>
             )}
           </DialogDescription>

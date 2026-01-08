@@ -15,12 +15,14 @@ import {
   Check,
   PlayCircle,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +38,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useConnectionStore, useAIQueryStore, useLastChatStore } from "@/lib/store";
+import {
+  useConnectionStore,
+  useAIQueryStore,
+  useLastChatStore,
+  useThemeStore,
+} from "@/lib/store";
 import {
   AIAgent,
   AI_MODELS,
@@ -54,17 +61,75 @@ import { cn } from "@/lib/utils";
 const API_KEY_STORAGE_KEY = "querystudio_openai_api_key";
 const ANTHROPIC_KEY_STORAGE_KEY = "querystudio_anthropic_api_key";
 
+// Custom Tokyo Night theme for syntax highlighter
+const tokyoNightStyle: { [key: string]: React.CSSProperties } = {
+  'code[class*="language-"]': {
+    color: "#a9b1d6",
+    background: "#1a1b26",
+    fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Courier New", monospace',
+    fontSize: "0.875rem",
+  },
+  'pre[class*="language-"]': {
+    color: "#a9b1d6",
+    background: "#1a1b26",
+    padding: "1rem",
+    margin: 0,
+    overflow: "auto",
+  },
+  comment: { color: "#565f89", fontStyle: "italic" },
+  prolog: { color: "#565f89" },
+  doctype: { color: "#565f89" },
+  cdata: { color: "#565f89" },
+  punctuation: { color: "#89ddff" },
+  property: { color: "#7dcfff" },
+  tag: { color: "#f7768e" },
+  boolean: { color: "#ff9e64" },
+  number: { color: "#ff9e64" },
+  constant: { color: "#ff9e64" },
+  symbol: { color: "#73daca" },
+  deleted: { color: "#f7768e" },
+  selector: { color: "#9ece6a" },
+  "attr-name": { color: "#bb9af7" },
+  string: { color: "#9ece6a" },
+  char: { color: "#9ece6a" },
+  builtin: { color: "#7dcfff" },
+  inserted: { color: "#9ece6a" },
+  operator: { color: "#89ddff" },
+  entity: { color: "#7aa2f7", cursor: "help" },
+  url: { color: "#7dcfff" },
+  ".language-css .token.string": { color: "#9ece6a" },
+  ".style .token.string": { color: "#9ece6a" },
+  atrule: { color: "#bb9af7" },
+  "attr-value": { color: "#9ece6a" },
+  keyword: { color: "#bb9af7" },
+  function: { color: "#7aa2f7" },
+  "class-name": { color: "#7dcfff" },
+  regex: { color: "#73daca" },
+  important: { color: "#ff9e64", fontWeight: "bold" },
+  variable: { color: "#c0caf5" },
+  bold: { fontWeight: "bold" },
+  italic: { fontStyle: "italic" },
+};
+
 // Code block component with copy button and syntax highlighting
-function CodeBlock({ children, className }: { children: React.ReactNode; className?: string }) {
+function CodeBlock({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const [copied, setCopied] = useState(false);
   const language = className?.replace("language-", "") || "";
-  const isSql = language === "sql" || language === "pgsql" || language === "postgresql";
-  
+  const isSql =
+    language === "sql" || language === "pgsql" || language === "postgresql";
+  const theme = useThemeStore((s) => s.theme);
+
   const code = String(children).replace(/\n$/, "");
-  
+
   const appendSql = useAIQueryStore((s) => s.appendSql);
   const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
-  
+
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(code);
     setCopied(true);
@@ -76,10 +141,14 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
     setActiveTab("query");
   }, [code, appendSql, setActiveTab]);
 
+  const syntaxStyle = theme === "tokyo-night" ? tokyoNightStyle : oneDark;
+
   return (
     <div className="relative group my-2">
-      <div className="flex items-center justify-between bg-zinc-900 px-3 py-1.5 rounded-t-md border-b border-zinc-700">
-        <span className="text-xs text-zinc-400 uppercase">{language || "code"}</span>
+      <div className="flex items-center justify-between bg-card px-3 py-1.5 rounded-t-md border-b border-border">
+        <span className="text-xs text-muted-foreground uppercase">
+          {language || "code"}
+        </span>
         <div className="flex items-center gap-2">
           {isSql && (
             <button
@@ -92,7 +161,7 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {copied ? (
               <>
@@ -110,7 +179,7 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
       </div>
       <SyntaxHighlighter
         language={language || "text"}
-        style={oneDark}
+        style={syntaxStyle}
         customStyle={{
           margin: 0,
           borderRadius: "0 0 6px 6px",
@@ -126,7 +195,7 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
 // Inline code component
 function InlineCode({ children }: { children: React.ReactNode }) {
   return (
-    <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-blue-400 text-sm">
+    <code className="bg-secondary px-1.5 py-0.5 rounded text-blue-400 text-sm">
       {children}
     </code>
   );
@@ -140,10 +209,10 @@ export function AIChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [openaiKey, setOpenaiKey] = useState(
-    () => localStorage.getItem(API_KEY_STORAGE_KEY) || ""
+    () => localStorage.getItem(API_KEY_STORAGE_KEY) || "",
   );
   const [anthropicKey, setAnthropicKey] = useState(
-    () => localStorage.getItem(ANTHROPIC_KEY_STORAGE_KEY) || ""
+    () => localStorage.getItem(ANTHROPIC_KEY_STORAGE_KEY) || "",
   );
   const [showSettings, setShowSettings] = useState(false);
   const [tempOpenaiKey, setTempOpenaiKey] = useState("");
@@ -152,24 +221,25 @@ export function AIChat() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const agentRef = useRef<AIAgent | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   // Debug request from query editor
   const debugRequest = useAIQueryStore((s) => s.debugRequest);
   const clearDebugRequest = useAIQueryStore((s) => s.clearDebugRequest);
-  
+
   // Last chat session persistence
   const setLastSession = useLastChatStore((s) => s.setLastSession);
   const getLastSession = useLastChatStore((s) => s.getLastSession);
 
   // Get the appropriate API key based on model provider
   const currentProvider = getModelProvider(selectedModel);
-  const currentApiKey = currentProvider === "anthropic" ? anthropicKey : openaiKey;
+  const currentApiKey =
+    currentProvider === "anthropic" ? anthropicKey : openaiKey;
 
   // Load chat history on mount and restore last session
   useEffect(() => {
     const history = loadChatHistory();
     setSessions(history);
-    
+
     // Restore last session for this connection
     if (connection?.id) {
       const lastSessionId = getLastSession(connection.id);
@@ -183,7 +253,7 @@ export function AIChat() {
       }
     }
   }, [connection?.id, getLastSession]);
-  
+
   // Save current session ID when it changes
   useEffect(() => {
     if (connection?.id && currentSessionId) {
@@ -194,7 +264,11 @@ export function AIChat() {
   // Initialize agent when connection, API key, or model changes
   useEffect(() => {
     if (currentApiKey && connection?.id) {
-      agentRef.current = new AIAgent(currentApiKey, connection.id, selectedModel);
+      agentRef.current = new AIAgent(
+        currentApiKey,
+        connection.id,
+        selectedModel,
+      );
     } else {
       agentRef.current = null;
     }
@@ -210,7 +284,7 @@ export function AIChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-  
+
   // Handle debug request from query editor
   useEffect(() => {
     if (debugRequest && currentApiKey && connection?.id) {
@@ -222,7 +296,7 @@ export function AIChat() {
 
   // Filter sessions for current connection
   const connectionSessions = sessions.filter(
-    (s) => s.connectionId === connection?.id
+    (s) => s.connectionId === connection?.id,
   );
 
   const handleSaveApiKeys = () => {
@@ -277,7 +351,7 @@ export function AIChat() {
       const newSessions = sessions.map((s) =>
         s.id === currentSessionId
           ? { ...s, messages: [], title: "New Chat", updatedAt: Date.now() }
-          : s
+          : s,
       );
       setSessions(newSessions);
       saveChatHistory(newSessions);
@@ -293,7 +367,7 @@ export function AIChat() {
     // Update current session model
     if (currentSessionId) {
       const newSessions = sessions.map((s) =>
-        s.id === currentSessionId ? { ...s, model, updatedAt: Date.now() } : s
+        s.id === currentSessionId ? { ...s, model, updatedAt: Date.now() } : s,
       );
       setSessions(newSessions);
       saveChatHistory(newSessions);
@@ -315,7 +389,7 @@ export function AIChat() {
               title: generateSessionTitle(updatedMessages),
               updatedAt: Date.now(),
             }
-          : s
+          : s,
       );
     } else {
       // Create new session
@@ -372,10 +446,10 @@ export function AIChat() {
                       },
                     ],
                   }
-                : m
-            )
+                : m,
+            ),
           );
-        }
+        },
       );
 
       // Stream response chunks
@@ -387,8 +461,8 @@ export function AIChat() {
           prev.map((m) =>
             m.id === loadingId
               ? { ...m, content: fullContent, isLoading: true }
-              : m
-          )
+              : m,
+          ),
         );
         // Keep scrolled to bottom while streaming
         scrollToBottom();
@@ -397,7 +471,7 @@ export function AIChat() {
       // Mark message as complete
       setMessages((prev) => {
         const updated = prev.map((m) =>
-          m.id === loadingId ? { ...m, isLoading: false } : m
+          m.id === loadingId ? { ...m, isLoading: false } : m,
         );
         // Save session after streaming completes
         saveCurrentSession(updated);
@@ -412,7 +486,7 @@ export function AIChat() {
                 content: `Error: ${error instanceof Error ? error.message : "Failed to get response"}`,
                 isLoading: false,
               }
-            : m
+            : m,
         );
         return updated;
       });
@@ -423,11 +497,10 @@ export function AIChat() {
 
   if (!connection) {
     return (
-      <div className="flex h-full items-center justify-center text-zinc-500">
+      <div className="flex h-full items-center justify-center text-muted-foreground">
         <div className="text-center">
-          <Bot className="mx-auto h-12 w-12 mb-4 opacity-50" />
           <p className="text-lg">Connect to a database first</p>
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm text-muted-foreground">
             The AI assistant needs an active connection
           </p>
         </div>
@@ -437,13 +510,13 @@ export function AIChat() {
 
   if (!currentApiKey) {
     return (
-      <div className="flex h-full items-center justify-center text-zinc-500">
+      <div className="flex h-full items-center justify-center text-muted-foreground">
         <div className="text-center space-y-4">
           <Bot className="mx-auto h-12 w-12 mb-4 opacity-50" />
           <p className="text-lg">API Key Required</p>
-          <p className="text-sm text-zinc-600 max-w-md">
-            To use the AI assistant, you need to provide an API key.
-            Your keys are stored locally and never sent to our servers.
+          <p className="text-sm text-muted-foreground max-w-md">
+            To use the AI assistant, you need to provide an API key. Your keys
+            are stored locally and never sent to our servers.
           </p>
           <Button
             onClick={() => {
@@ -475,9 +548,14 @@ export function AIChat() {
                   value={tempOpenaiKey}
                   onChange={(e) => setTempOpenaiKey(e.target.value)}
                 />
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   Get your key from{" "}
-                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
                     platform.openai.com
                   </a>
                 </p>
@@ -491,9 +569,14 @@ export function AIChat() {
                   value={tempAnthropicKey}
                   onChange={(e) => setTempAnthropicKey(e.target.value)}
                 />
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   Get your key from{" "}
-                  <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                  <a
+                    href="https://console.anthropic.com/settings/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
                     console.anthropic.com
                   </a>
                 </p>
@@ -503,7 +586,10 @@ export function AIChat() {
               <Button variant="outline" onClick={() => setShowSettings(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveApiKeys} disabled={!tempOpenaiKey.trim() && !tempAnthropicKey.trim()}>
+              <Button
+                onClick={handleSaveApiKeys}
+                disabled={!tempOpenaiKey.trim() && !tempAnthropicKey.trim()}
+              >
                 Save
               </Button>
             </div>
@@ -518,12 +604,12 @@ export function AIChat() {
       {/* Chat History Sidebar */}
       <div
         className={cn(
-          "flex flex-col border-r border-zinc-800 bg-zinc-900/50 transition-all duration-200",
-          sidebarOpen ? "w-64" : "w-0 overflow-hidden"
+          "flex flex-col border-r border-border bg-card/50 transition-all duration-200",
+          sidebarOpen ? "w-64" : "w-0 overflow-hidden",
         )}
       >
-        <div className="flex items-center justify-between border-b border-zinc-800 p-3">
-          <span className="text-sm font-medium text-zinc-400">History</span>
+        <div className="flex items-center justify-between border-b border-border p-3">
+          <span className="text-sm font-medium text-muted-foreground">History</span>
           <Button variant="ghost" size="sm" onClick={handleNewChat}>
             <Plus className="h-4 w-4" />
           </Button>
@@ -531,7 +617,7 @@ export function AIChat() {
         <ScrollArea className="flex-1">
           <div className="space-y-1 p-2">
             {connectionSessions.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-zinc-600">
+              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
                 No chat history yet
               </p>
             ) : (
@@ -544,8 +630,8 @@ export function AIChat() {
                     className={cn(
                       "group flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
                       currentSessionId === session.id
-                        ? "bg-zinc-800 text-zinc-200"
-                        : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300"
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
                     )}
                   >
                     <MessageSquare className="h-4 w-4 shrink-0" />
@@ -568,7 +654,7 @@ export function AIChat() {
       {/* Toggle Sidebar Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="flex h-6 w-6 items-center justify-center self-center -ml-3 z-10 rounded-full border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+        className="flex h-6 w-6 items-center justify-center self-center -ml-3 z-10 rounded-full border border-border bg-card hover:bg-secondary text-muted-foreground hover:text-foreground"
       >
         {sidebarOpen ? (
           <ChevronLeft className="h-3 w-3" />
@@ -580,10 +666,9 @@ export function AIChat() {
       {/* Main Chat Area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-3">
-            <Bot className="h-5 w-5 text-blue-400" />
-            <h2 className="font-medium text-zinc-200">AI Assistant</h2>
+            <h2 className="font-medium text-foreground">AI Assistant</h2>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -621,10 +706,10 @@ export function AIChat() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
           {messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-zinc-500">
+            <div className="flex h-full items-center justify-center text-muted-foreground">
               <div className="text-center space-y-2">
                 <p>Ask me anything about your database!</p>
-                <p className="text-sm text-zinc-600">
+                <p className="text-sm text-muted-foreground">
                   Examples: "What tables do I have?" or "Show me the top 10
                   users"
                 </p>
@@ -632,12 +717,15 @@ export function AIChat() {
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map((message) => (
-                <div
+              {messages.map((message, index) => (
+                <motion.div
                   key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: index * 0.05 }}
                   className={cn(
                     "flex gap-3",
-                    message.role === "user" && "justify-end"
+                    message.role === "user" && "justify-end",
                   )}
                 >
                   {message.role === "assistant" && (
@@ -649,18 +737,21 @@ export function AIChat() {
                     className={cn(
                       "max-w-[80%] rounded-lg px-4 py-2",
                       message.role === "user"
-                        ? "bg-zinc-700 text-zinc-100"
-                        : "bg-zinc-800 text-zinc-200"
+                        ? "bg-secondary text-foreground"
+                        : "bg-secondary text-foreground",
                     )}
                   >
                     {message.isLoading && !message.content ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">
-                          {message.toolCalls?.length
-                            ? `Calling ${message.toolCalls[message.toolCalls.length - 1].name}...`
-                            : "Thinking..."}
-                        </span>
+                      <div className="space-y-2">
+                        {message.toolCalls?.length ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Wrench className="h-3 w-3" />
+                            <span>Calling {message.toolCalls[message.toolCalls.length - 1].name}...</span>
+                          </div>
+                        ) : null}
+                        <Skeleton className="h-4 w-48 bg-muted" />
+                        <Skeleton className="h-4 w-36 bg-muted" />
+                        <Skeleton className="h-4 w-24 bg-muted" />
                       </div>
                     ) : message.isLoading && message.content ? (
                       // Streaming state - show content with cursor
@@ -670,7 +761,7 @@ export function AIChat() {
                             {message.toolCalls.map((tc) => (
                               <div
                                 key={tc.id}
-                                className="flex items-center gap-1 text-xs text-zinc-400"
+                                className="flex items-center gap-1 text-xs text-muted-foreground"
                               >
                                 <Wrench className="h-3 w-3" />
                                 <span>{tc.name}</span>
@@ -682,11 +773,19 @@ export function AIChat() {
                           <ReactMarkdown
                             components={{
                               code({ className, children, ...props }) {
-                                const isBlock = className?.includes("language-") || String(children).includes("\n");
+                                const isBlock =
+                                  className?.includes("language-") ||
+                                  String(children).includes("\n");
                                 if (isBlock) {
-                                  return <CodeBlock className={className}>{children}</CodeBlock>;
+                                  return (
+                                    <CodeBlock className={className}>
+                                      {children}
+                                    </CodeBlock>
+                                  );
                                 }
-                                return <InlineCode {...props}>{children}</InlineCode>;
+                                return (
+                                  <InlineCode {...props}>{children}</InlineCode>
+                                );
                               },
                               pre({ children }) {
                                 return <>{children}</>;
@@ -705,7 +804,7 @@ export function AIChat() {
                             {message.toolCalls.map((tc) => (
                               <div
                                 key={tc.id}
-                                className="flex items-center gap-1 text-xs text-zinc-400"
+                                className="flex items-center gap-1 text-xs text-muted-foreground"
                               >
                                 <Wrench className="h-3 w-3" />
                                 <span>{tc.name}</span>
@@ -717,11 +816,19 @@ export function AIChat() {
                           <ReactMarkdown
                             components={{
                               code({ className, children, ...props }) {
-                                const isBlock = className?.includes("language-") || String(children).includes("\n");
+                                const isBlock =
+                                  className?.includes("language-") ||
+                                  String(children).includes("\n");
                                 if (isBlock) {
-                                  return <CodeBlock className={className}>{children}</CodeBlock>;
+                                  return (
+                                    <CodeBlock className={className}>
+                                      {children}
+                                    </CodeBlock>
+                                  );
                                 }
-                                return <InlineCode {...props}>{children}</InlineCode>;
+                                return (
+                                  <InlineCode {...props}>{children}</InlineCode>
+                                );
                               },
                               pre({ children }) {
                                 return <>{children}</>;
@@ -735,18 +842,18 @@ export function AIChat() {
                     )}
                   </div>
                   {message.role === "user" && (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700">
-                      <User className="h-4 w-4 text-zinc-300" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
+                      <User className="h-4 w-4 text-foreground" />
                     </div>
                   )}
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
         </div>
 
         {/* Input - Sticky at bottom */}
-        <div className="sticky bottom-0 border-t border-zinc-800 bg-zinc-950 p-4">
+        <div className="sticky bottom-0 border-t border-border bg-background p-4">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <Select value={selectedModel} onValueChange={handleModelChange}>
               <SelectTrigger className="h-9 w-36 text-xs shrink-0">
@@ -797,9 +904,14 @@ export function AIChat() {
                 value={tempOpenaiKey}
                 onChange={(e) => setTempOpenaiKey(e.target.value)}
               />
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Get your key from{" "}
-                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                <a
+                  href="https://platform.openai.com/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
                   platform.openai.com
                 </a>
               </p>
@@ -813,9 +925,14 @@ export function AIChat() {
                 value={tempAnthropicKey}
                 onChange={(e) => setTempAnthropicKey(e.target.value)}
               />
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Get your key from{" "}
-                <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                <a
+                  href="https://console.anthropic.com/settings/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
                   console.anthropic.com
                 </a>
               </p>

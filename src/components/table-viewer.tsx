@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   Key,
   ChevronLeft,
@@ -93,10 +94,10 @@ export function TableViewer() {
 
   if (!selectedTable) {
     return (
-      <div className="flex h-full items-center justify-center text-zinc-500">
+      <div className="flex h-full items-center justify-center text-muted-foreground">
         <div className="text-center">
           <p className="text-lg">Select a table to view its data</p>
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm text-muted-foreground">
             Choose a table from the sidebar
           </p>
         </div>
@@ -205,9 +206,9 @@ export function TableViewer() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
-          <h2 className="font-medium text-zinc-200">
+          <h2 className="font-medium text-foreground">
             {selectedTable.schema}.{selectedTable.name}
           </h2>
           {totalCount !== undefined && (
@@ -225,7 +226,7 @@ export function TableViewer() {
             <Plus className="mr-1 h-4 w-4" />
             Add Row
           </Button>
-          <div className="mx-2 h-4 w-px bg-zinc-800" />
+          <div className="mx-2 h-4 w-px bg-secondary" />
           <Button
             variant="outline"
             size="sm"
@@ -234,7 +235,7 @@ export function TableViewer() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-zinc-400">
+          <span className="text-sm text-muted-foreground">
             Page {page + 1} of {totalPages || 1}
           </span>
           <Button
@@ -249,21 +250,27 @@ export function TableViewer() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="min-w-max">
+        <motion.div
+          key={`${selectedTable}-${page}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="min-w-max"
+        >
           <Table>
             <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 {columns?.map((col) => (
                   <TableHead
                     key={col.name}
-                    className="whitespace-nowrap border-r border-zinc-800 last:border-r-0"
+                    className="whitespace-nowrap border-r border-border last:border-r-0"
                   >
                     <div className="flex items-center gap-2">
                       {col.is_primary_key && (
                         <Key className="h-3 w-3 text-yellow-500" />
                       )}
                       <span>{col.name}</span>
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-xs text-muted-foreground">
                         {col.data_type}
                       </span>
                     </div>
@@ -274,12 +281,12 @@ export function TableViewer() {
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 10 }).map((_, i) => (
-                  <TableRow key={i} className="border-zinc-800">
+                  <TableRow key={i} className="border-border">
                     {Array.from({ length: columns?.length || 5 }).map(
                       (_, j) => (
                         <TableCell
                           key={j}
-                          className="border-r border-zinc-800 last:border-r-0"
+                          className="border-r border-border last:border-r-0"
                         >
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
@@ -291,7 +298,7 @@ export function TableViewer() {
                 <TableRow>
                   <TableCell
                     colSpan={columns?.length || 1}
-                    className="h-24 text-center text-zinc-500"
+                    className="h-24 text-center text-muted-foreground"
                   >
                     No data
                   </TableCell>
@@ -300,7 +307,7 @@ export function TableViewer() {
                 tableData?.rows.map((row, i) => (
                   <TableRow
                     key={i}
-                    className="border-zinc-800 hover:bg-zinc-900/50"
+                    className="border-border hover:bg-card/50"
                   >
                     {row.map((cell, j) => {
                       const isNull = cell === null;
@@ -309,8 +316,8 @@ export function TableViewer() {
                           <ContextMenuTrigger asChild>
                             <TableCell
                               className={cn(
-                                "max-w-xs truncate border-r border-zinc-800 font-mono text-xs last:border-r-0 cursor-default",
-                                isNull && "text-zinc-600 italic",
+                                "max-w-xs truncate border-r border-border font-mono text-xs last:border-r-0 cursor-default",
+                                isNull && "text-muted-foreground italic",
                               )}
                               title={formatValue(cell)}
                             >
@@ -345,7 +352,7 @@ export function TableViewer() {
               )}
             </TableBody>
           </Table>
-        </div>
+        </motion.div>
       </div>
 
       {connectionId && columns && (

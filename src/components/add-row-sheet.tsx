@@ -178,7 +178,7 @@ export function AddRowSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg">
+      <SheetContent className="sm:max-w-lg flex flex-col overflow-hidden">
         <SheetHeader>
           <SheetTitle>Add New Row</SheetTitle>
           <SheetDescription>
@@ -186,9 +186,9 @@ export function AddRowSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <ScrollArea className="flex-1 px-4">
-            <div className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4 py-4 pl-4">
               {columns.map((col) => {
                 const useDefault = nullFields.has(col.name);
                 const inputType = getInputType(col.data_type);
@@ -216,7 +216,7 @@ export function AddRowSheet({
                       </Label>
                       {canUseDefault && (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-zinc-500">
+                          <span className="text-xs text-muted-foreground">
                             {col.has_default ? "DEFAULT" : "NULL"}
                           </span>
                           <Switch

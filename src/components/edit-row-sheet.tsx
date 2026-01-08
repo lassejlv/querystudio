@@ -206,7 +206,7 @@ export function EditRowSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg">
+      <SheetContent className="sm:max-w-lg flex flex-col overflow-hidden">
         <SheetHeader>
           <SheetTitle>Edit Row</SheetTitle>
           <SheetDescription>
@@ -214,9 +214,9 @@ export function EditRowSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <ScrollArea className="flex-1 px-4">
-            <div className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4 py-4 pl-4">
               {columns.map((col) => {
                 const isNull = nullFields.has(col.name);
                 const inputType = getInputType(col.data_type);
@@ -238,7 +238,7 @@ export function EditRowSheet({
                       </Label>
                       {col.is_nullable && (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-zinc-500">NULL</span>
+                          <span className="text-xs text-muted-foreground">NULL</span>
                           <Switch
                             checked={isNull}
                             onCheckedChange={(checked) => toggleNull(col.name, checked)}

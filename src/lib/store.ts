@@ -6,6 +6,43 @@ import type { Connection, TableInfo } from "./types";
 const LAST_CONNECTION_KEY = "querystudio_last_connection";
 const QUERY_HISTORY_KEY = "querystudio_query_history";
 const LAST_CHAT_SESSION_KEY = "querystudio_last_chat_session";
+const THEME_KEY = "querystudio_theme";
+
+// Theme types
+export type Theme = "dark" | "tokyo-night";
+
+interface ThemeState {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}
+
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set) => ({
+      theme: "dark",
+      setTheme: (theme: Theme) => {
+        // Update the document class
+        document.documentElement.classList.remove("dark", "tokyo-night");
+        document.documentElement.classList.add(theme);
+        document.body.classList.remove("dark", "tokyo-night");
+        document.body.classList.add(theme);
+        set({ theme });
+      },
+    }),
+    {
+      name: THEME_KEY,
+      onRehydrateStorage: () => (state) => {
+        // Apply theme on rehydration
+        if (state?.theme) {
+          document.documentElement.classList.remove("dark", "tokyo-night");
+          document.documentElement.classList.add(state.theme);
+          document.body.classList.remove("dark", "tokyo-night");
+          document.body.classList.add(state.theme);
+        }
+      },
+    }
+  )
+);
 
 interface ConnectionState {
   connection: Connection | null;

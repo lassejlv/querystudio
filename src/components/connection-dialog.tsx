@@ -240,7 +240,7 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
                 {errors.connectionString && (
                   <p className="text-xs text-red-500">{errors.connectionString}</p>
                 )}
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   Supports PostgreSQL connection URI or key-value format
                 </p>
               </div>

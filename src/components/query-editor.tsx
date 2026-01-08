@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import { Play, Loader2, Bug, GripHorizontal, History, Check, X, Trash2, TableIcon, Braces } from "lucide-react";
-import Editor, { OnMount } from "@monaco-editor/react";
+import Editor, { OnMount, loader } from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -16,11 +17,53 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useConnectionStore, useAIQueryStore, useQueryHistoryStore } from "@/lib/store";
+import { useConnectionStore, useAIQueryStore, useQueryHistoryStore, useThemeStore } from "@/lib/store";
 import { useExecuteQuery, useAllTableColumns } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type { QueryResult } from "@/lib/types";
 import type { editor } from "monaco-editor";
+
+// Define Tokyo Night theme for Monaco
+loader.init().then((monaco) => {
+  monaco.editor.defineTheme("tokyo-night", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "", foreground: "a9b1d6", background: "1a1b26" },
+      { token: "comment", foreground: "565f89", fontStyle: "italic" },
+      { token: "keyword", foreground: "bb9af7" },
+      { token: "string", foreground: "9ece6a" },
+      { token: "number", foreground: "ff9e64" },
+      { token: "operator", foreground: "89ddff" },
+      { token: "type", foreground: "7aa2f7" },
+      { token: "function", foreground: "7aa2f7" },
+      { token: "variable", foreground: "c0caf5" },
+      { token: "constant", foreground: "ff9e64" },
+      // SQL specific
+      { token: "keyword.sql", foreground: "bb9af7" },
+      { token: "operator.sql", foreground: "89ddff" },
+      { token: "string.sql", foreground: "9ece6a" },
+      { token: "number.sql", foreground: "ff9e64" },
+      { token: "predefined.sql", foreground: "7dcfff" },
+    ],
+    colors: {
+      "editor.background": "#1a1b26",
+      "editor.foreground": "#a9b1d6",
+      "editor.lineHighlightBackground": "#24283b",
+      "editor.selectionBackground": "#414868",
+      "editor.inactiveSelectionBackground": "#414868aa",
+      "editorCursor.foreground": "#c0caf5",
+      "editorWhitespace.foreground": "#3b4261",
+      "editorLineNumber.foreground": "#3b4261",
+      "editorLineNumber.activeForeground": "#737aa2",
+      "editor.selectionHighlightBackground": "#414868aa",
+      "editorBracketMatch.background": "#414868",
+      "editorBracketMatch.border": "#7aa2f7",
+      "editorIndentGuide.background1": "#3b4261",
+      "editorIndentGuide.activeBackground1": "#565f89",
+    },
+  });
+});
 
 const MIN_EDITOR_HEIGHT = 100;
 const MAX_EDITOR_HEIGHT = 600;
@@ -31,6 +74,7 @@ export function QueryEditor() {
   const connection = useConnectionStore((s) => s.connection);
   const connectionId = connection?.id ?? null;
   const tables = useConnectionStore((s) => s.tables);
+  const theme = useThemeStore((s) => s.theme);
   
   // Fetch columns for all tables (for autocomplete)
   const { data: allColumns } = useAllTableColumns(connectionId, tables);
@@ -57,6 +101,7 @@ export function QueryEditor() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
+  const completionProviderRef = useRef<{ dispose: () => void } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const executeHandlerRef = useRef<() => void>(() => {});
 
@@ -239,8 +284,13 @@ export function QueryEditor() {
       executeHandlerRef.current();
     });
 
+    // Dispose of previous completion provider if it exists
+    if (completionProviderRef.current) {
+      completionProviderRef.current.dispose();
+    }
+
     // Configure SQL language with table/column completions
-    monaco.languages.registerCompletionItemProvider("sql", {
+    completionProviderRef.current = monaco.languages.registerCompletionItemProvider("sql", {
       provideCompletionItems: () => {
         const keywords = [
           "SELECT", "FROM", "WHERE", "AND", "OR", "INSERT", "INTO", "VALUES",
@@ -275,20 +325,25 @@ export function QueryEditor() {
             detail: `${table.row_count} rows`,
           }));
 
-        // Add column names from all tables
+        // Add column names from all tables (deduplicated)
         const columnItems: { label: string; kind: typeof monaco.languages.CompletionItemKind.Field; insertText: string; detail: string }[] = [];
+        const seenPrefixedColumns = new Set<string>();
+        const seenColumns = new Set<string>();
+        
         if (allColumns) {
-          const seenColumns = new Set<string>();
           for (const [tableKey, columns] of Object.entries(allColumns)) {
             for (const col of columns) {
-              // Add column with table prefix (table.column)
+              // Add column with table prefix (table.column) - deduplicated
               const prefixedLabel = `${col.tableName}.${col.name}`;
-              columnItems.push({
-                label: prefixedLabel,
-                kind: monaco.languages.CompletionItemKind.Field,
-                insertText: prefixedLabel,
-                detail: `${col.dataType} (${tableKey})`,
-              });
+              if (!seenPrefixedColumns.has(prefixedLabel)) {
+                seenPrefixedColumns.add(prefixedLabel);
+                columnItems.push({
+                  label: prefixedLabel,
+                  kind: monaco.languages.CompletionItemKind.Field,
+                  insertText: prefixedLabel,
+                  detail: `${col.dataType} (${tableKey})`,
+                });
+              }
               
               // Add column without prefix (only once per unique column name)
               if (!seenColumns.has(col.name)) {
@@ -317,7 +372,7 @@ export function QueryEditor() {
 
   if (!connectionId) {
     return (
-      <div className="flex h-full items-center justify-center text-zinc-500">
+      <div className="flex h-full items-center justify-center text-muted-foreground">
         <p>Connect to a database to run queries</p>
       </div>
     );
@@ -325,7 +380,7 @@ export function QueryEditor() {
 
   return (
     <div className="flex h-full flex-col" ref={containerRef}>
-      <div className="border-b border-zinc-800">
+      <div className="border-b border-border">
         <div style={{ height: editorHeight }} className="w-full">
           <Editor
             height="100%"
@@ -333,7 +388,7 @@ export function QueryEditor() {
             value={query}
             onChange={(value) => setQuery(value || "")}
             onMount={handleEditorMount}
-            theme="vs-dark"
+            theme={theme === "tokyo-night" ? "tokyo-night" : "vs-dark"}
             options={{
               minimap: { enabled: false },
               fontSize: 14,
@@ -360,14 +415,14 @@ export function QueryEditor() {
         <div
           onMouseDown={handleMouseDown}
           className={cn(
-            "flex h-3 cursor-row-resize items-center justify-center border-t border-zinc-800 bg-zinc-900 hover:bg-zinc-800 transition-colors",
-            isResizing && "bg-zinc-700"
+            "flex h-3 cursor-row-resize items-center justify-center border-t border-border bg-card hover:bg-secondary transition-colors",
+            isResizing && "bg-muted"
           )}
         >
-          <GripHorizontal className="h-3 w-3 text-zinc-500" />
+          <GripHorizontal className="h-3 w-3 text-muted-foreground" />
         </div>
-        <div className="flex items-center justify-between px-4 py-2 border-t border-zinc-800">
-          <p className="text-xs text-zinc-500">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border">
+          <p className="text-xs text-muted-foreground">
             Press Cmd+Enter (Ctrl+Enter) to execute
           </p>
           <div className="flex items-center gap-2">
@@ -379,7 +434,7 @@ export function QueryEditor() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-96 p-0" align="end">
-                <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
+                <div className="flex items-center justify-between border-b border-border px-3 py-2">
                   <h4 className="font-medium text-sm">Query History</h4>
                   {connectionId && getHistory(connectionId).length > 0 && (
                     <Button
@@ -388,7 +443,7 @@ export function QueryEditor() {
                       onClick={() => {
                         clearHistory(connectionId);
                       }}
-                      className="h-7 px-2 text-zinc-400 hover:text-zinc-100"
+                      className="h-7 px-2 text-muted-foreground hover:text-foreground"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -396,7 +451,7 @@ export function QueryEditor() {
                 </div>
                 <ScrollArea className="h-64">
                   {connectionId && getHistory(connectionId).length > 0 ? (
-                    <div className="divide-y divide-zinc-800">
+                    <div className="divide-y divide-border">
                       {getHistory(connectionId).slice(0, 50).map((entry, idx) => (
                         <button
                           key={idx}
@@ -407,7 +462,7 @@ export function QueryEditor() {
                             }
                             setHistoryOpen(false);
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-zinc-800 transition-colors"
+                          className="w-full text-left px-3 py-2 hover:bg-secondary transition-colors"
                         >
                           <div className="flex items-start gap-2">
                             {entry.success ? (
@@ -416,10 +471,10 @@ export function QueryEditor() {
                               <X className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-mono text-zinc-300 truncate">
+                              <p className="text-xs font-mono text-foreground truncate">
                                 {entry.query}
                               </p>
-                              <p className="text-xs text-zinc-500 mt-0.5">
+                              <p className="text-xs text-muted-foreground mt-0.5">
                                 {new Date(entry.executedAt).toLocaleString()}
                                 {entry.success && entry.rowCount !== undefined && (
                                   <span className="ml-2">{entry.rowCount} rows</span>
@@ -431,7 +486,7 @@ export function QueryEditor() {
                       ))}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
+                    <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
                       No query history yet
                     </div>
                   )}
@@ -474,10 +529,16 @@ export function QueryEditor() {
 
         {results.length > 0 && (
           <ScrollArea className="h-full">
-            <div className="min-w-max p-4 space-y-4">
+            <motion.div
+              key={results.length}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="min-w-max p-4 space-y-4"
+            >
               <div className="flex items-center justify-between">
                 {executionTime !== null && (
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-muted-foreground">
                     Executed in {executionTime < 1000 
                       ? `${executionTime.toFixed(1)}ms` 
                       : `${(executionTime / 1000).toFixed(2)}s`}
@@ -504,7 +565,7 @@ export function QueryEditor() {
               </div>
               
               {viewMode === "json" ? (
-                <pre className="text-xs font-mono text-zinc-300 bg-zinc-900 rounded-md p-4 overflow-auto">
+                <pre className="text-xs font-mono text-foreground bg-card rounded-md p-4 overflow-auto">
                   {JSON.stringify(
                     results.map((result) => ({
                       columns: result.columns,
@@ -524,20 +585,20 @@ export function QueryEditor() {
                   {results.map((result, resultIdx) => (
                     <div key={resultIdx}>
                       {results.length > 1 && (
-                        <div className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                        <div className="mb-2 text-xs font-medium text-muted-foreground uppercase">
                           Query {resultIdx + 1}
                         </div>
                       )}
-                      <div className="mb-2 text-sm text-zinc-400">
+                      <div className="mb-2 text-sm text-muted-foreground">
                         {result.row_count} row{result.row_count !== 1 ? "s" : ""} returned
                       </div>
                       <Table>
                         <TableHeader>
-                          <TableRow className="border-zinc-800 hover:bg-transparent">
+                          <TableRow className="border-border hover:bg-transparent">
                             {result.columns.map((col: string) => (
                               <TableHead
                                 key={col}
-                                className="whitespace-nowrap border-r border-zinc-800 last:border-r-0"
+                                className="whitespace-nowrap border-r border-border last:border-r-0"
                               >
                                 {col}
                               </TableHead>
@@ -549,7 +610,7 @@ export function QueryEditor() {
                             <TableRow>
                               <TableCell
                                 colSpan={result.columns.length || 1}
-                                className="h-24 text-center text-zinc-500"
+                                className="h-24 text-center text-muted-foreground"
                               >
                                 No results
                               </TableCell>
@@ -558,7 +619,7 @@ export function QueryEditor() {
                             result.rows.map((row: unknown[], i: number) => (
                               <TableRow
                                 key={i}
-                                className="border-zinc-800 hover:bg-zinc-900/50"
+                                className="border-border hover:bg-card/50"
                               >
                                 {row.map((cell: unknown, j: number) => {
                                   const isNull = cell === null;
@@ -566,8 +627,8 @@ export function QueryEditor() {
                                     <TableCell
                                       key={j}
                                       className={cn(
-                                        "max-w-xs truncate border-r border-zinc-800 font-mono text-xs last:border-r-0",
-                                        isNull && "text-zinc-600 italic"
+                                        "max-w-xs truncate border-r border-border font-mono text-xs last:border-r-0",
+                                        isNull && "text-muted-foreground italic"
                                       )}
                                       title={formatValue(cell)}
                                     >
@@ -584,13 +645,13 @@ export function QueryEditor() {
                   ))}
                 </div>
               )}
-            </div>
+            </motion.div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         )}
 
         {!error && results.length === 0 && (
-          <div className="flex h-full items-center justify-center text-zinc-500">
+          <div className="flex h-full items-center justify-center text-muted-foreground">
             <p>Execute a query to see results</p>
           </div>
         )}

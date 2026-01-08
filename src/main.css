@@ -3,6 +3,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Titlebar drag region for Tauri */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -113,11 +121,78 @@
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
+/* Tokyo Night Theme */
+.tokyo-night {
+  /* Background: #1a1b26 */
+  --background: oklch(0.18 0.02 265);
+  /* Foreground: #a9b1d6 */
+  --foreground: oklch(0.78 0.04 270);
+  /* Card/Popover: #24283b */
+  --card: oklch(0.22 0.025 265);
+  --card-foreground: oklch(0.78 0.04 270);
+  --popover: oklch(0.22 0.025 265);
+  --popover-foreground: oklch(0.78 0.04 270);
+  /* Primary: #7aa2f7 (blue) */
+  --primary: oklch(0.72 0.14 250);
+  --primary-foreground: oklch(0.18 0.02 265);
+  /* Secondary: #414868 */
+  --secondary: oklch(0.35 0.03 265);
+  --secondary-foreground: oklch(0.78 0.04 270);
+  /* Muted: #414868 */
+  --muted: oklch(0.35 0.03 265);
+  /* Muted foreground: #565f89 */
+  --muted-foreground: oklch(0.50 0.04 265);
+  /* Accent: #bb9af7 (purple) */
+  --accent: oklch(0.35 0.03 265);
+  --accent-foreground: oklch(0.78 0.04 270);
+  /* Destructive: #f7768e (red) */
+  --destructive: oklch(0.68 0.18 15);
+  /* Border: #414868 */
+  --border: oklch(0.35 0.03 265);
+  --input: oklch(0.30 0.025 265);
+  /* Ring: #7aa2f7 */
+  --ring: oklch(0.72 0.14 250);
+  /* Charts - Tokyo Night accent colors */
+  /* Blue: #7aa2f7 */
+  --chart-1: oklch(0.72 0.14 250);
+  /* Cyan: #7dcfff */
+  --chart-2: oklch(0.80 0.12 210);
+  /* Green: #9ece6a */
+  --chart-3: oklch(0.78 0.15 130);
+  /* Purple: #bb9af7 */
+  --chart-4: oklch(0.72 0.16 300);
+  /* Orange: #ff9e64 */
+  --chart-5: oklch(0.75 0.16 50);
+  /* Sidebar */
+  --sidebar: oklch(0.16 0.02 265);
+  --sidebar-foreground: oklch(0.78 0.04 270);
+  --sidebar-primary: oklch(0.72 0.14 250);
+  --sidebar-primary-foreground: oklch(0.18 0.02 265);
+  --sidebar-accent: oklch(0.30 0.025 265);
+  --sidebar-accent-foreground: oklch(0.78 0.04 270);
+  --sidebar-border: oklch(0.35 0.03 265);
+  --sidebar-ring: oklch(0.72 0.14 250);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Global cursor pointer for interactive elements */
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  a,
+  label[for],
+  select,
+  summary,
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
   }
 }
