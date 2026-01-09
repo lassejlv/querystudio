@@ -58,6 +58,13 @@ export const Route = createRootRoute({
         href: '/favicon.ico',
       },
     ],
+    scripts: [
+      {
+        src: 'https://analytics.lasse.services/script.js',
+        'data-website-id': '31f1090c-9170-46df-aa85-59842cc2dfb1',
+        async: true,
+      },
+    ],
   }),
 
   component: RootComponent,
