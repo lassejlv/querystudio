@@ -13,27 +13,31 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'QueryStudio - Modern PostgreSQL Client',
+        title: 'QueryStudio - Modern Database Studio',
       },
       {
         name: 'description',
-        content: 'A modern, lightweight PostgreSQL client built with Tauri, React, and Rust. Features AI-powered natural language queries, table browsing, and full CRUD operations.',
+        content: 'A modern, lightweight database studio built with Tauri, React, and Rust. Features AI-powered natural language queries, table browsing, and full CRUD operations.',
       },
       {
         name: 'keywords',
-        content: 'PostgreSQL, database client, SQL, Tauri, React, Rust, AI, GPT-4',
+        content: 'database, SQL, Tauri, React, Rust, AI, GPT-4, PostgreSQL, MySQL, SQLite',
       },
       {
         property: 'og:title',
-        content: 'QueryStudio - Modern PostgreSQL Client',
+        content: 'QueryStudio - Modern Database Studio',
       },
       {
         property: 'og:description',
-        content: 'A modern, lightweight PostgreSQL client with AI-powered natural language queries.',
+        content: 'A modern, lightweight database studio with AI-powered natural language queries.',
       },
       {
         property: 'og:type',
         content: 'website',
+      },
+      {
+        property: 'og:image',
+        content: 'https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png',
       },
       {
         name: 'twitter:card',
@@ -41,11 +45,15 @@ export const Route = createRootRoute({
       },
       {
         name: 'twitter:title',
-        content: 'QueryStudio - Modern PostgreSQL Client',
+        content: 'QueryStudio - Modern Database Studio',
       },
       {
         name: 'twitter:description',
-        content: 'A modern, lightweight PostgreSQL client with AI-powered natural language queries.',
+        content: 'A modern, lightweight database studio with AI-powered natural language queries.',
+      },
+      {
+        name: 'twitter:image',
+        content: 'https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png',
       },
     ],
     links: [
@@ -55,7 +63,11 @@ export const Route = createRootRoute({
       },
       {
         rel: 'icon',
-        href: '/favicon.ico',
+        href: 'https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png',
+      },
+      {
+        rel: 'apple-touch-icon',
+        href: 'https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png',
       },
     ],
     scripts: [

@@ -13,6 +13,7 @@ function LandingPage() {
     <div className='min-h-screen bg-background'>
       <section className='container mx-auto px-4 py-24 md:py-32'>
         <div className='flex flex-col items-center text-center gap-8'>
+          <img src='https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png' alt='QueryStudio' className='h-24 w-24' />
           <h1 className='text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight max-w-4xl'>The modern database studio you deserve</h1>
 
           <p className='text-xl text-muted-foreground max-w-2xl'>A beautiful & lightweight sql studio, built with Tauri, React, and Rust. Query your data with SQL or let AI do it for you.</p>
