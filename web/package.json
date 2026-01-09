@@ -77,8 +77,11 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^27.0.0",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "npm:rolldown-vite@latest",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
+  },
+  "overrides": {
+    "vite": "npm:rolldown-vite@latest"
   }
 }
