@@ -62,7 +62,6 @@ function PricingPage() {
                 <span className='text-muted-foreground ml-2 line-through'>${pricing.tiers.pro.price}</span>
                 <span className='text-muted-foreground ml-2'>one-time</span>
               </div>
-              <p className='text-sm text-green-600 dark:text-green-400 mt-1'>Save 70% during beta!</p>
             </CardHeader>
             <CardContent className='space-y-4'>
               <FeatureItem>

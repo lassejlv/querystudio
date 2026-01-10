@@ -15,7 +15,7 @@ const pricing = {
     },
     pro: {
       name: 'Pro',
-      price: 49,
+      price: 29.99,
       earlyBirdPrice: 14.99,
       licenseType: 'one-time',
       features: {
