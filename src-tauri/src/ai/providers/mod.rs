@@ -1,3 +1,5 @@
+pub mod claude;
+pub mod gemini;
 pub mod openai;
 
 use async_trait::async_trait;
@@ -9,12 +11,16 @@ use std::fmt;
 pub enum AIProviderType {
     #[default]
     OpenAI,
+    Anthropic,
+    Google,
 }
 
 impl fmt::Display for AIProviderType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AIProviderType::OpenAI => write!(f, "OpenAI"),
+            AIProviderType::Anthropic => write!(f, "Anthropic"),
+            AIProviderType::Google => write!(f, "Google"),
         }
     }
 }
@@ -27,6 +33,16 @@ pub enum AIModel {
     Gpt5,
     #[serde(rename = "gpt-5-mini")]
     Gpt5Mini,
+    #[serde(rename = "claude-opus-4-5-20251101")]
+    ClaudeOpus45,
+    #[serde(rename = "claude-sonnet-4-5-20250929")]
+    ClaudeSonnet45,
+    #[serde(rename = "claude-haiku-4-5-20251001")]
+    ClaudeHaiku45,
+    #[serde(rename = "gemini-3-pro-preview")]
+    Gemini3Pro,
+    #[serde(rename = "gemini-3-flash-preview")]
+    Gemini3Flash,
 }
 
 impl AIModel {
@@ -34,12 +50,21 @@ impl AIModel {
         match self {
             AIModel::Gpt5 => "gpt-5",
             AIModel::Gpt5Mini => "gpt-5-mini",
+            AIModel::ClaudeOpus45 => "claude-opus-4-5-20251101",
+            AIModel::ClaudeSonnet45 => "claude-sonnet-4-5-20250929",
+            AIModel::ClaudeHaiku45 => "claude-haiku-4-5-20251001",
+            AIModel::Gemini3Pro => "gemini-3-pro-preview",
+            AIModel::Gemini3Flash => "gemini-3-flash-preview",
         }
     }
 
     pub fn provider(&self) -> AIProviderType {
         match self {
             AIModel::Gpt5 | AIModel::Gpt5Mini => AIProviderType::OpenAI,
+            AIModel::ClaudeOpus45 | AIModel::ClaudeSonnet45 | AIModel::ClaudeHaiku45 => {
+                AIProviderType::Anthropic
+            }
+            AIModel::Gemini3Pro | AIModel::Gemini3Flash => AIProviderType::Google,
         }
     }
 
@@ -47,6 +72,11 @@ impl AIModel {
         match self {
             AIModel::Gpt5 => "GPT-5",
             AIModel::Gpt5Mini => "GPT-5 Mini",
+            AIModel::ClaudeOpus45 => "Claude Opus 4.5",
+            AIModel::ClaudeSonnet45 => "Claude Sonnet 4.5",
+            AIModel::ClaudeHaiku45 => "Claude Haiku 4.5",
+            AIModel::Gemini3Pro => "Gemini 3 Pro",
+            AIModel::Gemini3Flash => "Gemini 3 Flash",
         }
     }
 }
@@ -64,6 +94,11 @@ impl std::str::FromStr for AIModel {
         match s {
             "gpt-5" => Ok(AIModel::Gpt5),
             "gpt-5-mini" => Ok(AIModel::Gpt5Mini),
+            "claude-opus-4-5-20251101" => Ok(AIModel::ClaudeOpus45),
+            "claude-sonnet-4-5-20250929" => Ok(AIModel::ClaudeSonnet45),
+            "claude-haiku-4-5-20251001" => Ok(AIModel::ClaudeHaiku45),
+            "gemini-3-pro-preview" => Ok(AIModel::Gemini3Pro),
+            "gemini-3-flash-preview" => Ok(AIModel::Gemini3Flash),
             _ => Err(AIProviderError::new(format!("Unknown model: {}", s))),
         }
     }
@@ -255,6 +290,14 @@ pub fn create_ai_provider(
             let provider = openai::OpenAIProvider::new(api_key);
             Ok(Box::new(provider))
         }
+        AIProviderType::Anthropic => {
+            let provider = claude::ClaudeProvider::new(api_key);
+            Ok(Box::new(provider))
+        }
+        AIProviderType::Google => {
+            let provider = gemini::GeminiProvider::new(api_key);
+            Ok(Box::new(provider))
+        }
     }
 }
 
@@ -269,6 +312,31 @@ pub fn get_available_models() -> Vec<ModelInfo> {
             id: AIModel::Gpt5Mini,
             name: "GPT-5 Mini".to_string(),
             provider: AIProviderType::OpenAI,
+        },
+        ModelInfo {
+            id: AIModel::ClaudeOpus45,
+            name: "Claude Opus 4.5".to_string(),
+            provider: AIProviderType::Anthropic,
+        },
+        ModelInfo {
+            id: AIModel::ClaudeSonnet45,
+            name: "Claude Sonnet 4.5".to_string(),
+            provider: AIProviderType::Anthropic,
+        },
+        ModelInfo {
+            id: AIModel::ClaudeHaiku45,
+            name: "Claude Haiku 4.5".to_string(),
+            provider: AIProviderType::Anthropic,
+        },
+        ModelInfo {
+            id: AIModel::Gemini3Pro,
+            name: "Gemini 3 Pro".to_string(),
+            provider: AIProviderType::Google,
+        },
+        ModelInfo {
+            id: AIModel::Gemini3Flash,
+            name: "Gemini 3 Flash".to_string(),
+            provider: AIProviderType::Google,
         },
     ]
 }

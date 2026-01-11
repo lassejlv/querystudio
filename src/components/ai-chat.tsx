@@ -59,11 +59,26 @@ import {
   saveChatHistory,
   createChatSession,
   generateSessionTitle,
+  getModelProvider,
 } from "@/lib/ai-agent";
 import { cn } from "@/lib/utils";
 
-const API_KEY_STORAGE_KEY = "querystudio_openai_api_key";
+const OPENAI_API_KEY_STORAGE_KEY = "querystudio_openai_api_key";
+const ANTHROPIC_API_KEY_STORAGE_KEY = "querystudio_anthropic_api_key";
+const GOOGLE_API_KEY_STORAGE_KEY = "querystudio_google_api_key";
 const SELECTED_MODEL_KEY = "querystudio_selected_model";
+
+function getApiKeyForModel(
+  model: ModelId,
+  openaiKey: string,
+  anthropicKey: string,
+  googleKey: string,
+): string {
+  const provider = getModelProvider(model);
+  if (provider === "anthropic") return anthropicKey;
+  if (provider === "google") return googleKey;
+  return openaiKey;
+}
 
 // ============================================================================
 // Memoized Code Block Component
@@ -349,11 +364,19 @@ export function AIChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(
-    () => localStorage.getItem(API_KEY_STORAGE_KEY) || "",
+  const [openaiApiKey, setOpenaiApiKey] = useState(
+    () => localStorage.getItem(OPENAI_API_KEY_STORAGE_KEY) || "",
+  );
+  const [anthropicApiKey, setAnthropicApiKey] = useState(
+    () => localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY) || "",
+  );
+  const [googleApiKey, setGoogleApiKey] = useState(
+    () => localStorage.getItem(GOOGLE_API_KEY_STORAGE_KEY) || "",
   );
   const [showSettings, setShowSettings] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState("");
+  const [tempOpenaiKey, setTempOpenaiKey] = useState("");
+  const [tempAnthropicKey, setTempAnthropicKey] = useState("");
+  const [tempGoogleKey, setTempGoogleKey] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => {
     const saved = localStorage.getItem(SELECTED_MODEL_KEY);
     if (saved && AI_MODELS.some((m) => m.id === saved)) {
@@ -400,11 +423,19 @@ export function AIChat() {
     }
   }, [connection?.id, currentSessionId, setLastSession]);
 
+  // Get the current API key based on selected model
+  const currentApiKey = getApiKeyForModel(
+    selectedModel,
+    openaiApiKey,
+    anthropicApiKey,
+    googleApiKey,
+  );
+
   // Initialize agent
   useEffect(() => {
-    if (apiKey && connection?.id && connection?.db_type) {
+    if (currentApiKey && connection?.id && connection?.db_type) {
       agentRef.current = new AIAgent(
-        apiKey,
+        currentApiKey,
         connection.id,
         connection.db_type,
         selectedModel,
@@ -412,7 +443,7 @@ export function AIChat() {
     } else {
       agentRef.current = null;
     }
-  }, [apiKey, connection?.id, connection?.db_type, selectedModel]);
+  }, [currentApiKey, connection?.id, connection?.db_type, selectedModel]);
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -427,21 +458,25 @@ export function AIChat() {
 
   // Handle debug request from query editor
   useEffect(() => {
-    if (debugRequest && apiKey && connection?.id) {
+    if (debugRequest && currentApiKey && connection?.id) {
       const debugMessage = `I got this SQL error. Please help me debug it:\n\n**Query:**\n\`\`\`sql\n${debugRequest.query}\n\`\`\`\n\n**Error:**\n\`\`\`\n${debugRequest.error}\n\`\`\``;
       setInput(debugMessage);
       clearDebugRequest();
     }
-  }, [debugRequest, apiKey, connection?.id, clearDebugRequest]);
+  }, [debugRequest, currentApiKey, connection?.id, clearDebugRequest]);
 
   // Filter sessions for current connection
   const connectionSessions = sessions.filter(
     (s) => s.connectionId === connection?.id,
   );
 
-  const handleSaveApiKey = () => {
-    setApiKey(tempApiKey);
-    localStorage.setItem(API_KEY_STORAGE_KEY, tempApiKey);
+  const handleSaveApiKeys = () => {
+    setOpenaiApiKey(tempOpenaiKey);
+    setAnthropicApiKey(tempAnthropicKey);
+    setGoogleApiKey(tempGoogleKey);
+    localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, tempOpenaiKey);
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, tempAnthropicKey);
+    localStorage.setItem(GOOGLE_API_KEY_STORAGE_KEY, tempGoogleKey);
     setShowSettings(false);
   };
 
@@ -705,49 +740,91 @@ export function AIChat() {
     );
   }
 
-  if (!apiKey) {
+  if (!currentApiKey) {
+    const provider = getModelProvider(selectedModel);
+    const missingProvider =
+      provider === "anthropic"
+        ? "Anthropic"
+        : provider === "google"
+          ? "Google"
+          : "OpenAI";
+    const modelType = selectedModel.startsWith("claude")
+      ? "Claude"
+      : selectedModel.startsWith("gemini")
+        ? "Gemini"
+        : "GPT";
+
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center space-y-4 max-w-sm">
           <div className="space-y-2">
             <p className="text-lg font-medium text-foreground">
-              API Key Required
+              {missingProvider} API Key Required
             </p>
             <p className="text-sm text-muted-foreground">
-              To use Querybuddy, you need to provide an API key (OpenAI or
-              Anthropic). Your key is stored locally.
+              To use {modelType} models, you need to provide a {missingProvider}{" "}
+              API key. Your keys are stored locally.
             </p>
           </div>
           <Button
             onClick={() => {
-              setTempApiKey(apiKey);
+              setTempOpenaiKey(openaiApiKey);
+              setTempAnthropicKey(anthropicApiKey);
+              setTempGoogleKey(googleApiKey);
               setShowSettings(true);
             }}
           >
             <Settings className="mr-2 h-4 w-4" />
-            Configure API Key
+            Configure API Keys
           </Button>
 
           <Dialog open={showSettings} onOpenChange={setShowSettings}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>API Key</DialogTitle>
+                <DialogTitle>API Keys</DialogTitle>
                 <DialogDescription>
-                  Enter your API key to enable Querybuddy.
+                  Enter your API keys to enable Querybuddy. You can use OpenAI,
+                  Anthropic, Google, or any combination.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="apiKey">API Key</Label>
+                  <Label htmlFor="openaiKey">OpenAI API Key</Label>
                   <Input
-                    id="apiKey"
+                    id="openaiKey"
                     type="password"
-                    placeholder="sk-... or sk-ant-..."
-                    value={tempApiKey}
-                    onChange={(e) => setTempApiKey(e.target.value)}
+                    placeholder="sk-..."
+                    value={tempOpenaiKey}
+                    onChange={(e) => setTempOpenaiKey(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Works with OpenAI (sk-...) or Anthropic (sk-ant-...) keys
+                    For GPT models
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="anthropicKey">Anthropic API Key</Label>
+                  <Input
+                    id="anthropicKey"
+                    type="password"
+                    placeholder="sk-ant-..."
+                    value={tempAnthropicKey}
+                    onChange={(e) => setTempAnthropicKey(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For Claude models
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="googleKey">Google API Key</Label>
+                  <Input
+                    id="googleKey"
+                    type="password"
+                    placeholder="AIza..."
+                    value={tempGoogleKey}
+                    onChange={(e) => setTempGoogleKey(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For Gemini models
                   </p>
                 </div>
               </div>
@@ -759,8 +836,12 @@ export function AIChat() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleSaveApiKey}
-                  disabled={!tempApiKey.trim()}
+                  onClick={handleSaveApiKeys}
+                  disabled={
+                    !tempOpenaiKey.trim() &&
+                    !tempAnthropicKey.trim() &&
+                    !tempGoogleKey.trim()
+                  }
                 >
                   Save
                 </Button>
@@ -864,7 +945,9 @@ export function AIChat() {
           size="icon"
           className="h-7 w-7"
           onClick={() => {
-            setTempApiKey(apiKey);
+            setTempOpenaiKey(openaiApiKey);
+            setTempAnthropicKey(anthropicApiKey);
+            setTempGoogleKey(googleApiKey);
             setShowSettings(true);
           }}
         >
@@ -972,7 +1055,7 @@ export function AIChat() {
 
           <div className="flex items-center justify-between">
             <Select value={selectedModel} onValueChange={handleModelChange}>
-              <SelectTrigger className="h-8 w-40 text-xs">
+              <SelectTrigger className="h-8 w-48 text-xs">
                 <SelectValue placeholder="GPT-5" />
               </SelectTrigger>
               <SelectContent>
@@ -994,29 +1077,56 @@ export function AIChat() {
           <DialogHeader>
             <DialogTitle>AI Settings</DialogTitle>
             <DialogDescription>
-              Configure your API key for Querybuddy.
+              Configure your API keys for Querybuddy.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="openaiKey2">API Key</Label>
+              <Label htmlFor="openaiKey2">OpenAI API Key</Label>
               <Input
                 id="openaiKey2"
                 type="password"
-                placeholder="sk-... or sk-ant-..."
-                value={tempApiKey}
-                onChange={(e) => setTempApiKey(e.target.value)}
+                placeholder="sk-..."
+                value={tempOpenaiKey}
+                onChange={(e) => setTempOpenaiKey(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Supports OpenAI (sk-...) and Anthropic (sk-ant-...) keys.
-              </p>
+              <p className="text-xs text-muted-foreground">For GPT models</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="anthropicKey2">Anthropic API Key</Label>
+              <Input
+                id="anthropicKey2"
+                type="password"
+                placeholder="sk-ant-..."
+                value={tempAnthropicKey}
+                onChange={(e) => setTempAnthropicKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">For Claude models</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="googleKey2">Google API Key</Label>
+              <Input
+                id="googleKey2"
+                type="password"
+                placeholder="AIza..."
+                value={tempGoogleKey}
+                onChange={(e) => setTempGoogleKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">For Gemini models</p>
             </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowSettings(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveApiKey} disabled={!tempApiKey.trim()}>
+            <Button
+              onClick={handleSaveApiKeys}
+              disabled={
+                !tempOpenaiKey.trim() &&
+                !tempAnthropicKey.trim() &&
+                !tempGoogleKey.trim()
+              }
+            >
               Save
             </Button>
           </div>

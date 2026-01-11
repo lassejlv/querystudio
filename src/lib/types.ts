@@ -61,9 +61,16 @@ export interface QueryResult {
 // AI Types
 // ============================================================================
 
-export type AIProviderType = "openai";
+export type AIProviderType = "openai" | "anthropic" | "google";
 
-export type AIModelId = "gpt-5" | "gpt-5-mini";
+export type AIModelId =
+  | "gpt-5"
+  | "gpt-5-mini"
+  | "claude-opus-4-5-20251101"
+  | "claude-sonnet-4-5-20250929"
+  | "claude-haiku-4-5-20251001"
+  | "gemini-3-pro-preview"
+  | "gemini-3-flash-preview";
 
 export interface AIModelInfo {
   id: AIModelId;

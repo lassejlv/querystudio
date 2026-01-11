@@ -24,11 +24,44 @@ export type {
 export const AI_MODELS: AIModelInfo[] = [
   { id: "gpt-5", name: "GPT-5", provider: "openai" },
   { id: "gpt-5-mini", name: "GPT-5 Mini", provider: "openai" },
+  {
+    id: "claude-opus-4-5-20251101",
+    name: "Claude Opus 4.5",
+    provider: "anthropic",
+  },
+  {
+    id: "claude-sonnet-4-5-20250929",
+    name: "Claude Sonnet 4.5",
+    provider: "anthropic",
+  },
+  {
+    id: "claude-haiku-4-5-20251001",
+    name: "Claude Haiku 4.5",
+    provider: "anthropic",
+  },
+  {
+    id: "gemini-3-pro-preview",
+    name: "Gemini 3 Pro",
+    provider: "google",
+  },
+  {
+    id: "gemini-3-flash-preview",
+    name: "Gemini 3 Flash",
+    provider: "google",
+  },
 ];
 
 export type ModelId = AIModelId;
 
-export function getModelProvider(_modelId: ModelId): "openai" {
+export function getModelProvider(
+  modelId: ModelId,
+): "openai" | "anthropic" | "google" {
+  if (modelId.startsWith("claude")) {
+    return "anthropic";
+  }
+  if (modelId.startsWith("gemini")) {
+    return "google";
+  }
   return "openai";
 }
 
