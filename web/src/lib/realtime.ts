@@ -8,6 +8,12 @@ const schema = {
   messages: {
     content: z.string(),
   },
+
+  userBackend: {
+    changesSaved: z.object({
+      message: z.string(),
+    }),
+  },
 }
 
 export const realtime = new Realtime({ schema, redis })

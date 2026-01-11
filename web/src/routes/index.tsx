@@ -1,29 +1,18 @@
 import { useRef, useEffect } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Header } from '@/components/header'
-import { Database, Table, Terminal, Shield, Download, Command, MousePointer, MessageSquare } from 'lucide-react'
-import { createRealtime } from '@upstash/realtime/client'
-import type { RealtimeEvents } from '@/lib/realtime'
-import { toast } from 'sonner'
-
-const { useRealtime } = createRealtime<RealtimeEvents>()
+import { Database, Table, Terminal, Shield, Download, Command, MousePointer, Check, Infinity as InfinityIcon, Bot } from 'lucide-react'
+import { getPricing } from '@/server/pricing'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
+  loader: () => getPricing(),
 })
 
 function LandingPage() {
-  useRealtime({
-    events: ['messages.content'],
-    onData({ event, data, channel }) {
-      toast.success('We got data!', {
-        description: `From channel ${channel} with message: ${data}`,
-      })
-      console.log(`Received ${event}:`, data)
-    },
-  })
+  const pricing = Route.useLoaderData()
 
   return (
     <div className='min-h-screen bg-background'>
@@ -77,9 +66,9 @@ function LandingPage() {
             description='Execute custom SQL queries with syntax highlighting. Run queries with Cmd+Enter and see results instantly.'
           />
           <FeatureCard
-            icon={<MessageSquare className='h-6 w-6' />}
-            title='AI Assistant'
-            description='Ask questions in natural language and let AI write the SQL for you. Explore your data without writing a single query.'
+            icon={<Bot className='h-6 w-6' />}
+            title='Querybuddy'
+            description='Ask Querybuddy in natural language and let him write the SQL for you. Explore your data without writing a single query.'
           />
           <FeatureCard
             icon={<MousePointer className='h-6 w-6' />}
@@ -87,6 +76,70 @@ function LandingPage() {
             description='Add, edit, and delete rows with ease. Right-click context menus make data manipulation intuitive.'
           />
           <FeatureCard icon={<Shield className='h-6 w-6' />} title='Safe by Default' description='AI queries are read-only. Your data is never sent anywhere except to your configured OpenAI key.' />
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id='pricing' className='container mx-auto px-4 py-24 border-t'>
+        <div className='text-center mb-16'>
+          <h2 className='text-3xl md:text-4xl font-bold mb-4'>Prices, you can overcome</h2>
+          <p className='text-muted-foreground text-lg max-w-2xl mx-auto'>Start for free, then pay once and use it forever!</p>
+        </div>
+
+        <div className='grid md:grid-cols-2 gap-8 max-w-4xl mx-auto'>
+          <Card className='relative'>
+            <CardHeader>
+              <CardTitle className='text-2xl'>{pricing.tiers.free.name}</CardTitle>
+              <CardDescription>Perfect for getting started</CardDescription>
+              <div className='mt-4'>
+                <span className='text-4xl font-bold'>${pricing.tiers.free.price}</span>
+                <span className='text-muted-foreground ml-2'>forever</span>
+              </div>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <PricingFeatureItem>{pricing.tiers.free.features.maxConnections} connections</PricingFeatureItem>
+              <PricingFeatureItem>All features</PricingFeatureItem>
+              <PricingFeatureItem>All dialects</PricingFeatureItem>
+              <PricingFeatureItem>AI-agent (BYOK)</PricingFeatureItem>
+            </CardContent>
+            <CardFooter>
+              <Button variant='outline' className='w-full' asChild>
+                <Link to='/waitlist'>Join Waitlist</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* Pro Tier */}
+          <Card className='relative border-primary'>
+            <div className='absolute -top-3 left-1/2 -translate-x-1/2'>
+              <span className='bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full'>Early Bird</span>
+            </div>
+            <CardHeader>
+              <CardTitle className='text-2xl'>{pricing.tiers.pro.name}</CardTitle>
+              <CardDescription>For power users and teams</CardDescription>
+              <div className='mt-4'>
+                <span className='text-4xl font-bold'>${pricing.tiers.pro.earlyBirdPrice}</span>
+                <span className='text-muted-foreground ml-2 line-through'>${pricing.tiers.pro.price}</span>
+                <span className='text-muted-foreground ml-2'>one-time</span>
+              </div>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <PricingFeatureItem>
+                <InfinityIcon className='h-4 w-4 inline mr-1' />
+                Unlimited connections
+              </PricingFeatureItem>
+              <PricingFeatureItem>All features</PricingFeatureItem>
+              <PricingFeatureItem>All dialects</PricingFeatureItem>
+              <PricingFeatureItem>AI-agent (BYOK)</PricingFeatureItem>
+              <PricingFeatureItem>Priority support</PricingFeatureItem>
+              <PricingFeatureItem>2 devices</PricingFeatureItem>
+            </CardContent>
+            <CardFooter>
+              <Button className='w-full' asChild>
+                <Link to='/waitlist'>Join Waitlist</Link>
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       </section>
 
@@ -163,6 +216,15 @@ function ShortcutItem({ shortcut, description }: { shortcut: string; description
     <div className='flex items-center gap-4'>
       <kbd className='px-3 py-1.5 bg-muted rounded-md font-mono text-sm min-w-15 text-center'>{shortcut}</kbd>
       <span className='text-muted-foreground'>{description}</span>
+    </div>
+  )
+}
+
+function PricingFeatureItem({ children }: { children: React.ReactNode }) {
+  return (
+    <div className='flex items-center gap-3'>
+      <Check className='h-5 w-5 text-green-600 shrink-0' />
+      <span className='text-sm'>{children}</span>
     </div>
   )
 }

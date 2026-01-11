@@ -15,9 +15,9 @@ export function Header() {
           <Link to='/' className={`text-sm transition-colors ${currentPath === '/' ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
             Home
           </Link>
-          <Link to='/pricing' className={`text-sm transition-colors ${currentPath === '/pricing' ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+          <a href='/#pricing' className='text-sm transition-colors text-muted-foreground hover:text-foreground'>
             Pricing
-          </Link>
+          </a>
         </nav>
       </div>
     </header>

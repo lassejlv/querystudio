@@ -6,8 +6,8 @@ const pricing = {
       name: 'Free',
       price: 0,
       features: {
-        maxConnections: 1,
-        dialects: ['sqlite', 'postgres'],
+        maxConnections: 2,
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         ai: 'byok',
@@ -20,16 +20,12 @@ const pricing = {
       licenseType: 'one-time',
       features: {
         maxConnections: Infinity,
-        dialects: ['sqlite', 'postgres', 'mysql'],
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         ai: 'byok',
       },
     },
-  },
-  ai: {
-    model: 'byok',
-    supportedProviders: ['openai', 'anthropic', 'gemini'],
   },
 } as const
 
