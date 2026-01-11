@@ -1,3 +1,4 @@
+use crate::providers::DatabaseType;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -7,6 +8,8 @@ use tauri::Manager;
 pub struct SavedConnection {
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub db_type: DatabaseType,
     pub config: SavedConnectionConfig,
 }
 

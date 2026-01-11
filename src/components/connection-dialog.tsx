@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+  Database,
+  Server,
+  Cloud,
+  CheckCircle2,
+  Link2,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,20 +16,81 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { useConnect, useTestConnection } from "@/lib/hooks";
 import { toast } from "sonner";
-import type { ConnectionConfig } from "@/lib/types";
+import type { ConnectionConfig, DatabaseType } from "@/lib/types";
 
 interface ConnectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) {
-  const [testing, setTesting] = useState(false);
-  const [mode, setMode] = useState<"params" | "string">("params");
+interface DatabaseOption {
+  id: DatabaseType;
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  defaults: { port: string; database: string; username: string; host: string };
+}
+
+const DATABASE_OPTIONS: DatabaseOption[] = [
+  {
+    id: "postgres",
+    name: "PostgreSQL",
+    icon: <Database className="h-4 w-4" />,
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500",
+    defaults: {
+      port: "5432",
+      database: "postgres",
+      username: "postgres",
+      host: "localhost",
+    },
+  },
+  {
+    id: "mysql",
+    name: "MySQL",
+    icon: <Server className="h-4 w-4" />,
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+    borderColor: "border-orange-500",
+    defaults: {
+      port: "3306",
+      database: "mysql",
+      username: "root",
+      host: "localhost",
+    },
+  },
+  {
+    id: "libsql",
+    name: "Turso",
+    icon: <Cloud className="h-4 w-4" />,
+    color: "text-teal-500",
+    bgColor: "bg-teal-500/10",
+    borderColor: "border-teal-500",
+    defaults: {
+      port: "443",
+      database: "default",
+      username: "",
+      host: "turso.io",
+    },
+  },
+];
+
+type ConnectionMode = "params" | "string";
+
+export function ConnectionDialog({
+  open,
+  onOpenChange,
+}: ConnectionDialogProps) {
+  const [mode, setMode] = useState<ConnectionMode>("params");
+  const [dbType, setDbType] = useState<DatabaseType>("postgres");
+  const [tested, setTested] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     host: "localhost",
@@ -37,37 +105,53 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
   const connect = useConnect();
   const testConnection = useTestConnection();
 
-  const validateParams = () => {
+  const selectedDb = DATABASE_OPTIONS.find((db) => db.id === dbType)!;
+
+  const handleDbSelect = (type: DatabaseType) => {
+    const db = DATABASE_OPTIONS.find((d) => d.id === type)!;
+    setDbType(type);
+    setFormData((prev) => ({
+      ...prev,
+      host: db.defaults.host,
+      port: db.defaults.port,
+      database: db.defaults.database,
+      username: db.defaults.username,
+    }));
+    setTested(false);
+    setErrors({});
+  };
+
+  const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.host.trim()) newErrors.host = "Host is required";
-    if (!formData.database.trim()) newErrors.database = "Database is required";
-    if (!formData.username.trim()) newErrors.username = "Username is required";
-    const port = parseInt(formData.port, 10);
-    if (isNaN(port) || port < 1 || port > 65535) {
-      newErrors.port = "Invalid port";
+
+    if (!formData.name.trim()) newErrors.name = "Required";
+
+    if (mode === "params") {
+      if (!formData.host.trim()) newErrors.host = "Required";
+      if (!formData.database.trim()) newErrors.database = "Required";
+      if (dbType !== "libsql" && !formData.username.trim()) {
+        newErrors.username = "Required";
+      }
+      const port = parseInt(formData.port, 10);
+      if (isNaN(port) || port < 1 || port > 65535) {
+        newErrors.port = "Invalid";
+      }
+    } else {
+      if (!formData.connectionString.trim()) {
+        newErrors.connectionString = "Required";
+      }
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  const validateString = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.connectionString.trim()) {
-      newErrors.connectionString = "Connection string is required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const validate = () => (mode === "params" ? validateParams() : validateString());
 
   const getConfig = (): ConnectionConfig => {
     if (mode === "string") {
-      return { connection_string: formData.connectionString };
+      return { db_type: dbType, connection_string: formData.connectionString };
     }
     return {
+      db_type: dbType,
       host: formData.host,
       port: parseInt(formData.port, 10),
       database: formData.database,
@@ -86,7 +170,10 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
       password: "",
       connectionString: "",
     });
+    setDbType("postgres");
     setErrors({});
+    setTested(false);
+    setMode("params");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +184,12 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
     const config = getConfig();
 
     try {
-      await connect.mutateAsync({ id, name: formData.name, config });
+      await connect.mutateAsync({
+        id,
+        name: formData.name,
+        db_type: dbType,
+        config,
+      });
       toast.success("Connected successfully");
       onOpenChange(false);
       resetForm();
@@ -111,19 +203,19 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
 
     const config = getConfig();
 
-    setTesting(true);
     try {
       await testConnection.mutateAsync(config);
-      toast.success("Connection successful");
+      setTested(true);
+      toast.success("Connection successful!");
     } catch (error) {
+      setTested(false);
       toast.error(`Connection failed: ${error}`);
-    } finally {
-      setTesting(false);
     }
   };
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setTested(false);
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -133,133 +225,232 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
     }
   };
 
+  const getConnectionStringPlaceholder = () => {
+    if (dbType === "mysql") {
+      return "mysql://user:password@localhost:3306/database";
+    }
+    if (dbType === "libsql") {
+      return "libsql://your-database.turso.io?authToken=your-token";
+    }
+    return "postgresql://user:password@localhost:5432/database";
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      resetForm();
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New PostgreSQL Connection</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            New Connection
+          </DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Connection Name */}
           <div className="space-y-2">
-            <Label htmlFor="name">Connection Name</Label>
+            <Label htmlFor="name">Name</Label>
             <Input
               id="name"
               placeholder="My Database"
               value={formData.name}
               onChange={(e) => updateField("name", e.target.value)}
+              className={cn(errors.name && "border-destructive")}
             />
-            {errors.name && (
-              <p className="text-xs text-red-500">{errors.name}</p>
-            )}
           </div>
 
-          <Tabs value={mode} onValueChange={(v) => setMode(v as "params" | "string")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="params">Parameters</TabsTrigger>
-              <TabsTrigger value="string">Connection String</TabsTrigger>
-            </TabsList>
+          {/* Database Type Selector */}
+          <div className="space-y-2">
+            <Label>Database</Label>
+            <div className="flex gap-2">
+              {DATABASE_OPTIONS.map((db) => (
+                <button
+                  key={db.id}
+                  type="button"
+                  onClick={() => handleDbSelect(db.id)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border text-sm font-medium transition-colors",
+                    dbType === db.id
+                      ? `${db.borderColor} ${db.bgColor} ${db.color}`
+                      : "border-border hover:bg-accent",
+                  )}
+                >
+                  {db.icon}
+                  {db.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            <TabsContent value="params" className="mt-4 space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="host">Host</Label>
+          {/* Mode Toggle */}
+          <div className="flex gap-2 p-1 bg-muted rounded-md">
+            <button
+              type="button"
+              onClick={() => setMode("params")}
+              className={cn(
+                "flex-1 py-1.5 px-3 rounded text-sm font-medium transition-colors",
+                mode === "params"
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Parameters
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("string")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded text-sm font-medium transition-colors",
+                mode === "string"
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              URL
+            </button>
+          </div>
+
+          {mode === "params" ? (
+            <div className="space-y-3">
+              {/* Host & Port */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2 space-y-1">
+                  <Label htmlFor="host" className="text-xs">
+                    Host
+                  </Label>
                   <Input
                     id="host"
-                    placeholder="localhost"
+                    placeholder={selectedDb.defaults.host}
                     value={formData.host}
                     onChange={(e) => updateField("host", e.target.value)}
+                    className={cn("h-9", errors.host && "border-destructive")}
                   />
-                  {errors.host && (
-                    <p className="text-xs text-red-500">{errors.host}</p>
-                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="port">Port</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="port" className="text-xs">
+                    Port
+                  </Label>
                   <Input
                     id="port"
                     type="number"
-                    placeholder="5432"
+                    placeholder={selectedDb.defaults.port}
                     value={formData.port}
                     onChange={(e) => updateField("port", e.target.value)}
+                    className={cn("h-9", errors.port && "border-destructive")}
                   />
-                  {errors.port && (
-                    <p className="text-xs text-red-500">{errors.port}</p>
-                  )}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="database">Database</Label>
+              {/* Database */}
+              <div className="space-y-1">
+                <Label htmlFor="database" className="text-xs">
+                  Database
+                </Label>
                 <Input
                   id="database"
-                  placeholder="postgres"
+                  placeholder={selectedDb.defaults.database}
                   value={formData.database}
                   onChange={(e) => updateField("database", e.target.value)}
+                  className={cn("h-9", errors.database && "border-destructive")}
                 />
-                {errors.database && (
-                  <p className="text-xs text-red-500">{errors.database}</p>
-                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    placeholder="postgres"
-                    value={formData.username}
-                    onChange={(e) => updateField("username", e.target.value)}
-                  />
-                  {errors.username && (
-                    <p className="text-xs text-red-500">{errors.username}</p>
-                  )}
+              {/* Username & Password */}
+              {dbType !== "libsql" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="username" className="text-xs">
+                      Username
+                    </Label>
+                    <Input
+                      id="username"
+                      placeholder={selectedDb.defaults.username}
+                      value={formData.username}
+                      onChange={(e) => updateField("username", e.target.value)}
+                      className={cn(
+                        "h-9",
+                        errors.username && "border-destructive",
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="password" className="text-xs">
+                      Password
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => updateField("password", e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+              ) : (
+                <div className="space-y-1">
+                  <Label htmlFor="password" className="text-xs">
+                    Auth Token{" "}
+                    <span className="text-muted-foreground">(optional)</span>
+                  </Label>
                   <Input
                     id="password"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Your Turso auth token"
                     value={formData.password}
                     onChange={(e) => updateField("password", e.target.value)}
+                    className="h-9"
                   />
                 </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="string" className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="connectionString">Connection String</Label>
-                <Textarea
-                  id="connectionString"
-                  placeholder="postgresql://user:password@localhost:5432/database"
-                  value={formData.connectionString}
-                  onChange={(e) => updateField("connectionString", e.target.value)}
-                  className="min-h-[80px] font-mono text-sm"
-                />
-                {errors.connectionString && (
-                  <p className="text-xs text-red-500">{errors.connectionString}</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Label htmlFor="connectionString" className="text-xs">
+                Connection String
+              </Label>
+              <Textarea
+                id="connectionString"
+                placeholder={getConnectionStringPlaceholder()}
+                value={formData.connectionString}
+                onChange={(e) =>
+                  updateField("connectionString", e.target.value)
+                }
+                className={cn(
+                  "min-h-[80px] font-mono text-sm",
+                  errors.connectionString && "border-destructive",
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Supports PostgreSQL connection URI or key-value format
-                </p>
-              </div>
-            </TabsContent>
-          </Tabs>
+              />
+            </div>
+          )}
 
-          <div className="flex justify-between pt-4">
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={handleTest}
-              disabled={testing}
+              disabled={testConnection.isPending}
+              className="gap-1.5"
             >
-              {testing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Test Connection
+              {testConnection.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : tested ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+              ) : null}
+              Test
             </Button>
-            <Button type="submit" disabled={connect.isPending}>
+            <Button type="submit" size="sm" disabled={connect.isPending}>
               {connect.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
               )}
               Connect
             </Button>

@@ -1,8 +1,11 @@
+mod ai;
 mod database;
-mod queries;
+mod providers;
 mod storage;
 
-use database::{ColumnInfo, ConnectionConfig, ConnectionManager, QueryResult, TableInfo};
+use ai::{ai_chat, ai_chat_stream, ai_get_models, ai_validate_key};
+use database::{test_connection, ConnectionConfig, ConnectionManager};
+use providers::{ColumnInfo, QueryResult, TableInfo};
 use std::sync::Arc;
 use storage::{SavedConnection, SavedConnections};
 use tauri::{
@@ -27,11 +30,8 @@ async fn disconnect(state: State<'_, DbState>, id: String) -> Result<(), String>
 }
 
 #[tauri::command]
-async fn test_connection(config: ConnectionConfig) -> Result<(), String> {
-    let manager = ConnectionManager::new();
-    manager.connect("test".to_string(), config).await?;
-    manager.disconnect("test")?;
-    Ok(())
+async fn test_connection_handler(config: ConnectionConfig) -> Result<(), String> {
+    test_connection(config).await
 }
 
 #[tauri::command]
@@ -175,7 +175,7 @@ pub fn run() {
                         true,
                         Some("CmdOrCtrl+2"),
                     )?,
-                    &MenuItem::with_id(app, "view_ai", "AI Assistant", true, Some("CmdOrCtrl+3"))?,
+                    &MenuItem::with_id(app, "view_ai", "Querybuddy", true, Some("CmdOrCtrl+3"))?,
                     &PredefinedMenuItem::separator(app)?,
                     &MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?,
                     &PredefinedMenuItem::separator(app)?,
@@ -263,17 +263,24 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Database commands
             connect,
             disconnect,
-            test_connection,
+            test_connection_handler,
             list_tables,
             get_table_columns,
             get_table_data,
             execute_query,
             get_table_count,
+            // Storage commands
             get_saved_connections,
             save_connection,
             delete_saved_connection,
+            // AI commands
+            ai_get_models,
+            ai_validate_key,
+            ai_chat,
+            ai_chat_stream,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

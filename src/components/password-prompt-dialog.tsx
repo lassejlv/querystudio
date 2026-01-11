@@ -36,14 +36,19 @@ export function PasswordPromptDialog({
     if (connectingRef.current) return;
 
     connectingRef.current = true;
-    
-    const config = { connection_string: connection.config.connection_string };
-    
-    connect.mutateAsync({
-      id: connection.id,
-      name: connection.name,
-      config,
-    })
+
+    const config = {
+      db_type: connection.db_type || "postgres",
+      connection_string: connection.config.connection_string,
+    };
+
+    connect
+      .mutateAsync({
+        id: connection.id,
+        name: connection.name,
+        db_type: connection.db_type || "postgres",
+        config,
+      })
       .then(() => {
         toast.success("Connected successfully");
         onOpenChange(false);
@@ -63,6 +68,7 @@ export function PasswordPromptDialog({
     if ("connection_string" in connection.config) return;
 
     const config = {
+      db_type: connection.db_type || "postgres",
       ...connection.config,
       password,
     };
@@ -71,6 +77,7 @@ export function PasswordPromptDialog({
       await connect.mutateAsync({
         id: connection.id,
         name: connection.name,
+        db_type: connection.db_type || "postgres",
         config,
       });
       toast.success("Connected successfully");
@@ -89,7 +96,8 @@ export function PasswordPromptDialog({
   };
 
   // Don't show dialog for connection strings (auto-connect via useEffect)
-  const isConnectionString = connection && "connection_string" in connection.config;
+  const isConnectionString =
+    connection && "connection_string" in connection.config;
   if (isConnectionString) {
     return null;
   }
@@ -105,7 +113,10 @@ export function PasswordPromptDialog({
           <DialogDescription>
             {connection?.name && (
               <>
-                Connecting to <span className="font-medium text-foreground">{connection.name}</span>
+                Connecting to{" "}
+                <span className="font-medium text-foreground">
+                  {connection.name}
+                </span>
               </>
             )}
           </DialogDescription>

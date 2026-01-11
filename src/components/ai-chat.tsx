@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback, memo } from "react";
 import {
   Send,
   Bot,
-  Loader2,
   Settings,
   Trash2,
   Wrench,
@@ -13,7 +12,6 @@ import {
   PlayCircle,
   History,
   RotateCcw,
-  Square,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -404,12 +402,17 @@ export function AIChat() {
 
   // Initialize agent
   useEffect(() => {
-    if (apiKey && connection?.id) {
-      agentRef.current = new AIAgent(apiKey, connection.id, selectedModel);
+    if (apiKey && connection?.id && connection?.db_type) {
+      agentRef.current = new AIAgent(
+        apiKey,
+        connection.id,
+        connection.db_type,
+        selectedModel,
+      );
     } else {
       agentRef.current = null;
     }
-  }, [apiKey, connection?.id, selectedModel]);
+  }, [apiKey, connection?.id, connection?.db_type, selectedModel]);
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -444,7 +447,11 @@ export function AIChat() {
 
   const handleNewChat = () => {
     if (!connection?.id) return;
-    const session = createChatSession(connection.id, selectedModel);
+    const session = createChatSession(
+      connection.id,
+      selectedModel,
+      connection.db_type,
+    );
     const newSessions = [...sessions, session];
     setSessions(newSessions);
     saveChatHistory(newSessions);
@@ -524,7 +531,11 @@ export function AIChat() {
           : s,
       );
     } else {
-      const session = createChatSession(connection.id, selectedModel);
+      const session = createChatSession(
+        connection.id,
+        selectedModel,
+        connection.db_type,
+      );
       session.messages = updatedMessages;
       session.title = generateSessionTitle(updatedMessages);
       newSessions = [...sessions, session];
@@ -536,6 +547,11 @@ export function AIChat() {
   };
 
   const handleCancel = useCallback(() => {
+    // First cancel the agent to stop listening for events and interrupt the generator
+    if (agentRef.current) {
+      agentRef.current.cancel();
+    }
+    // Then abort the controller to signal the loop to stop
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -682,7 +698,7 @@ export function AIChat() {
             Connect to a database first
           </p>
           <p className="text-sm text-muted-foreground">
-            The AI assistant needs an active connection
+            Querybuddy needs an active connection
           </p>
         </div>
       </div>
@@ -698,7 +714,7 @@ export function AIChat() {
               API Key Required
             </p>
             <p className="text-sm text-muted-foreground">
-              To use the AI assistant, you need to provide an API key (OpenAI or
+              To use Querybuddy, you need to provide an API key (OpenAI or
               Anthropic). Your key is stored locally.
             </p>
           </div>
@@ -717,7 +733,7 @@ export function AIChat() {
               <DialogHeader>
                 <DialogTitle>API Key</DialogTitle>
                 <DialogDescription>
-                  Enter your API key to enable the AI assistant.
+                  Enter your API key to enable Querybuddy.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -915,44 +931,42 @@ export function AIChat() {
               className="pr-24 rounded-xl"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {!isLoading && lastUserMessage && messages.length > 0 && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleRetry}
+                  className="h-8 w-8"
+                  title="Retry last message"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
               {isLoading ? (
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
                   onClick={handleCancel}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  title="Cancel"
+                  className="h-8 w-8"
+                  title="Stop generating"
                 >
-                  <Square className="h-4 w-4" />
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                  </span>
                 </Button>
               ) : (
-                lastUserMessage &&
-                messages.length > 0 && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={handleRetry}
-                    className="h-8 w-8"
-                    title="Retry last message"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                  </Button>
-                )
-              )}
-              <Button
-                type="submit"
-                size="icon"
-                disabled={isLoading || !input.trim()}
-                className="h-8 w-8"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!input.trim()}
+                  className="h-8 w-8"
+                >
                   <Send className="h-4 w-4" />
-                )}
-              </Button>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -980,7 +994,7 @@ export function AIChat() {
           <DialogHeader>
             <DialogTitle>AI Settings</DialogTitle>
             <DialogDescription>
-              Configure your API key for the AI assistant.
+              Configure your API key for Querybuddy.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

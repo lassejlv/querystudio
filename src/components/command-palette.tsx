@@ -146,7 +146,7 @@ export function CommandPalette({
                 }}
               >
                 <Sparkles className="h-4 w-4" />
-                <span>Go to AI Assistant</span>
+                <span>Go to Querybuddy</span>
                 <CommandShortcut>⌘3</CommandShortcut>
               </CommandItem>
               <CommandItem

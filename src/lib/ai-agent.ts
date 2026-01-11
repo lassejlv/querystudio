@@ -1,290 +1,36 @@
-import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionTool,
-} from "openai/resources/chat/completions";
-import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { api } from "./api";
+import type {
+  AgentMessage,
+  AgentToolCall,
+  AgentEventType,
+  ChatSession,
+  AIModelId,
+  AIModelInfo,
+  DatabaseType,
+  Message,
+  ToolCall,
+} from "./types";
 
-// ============================================================================
-// Types
-// ============================================================================
+export type {
+  AgentMessage,
+  AgentToolCall,
+  ChatSession,
+  AIModelId,
+  Message,
+  ToolCall,
+};
 
-export interface Message {
-  id: string;
-  role: "user" | "assistant" | "system" | "tool";
-  content: string;
-  toolCalls?: ToolCall[];
-  toolCallId?: string;
-  isLoading?: boolean;
-}
-
-export interface ToolCall {
-  id: string;
-  name: string;
-  arguments: string;
-  result?: string;
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  messages: Message[];
-  model: string;
-  connectionId: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-// ============================================================================
-// Models Configuration
-// ============================================================================
-
-export const AI_MODELS = [
+export const AI_MODELS: AIModelInfo[] = [
   { id: "gpt-5", name: "GPT-5", provider: "openai" },
   { id: "gpt-5-mini", name: "GPT-5 Mini", provider: "openai" },
-] as const;
-
-export type ModelId = (typeof AI_MODELS)[number]["id"];
-
-export function getModelProvider(modelId: ModelId): "openai" | "anthropic" {
-  const model = AI_MODELS.find((m) => m.id === modelId);
-  return (model?.provider as "openai" | "anthropic") || "openai";
-}
-
-// ============================================================================
-// Tool Definitions (Single Source of Truth)
-// ============================================================================
-
-interface ToolDefinition {
-  name: string;
-  description: string;
-  parameters: {
-    type: "object";
-    properties: Record<string, { type: string; description: string }>;
-    required: string[];
-  };
-}
-
-const TOOL_DEFINITIONS: ToolDefinition[] = [
-  {
-    name: "list_tables",
-    description:
-      "List all tables in the database. Returns table names, schemas, and approximate row counts. Use this first to understand what data is available.",
-    parameters: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: "get_table_columns",
-    description:
-      "Get detailed column information for a specific table. Returns column names, data types, nullability, default values, and primary key status. Essential for understanding table structure before querying.",
-    parameters: {
-      type: "object",
-      properties: {
-        schema: {
-          type: "string",
-          description: "The schema name (usually 'public' for PostgreSQL)",
-        },
-        table: {
-          type: "string",
-          description: "The table name to inspect",
-        },
-      },
-      required: ["schema", "table"],
-    },
-  },
-  {
-    name: "execute_select_query",
-    description:
-      "Execute a read-only SELECT query against the database. Returns up to 50 rows. Use LIMIT clauses for large tables. Only SELECT statements are allowed for safety.",
-    parameters: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "The SELECT SQL query to execute. Must be a valid PostgreSQL SELECT statement.",
-        },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "get_table_sample",
-    description:
-      "Get a quick sample of rows from a table. Useful for understanding what kind of data a table contains before writing more specific queries.",
-    parameters: {
-      type: "object",
-      properties: {
-        schema: {
-          type: "string",
-          description: "The schema name (usually 'public')",
-        },
-        table: {
-          type: "string",
-          description: "The table name to sample",
-        },
-        limit: {
-          type: "number",
-          description:
-            "Number of sample rows to return (default: 10, max: 100)",
-        },
-      },
-      required: ["schema", "table"],
-    },
-  },
 ];
 
-// Convert to OpenAI format
-export const AI_TOOLS: ChatCompletionTool[] = TOOL_DEFINITIONS.map((tool) => ({
-  type: "function" as const,
-  function: {
-    name: tool.name,
-    description: tool.description,
-    parameters: tool.parameters,
-  },
-}));
+export type ModelId = AIModelId;
 
-// Convert to Anthropic format
-const ANTHROPIC_TOOLS: Tool[] = TOOL_DEFINITIONS.map((tool) => ({
-  name: tool.name,
-  description: tool.description,
-  input_schema: {
-    type: "object" as const,
-    properties: tool.parameters.properties,
-    required: tool.parameters.required,
-  },
-}));
-
-// ============================================================================
-// System Prompt
-// ============================================================================
-
-const SYSTEM_PROMPT = `You are QueryStudio AI, an expert PostgreSQL assistant.
-
-## Formatting Rules (IMPORTANT)
-
-Always use rich markdown formatting:
-
-- **Tables**: Display schema/column info in markdown tables:
-  | Column | Type | Nullable | Default |
-  |--------|------|----------|---------|
-  | id | bigint | NO | auto |
-
-- **Code**: SQL in \`\`\`sql blocks, identifiers in \`backticks\`
-- **Lists**: Use bullet points for multiple items
-- **Bold**: Key terms and column names
-- **Headers**: Use ### for sections when needed
-
-## Capabilities
-
-✅ List tables, examine schemas, run SELECT queries, explain SQL, debug errors
-❌ Cannot execute INSERT/UPDATE/DELETE (but can write examples for you to copy)
-
-## Response Style
-
-- Be concise and direct
-- Format data nicely - never dump raw JSON
-- Use tables for structured data (columns, query results)
-- Suggest follow-up queries when helpful`;
-
-// ============================================================================
-// Tool Execution
-// ============================================================================
-
-export async function executeTool(
-  connectionId: string,
-  toolName: string,
-  args: Record<string, unknown>,
-): Promise<string> {
-  try {
-    switch (toolName) {
-      case "list_tables": {
-        const tables = await api.listTables(connectionId);
-        return JSON.stringify(tables, null, 2);
-      }
-
-      case "get_table_columns": {
-        const { schema, table } = args as { schema: string; table: string };
-        const columns = await api.getTableColumns(connectionId, schema, table);
-        return JSON.stringify(columns, null, 2);
-      }
-
-      case "execute_select_query": {
-        const { query } = args as { query: string };
-        const trimmed = query.trim().toUpperCase();
-
-        if (!trimmed.startsWith("SELECT") && !trimmed.startsWith("WITH")) {
-          return JSON.stringify({
-            error:
-              "Only SELECT queries (including WITH clauses) are allowed for safety",
-          });
-        }
-
-        const result = await api.executeQuery(connectionId, query);
-        const maxRows = 50;
-        const limitedRows = result.rows.slice(0, maxRows);
-
-        return JSON.stringify(
-          {
-            columns: result.columns,
-            rows: limitedRows,
-            total_rows: result.row_count,
-            showing: limitedRows.length,
-            truncated: result.row_count > maxRows,
-          },
-          null,
-          2,
-        );
-      }
-
-      case "get_table_sample": {
-        const {
-          schema,
-          table,
-          limit = 10,
-        } = args as {
-          schema: string;
-          table: string;
-          limit?: number;
-        };
-        const safeLimit = Math.min(Math.max(1, limit), 100);
-        const result = await api.getTableData(
-          connectionId,
-          schema,
-          table,
-          safeLimit,
-          0,
-        );
-
-        return JSON.stringify(
-          {
-            columns: result.columns,
-            rows: result.rows,
-            sample_size: result.rows.length,
-            total_rows: result.row_count,
-          },
-          null,
-          2,
-        );
-      }
-
-      default:
-        return JSON.stringify({ error: `Unknown tool: ${toolName}` });
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return JSON.stringify({ error: message });
-  }
+export function getModelProvider(_modelId: ModelId): "openai" {
+  return "openai";
 }
-
-// ============================================================================
-// Chat History Management
-// ============================================================================
 
 const CHAT_HISTORY_KEY = "querystudio_chat_history";
 const MAX_SESSIONS = 50;
@@ -306,6 +52,7 @@ export function saveChatHistory(sessions: ChatSession[]): void {
 export function createChatSession(
   connectionId: string,
   model: ModelId,
+  dbType: DatabaseType,
 ): ChatSession {
   return {
     id: crypto.randomUUID(),
@@ -313,6 +60,7 @@ export function createChatSession(
     messages: [],
     model,
     connectionId,
+    dbType,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -327,7 +75,6 @@ export function generateSessionTitle(messages: Message[]): string {
 
   if (content.length <= maxLength) return content;
 
-  // Try to break at a word boundary
   const truncated = content.substring(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
 
@@ -337,53 +84,68 @@ export function generateSessionTitle(messages: Message[]): string {
 }
 
 // ============================================================================
-// AI Agent Class
+// Convert between frontend Message and backend AgentMessage
+// ============================================================================
+
+export function messageToAgentMessage(msg: Message): AgentMessage {
+  return {
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    tool_calls: msg.toolCalls?.map((tc) => ({
+      id: tc.id,
+      name: tc.name,
+      arguments: tc.arguments,
+      result: tc.result,
+    })),
+  };
+}
+
+export function agentMessageToMessage(msg: AgentMessage): Message {
+  return {
+    id: msg.id,
+    role: msg.role as Message["role"],
+    content: msg.content,
+    toolCalls: msg.tool_calls?.map((tc) => ({
+      id: tc.id,
+      name: tc.name,
+      arguments: tc.arguments,
+      result: tc.result,
+    })),
+  };
+}
+
+// ============================================================================
+// AI Agent Class (Backend-based)
 // ============================================================================
 
 export class AIAgent {
-  private openaiClient: OpenAI | null = null;
-  private anthropicClient: Anthropic | null = null;
   private connectionId: string;
   private model: ModelId;
-  private openaiMessages: ChatCompletionMessageParam[];
-  private anthropicMessages: MessageParam[];
   private apiKey: string;
+  private dbType: DatabaseType;
+  private messageHistory: Message[];
+  private unlistenFn: UnlistenFn | null = null;
+  private isCancelled: boolean = false;
+  private pendingResolve:
+    | ((value: { done: boolean; value?: string }) => void)
+    | null = null;
 
-  constructor(apiKey: string, connectionId: string, model: ModelId = "gpt-5") {
+  constructor(
+    apiKey: string,
+    connectionId: string,
+    dbType: DatabaseType,
+    model: ModelId = "gpt-5",
+  ) {
     this.apiKey = apiKey;
     this.connectionId = connectionId;
+    this.dbType = dbType;
     this.model = model;
-    this.openaiMessages = [{ role: "system", content: SYSTEM_PROMPT }];
-    this.anthropicMessages = [];
-    this.initClient();
-  }
-
-  private initClient(): void {
-    const provider = getModelProvider(this.model);
-
-    if (provider === "anthropic") {
-      this.anthropicClient = new Anthropic({
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true,
-      });
-      this.openaiClient = null;
-    } else {
-      this.openaiClient = new OpenAI({
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true,
-      });
-      this.anthropicClient = null;
-    }
+    this.messageHistory = [];
   }
 
   setModel(model: ModelId): void {
-    const oldProvider = getModelProvider(this.model);
-    const newProvider = getModelProvider(model);
     this.model = model;
-
-    if (oldProvider !== newProvider) {
-      this.initClient();
-    }
   }
 
   getModel(): ModelId {
@@ -391,445 +153,254 @@ export class AIAgent {
   }
 
   loadFromSession(session: ChatSession): void {
-    this.openaiMessages = [{ role: "system", content: SYSTEM_PROMPT }];
-    this.anthropicMessages = [];
-
-    for (const msg of session.messages) {
-      if (msg.role === "user" || msg.role === "assistant") {
-        this.openaiMessages.push({ role: msg.role, content: msg.content });
-        this.anthropicMessages.push({ role: msg.role, content: msg.content });
-      }
-    }
-
-    this.model = session.model as ModelId;
-    this.initClient();
+    this.messageHistory = session.messages.map(agentMessageToMessage);
+    this.dbType = session.dbType;
   }
 
   clearHistory(): void {
-    this.openaiMessages = [{ role: "system", content: SYSTEM_PROMPT }];
-    this.anthropicMessages = [];
+    this.messageHistory = [];
   }
 
-  // -------------------------------------------------------------------------
-  // Streaming Chat (Primary Method)
-  // -------------------------------------------------------------------------
-
+  /**
+   * Stream a chat response from the backend
+   */
   async *chatStream(
     userMessage: string,
     onToolCall?: (toolName: string, args: string) => void,
   ): AsyncGenerator<string, void, unknown> {
-    const provider = getModelProvider(this.model);
+    const sessionId = crypto.randomUUID();
 
-    if (provider === "anthropic") {
-      yield* this.streamAnthropic(userMessage, onToolCall);
-    } else {
-      yield* this.streamOpenAI(userMessage, onToolCall);
-    }
-  }
+    // Reset cancelled state for new stream
+    this.isCancelled = false;
+    this.pendingResolve = null;
 
-  private async *streamOpenAI(
-    userMessage: string,
-    onToolCall?: (toolName: string, args: string) => void,
-  ): AsyncGenerator<string, void, unknown> {
-    this.ensureOpenAIClient();
-    this.openaiMessages.push({ role: "user", content: userMessage });
+    // Prepare history for the backend
+    const history: AgentMessage[] = this.messageHistory.map(
+      messageToAgentMessage,
+    );
 
-    let continueLoop = true;
+    // Set up event listener for streaming
+    const eventName = `ai-stream-${sessionId}`;
+    const chunks: string[] = [];
+    let isDone = false;
+    let error: string | null = null;
+    let finalContent = "";
+    const toolCalls: ToolCall[] = [];
+    const pendingToolCalls: Map<string, ToolCall> = new Map();
 
-    while (continueLoop) {
-      const stream = await this.openaiClient!.chat.completions.create({
-        model: this.model,
-        messages: this.openaiMessages,
-        tools: AI_TOOLS,
-        tool_choice: "auto",
-        stream: true,
-      });
+    this.unlistenFn = await listen<AgentEventType>(eventName, (event) => {
+      // Ignore events if cancelled
+      if (this.isCancelled) return;
 
-      let fullContent = "";
-      const toolCalls: Array<{ id: string; name: string; arguments: string }> =
-        [];
-      let currentToolCall: {
-        id: string;
-        name: string;
-        arguments: string;
-      } | null = null;
+      const payload = event.payload;
 
-      for await (const chunk of stream) {
-        const choice = chunk.choices[0];
-        if (!choice) continue;
-
-        // Handle content delta
-        const contentDelta = choice.delta?.content;
-        if (contentDelta) {
-          fullContent += contentDelta;
-          yield contentDelta;
-        }
-
-        // Handle tool call deltas
-        const toolCallDeltas = choice.delta?.tool_calls;
-        if (toolCallDeltas) {
-          for (const tcDelta of toolCallDeltas) {
-            if (tcDelta.index !== undefined) {
-              if (!currentToolCall || tcDelta.id) {
-                if (currentToolCall) {
-                  toolCalls.push(currentToolCall);
-                }
-                currentToolCall = {
-                  id: tcDelta.id || "",
-                  name: tcDelta.function?.name || "",
-                  arguments: tcDelta.function?.arguments || "",
-                };
-              } else {
-                if (tcDelta.function?.name) {
-                  currentToolCall.name += tcDelta.function.name;
-                }
-                if (tcDelta.function?.arguments) {
-                  currentToolCall.arguments += tcDelta.function.arguments;
-                }
-              }
-            }
+      switch (payload.type) {
+        case "Content":
+          chunks.push(payload.data);
+          if (this.pendingResolve) {
+            this.pendingResolve({ done: false, value: payload.data });
+            this.pendingResolve = null;
           }
-        }
+          break;
 
-        // Check finish reason
-        if (choice.finish_reason === "stop") {
-          continueLoop = false;
-          this.openaiMessages.push({
-            role: "assistant",
-            content: fullContent || "I couldn't generate a response.",
-          });
-        } else if (choice.finish_reason === "tool_calls") {
-          if (currentToolCall) {
-            toolCalls.push(currentToolCall);
-          }
-
-          // Add assistant message with tool calls
-          this.openaiMessages.push({
-            role: "assistant",
-            content: fullContent || null,
-            tool_calls: toolCalls.map((tc) => ({
-              id: tc.id,
-              type: "function" as const,
-              function: { name: tc.name, arguments: tc.arguments },
-            })),
-          });
-
-          // Execute tool calls
-          for (const toolCall of toolCalls) {
-            onToolCall?.(toolCall.name, toolCall.arguments);
-
-            const toolArgs = JSON.parse(toolCall.arguments);
-            const result = await executeTool(
-              this.connectionId,
-              toolCall.name,
-              toolArgs,
-            );
-
-            this.openaiMessages.push({
-              role: "tool",
-              tool_call_id: toolCall.id,
-              content: result,
-            });
-          }
-
-          // Continue loop for next response
+        case "ToolCallStart": {
+          const tc: ToolCall = {
+            id: payload.data.id,
+            name: payload.data.name,
+            arguments: "",
+          };
+          pendingToolCalls.set(payload.data.id, tc);
+          onToolCall?.(payload.data.name, "");
           break;
         }
-      }
 
-      // Safety exit if no finish reason
-      if (continueLoop && toolCalls.length === 0) {
-        continueLoop = false;
-        if (fullContent) {
-          this.openaiMessages.push({ role: "assistant", content: fullContent });
+        case "ToolCallDelta": {
+          const tc = pendingToolCalls.get(payload.data.id);
+          if (tc) {
+            tc.arguments += payload.data.arguments;
+          }
+          break;
         }
+
+        case "ToolResult": {
+          const tc = pendingToolCalls.get(payload.data.id);
+          if (tc) {
+            tc.result = payload.data.result;
+            toolCalls.push(tc);
+            pendingToolCalls.delete(payload.data.id);
+          }
+          onToolCall?.(payload.data.name, payload.data.result);
+          break;
+        }
+
+        case "Done":
+          finalContent = payload.data.content;
+          isDone = true;
+          if (this.pendingResolve) {
+            this.pendingResolve({ done: true });
+            this.pendingResolve = null;
+          }
+          break;
+
+        case "Error":
+          error = payload.data;
+          isDone = true;
+          if (this.pendingResolve) {
+            this.pendingResolve({ done: true });
+            this.pendingResolve = null;
+          }
+          break;
       }
-    }
-  }
+    });
 
-  private async *streamAnthropic(
-    userMessage: string,
-    onToolCall?: (toolName: string, args: string) => void,
-  ): AsyncGenerator<string, void, unknown> {
-    this.ensureAnthropicClient();
-    this.anthropicMessages.push({ role: "user", content: userMessage });
-
-    let continueLoop = true;
-
-    while (continueLoop) {
-      const stream = this.anthropicClient!.messages.stream({
+    // Start the stream
+    try {
+      await api.aiChatStream({
+        connection_id: this.connectionId,
+        session_id: sessionId,
+        message: userMessage,
         model: this.model,
-        max_tokens: 8192,
-        system: SYSTEM_PROMPT,
-        messages: this.anthropicMessages,
-        tools: ANTHROPIC_TOOLS,
+        api_key: this.apiKey,
+        db_type: this.dbType,
+        history,
       });
+    } catch (e) {
+      this.cleanup();
+      throw e;
+    }
 
-      let fullContent = "";
-      const toolUseBlocks: Array<{
-        id: string;
-        name: string;
-        input: Record<string, unknown>;
-      }> = [];
-      let currentToolUse: { id: string; name: string; input: string } | null =
-        null;
-      let stopReason: string | null = null;
-
-      for await (const event of stream) {
-        if (event.type === "content_block_start") {
-          if (event.content_block.type === "tool_use") {
-            currentToolUse = {
-              id: event.content_block.id,
-              name: event.content_block.name,
-              input: "",
-            };
-          }
-        } else if (event.type === "content_block_delta") {
-          if (event.delta.type === "text_delta") {
-            fullContent += event.delta.text;
-            yield event.delta.text;
-          } else if (
-            event.delta.type === "input_json_delta" &&
-            currentToolUse
-          ) {
-            currentToolUse.input += event.delta.partial_json;
-          }
-        } else if (event.type === "content_block_stop") {
-          if (currentToolUse) {
-            try {
-              toolUseBlocks.push({
-                id: currentToolUse.id,
-                name: currentToolUse.name,
-                input: JSON.parse(currentToolUse.input || "{}"),
-              });
-            } catch {
-              toolUseBlocks.push({
-                id: currentToolUse.id,
-                name: currentToolUse.name,
-                input: {},
-              });
-            }
-            currentToolUse = null;
-          }
-        } else if (event.type === "message_delta") {
-          stopReason = event.delta.stop_reason;
-        }
-      }
-
-      if (stopReason === "tool_use" && toolUseBlocks.length > 0) {
-        // Build assistant message content
-        const assistantContent: Array<
-          | { type: "text"; text: string }
-          | {
-              type: "tool_use";
-              id: string;
-              name: string;
-              input: Record<string, unknown>;
-            }
-        > = [];
-
-        if (fullContent) {
-          assistantContent.push({ type: "text", text: fullContent });
-        }
-
-        for (const tu of toolUseBlocks) {
-          assistantContent.push({
-            type: "tool_use",
-            id: tu.id,
-            name: tu.name,
-            input: tu.input,
-          });
-        }
-
-        this.anthropicMessages.push({
-          role: "assistant",
-          content: assistantContent,
-        });
-
-        // Execute tools
-        const toolResults: MessageParam["content"] = [];
-
-        for (const toolUse of toolUseBlocks) {
-          onToolCall?.(toolUse.name, JSON.stringify(toolUse.input));
-          const result = await executeTool(
-            this.connectionId,
-            toolUse.name,
-            toolUse.input,
-          );
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: toolUse.id,
-            content: result,
-          });
-        }
-
-        this.anthropicMessages.push({ role: "user", content: toolResults });
-        // Continue loop
+    // Yield chunks as they come in
+    while (!isDone && !this.isCancelled) {
+      if (chunks.length > 0) {
+        yield chunks.shift()!;
       } else {
-        continueLoop = false;
-        this.anthropicMessages.push({
-          role: "assistant",
-          content: fullContent || "I couldn't generate a response.",
+        // Wait for the next chunk
+        await new Promise<{ done: boolean; value?: string }>((resolve) => {
+          this.pendingResolve = resolve;
         });
+        // Check if cancelled while waiting
+        if (this.isCancelled) {
+          break;
+        }
+        if (chunks.length > 0) {
+          yield chunks.shift()!;
+        }
       }
     }
-  }
 
-  // -------------------------------------------------------------------------
-  // Non-Streaming Chat (Legacy/Fallback)
-  // -------------------------------------------------------------------------
-
-  async chat(
-    userMessage: string,
-    onToolCall?: (toolName: string, args: string) => void,
-  ): Promise<string> {
-    const provider = getModelProvider(this.model);
-
-    if (provider === "anthropic") {
-      return this.chatAnthropic(userMessage, onToolCall);
-    } else {
-      return this.chatOpenAI(userMessage, onToolCall);
+    // Yield any remaining chunks (unless cancelled)
+    while (chunks.length > 0 && !this.isCancelled) {
+      yield chunks.shift()!;
     }
-  }
 
-  private async chatOpenAI(
-    userMessage: string,
-    onToolCall?: (toolName: string, args: string) => void,
-  ): Promise<string> {
-    this.ensureOpenAIClient();
-    this.openaiMessages.push({ role: "user", content: userMessage });
+    this.cleanup();
 
-    let response = await this.openaiClient!.chat.completions.create({
-      model: this.model,
-      messages: this.openaiMessages,
-      tools: AI_TOOLS,
-      tool_choice: "auto",
+    // If cancelled, throw a specific error
+    if (this.isCancelled) {
+      throw new Error("Request cancelled");
+    }
+
+    if (error) {
+      throw new Error(error);
+    }
+
+    // Update message history
+    this.messageHistory.push({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: userMessage,
     });
 
-    let assistantMessage = response.choices[0].message;
-
-    while (assistantMessage.tool_calls?.length) {
-      this.openaiMessages.push(assistantMessage);
-
-      for (const toolCall of assistantMessage.tool_calls) {
-        if (toolCall.type !== "function") continue;
-
-        const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments);
-
-        onToolCall?.(toolName, toolCall.function.arguments);
-
-        const result = await executeTool(this.connectionId, toolName, toolArgs);
-
-        this.openaiMessages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: result,
-        });
-      }
-
-      response = await this.openaiClient!.chat.completions.create({
-        model: this.model,
-        messages: this.openaiMessages,
-        tools: AI_TOOLS,
-        tool_choice: "auto",
-      });
-
-      assistantMessage = response.choices[0].message;
-    }
-
-    const content =
-      assistantMessage.content || "I couldn't generate a response.";
-    this.openaiMessages.push({ role: "assistant", content });
-
-    return content;
+    this.messageHistory.push({
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: finalContent,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    });
   }
 
-  private async chatAnthropic(
-    userMessage: string,
-    onToolCall?: (toolName: string, args: string) => void,
-  ): Promise<string> {
-    this.ensureAnthropicClient();
-    this.anthropicMessages.push({ role: "user", content: userMessage });
-
-    let response = await this.anthropicClient!.messages.create({
-      model: this.model,
-      max_tokens: 8192,
-      system: SYSTEM_PROMPT,
-      messages: this.anthropicMessages,
-      tools: ANTHROPIC_TOOLS,
-    });
-
-    while (response.stop_reason === "tool_use") {
-      const toolUseBlocks = response.content.filter(
-        (block) => block.type === "tool_use",
-      );
-      const toolResults: MessageParam["content"] = [];
-
-      for (const toolUse of toolUseBlocks) {
-        if (toolUse.type !== "tool_use") continue;
-
-        onToolCall?.(toolUse.name, JSON.stringify(toolUse.input));
-
-        const result = await executeTool(
-          this.connectionId,
-          toolUse.name,
-          toolUse.input as Record<string, unknown>,
-        );
-
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
-          content: result,
-        });
-      }
-
-      this.anthropicMessages.push({
-        role: "assistant",
-        content: response.content,
-      });
-      this.anthropicMessages.push({ role: "user", content: toolResults });
-
-      response = await this.anthropicClient!.messages.create({
-        model: this.model,
-        max_tokens: 8192,
-        system: SYSTEM_PROMPT,
-        messages: this.anthropicMessages,
-        tools: ANTHROPIC_TOOLS,
-      });
-    }
-
-    const textBlocks = response.content.filter(
-      (block) => block.type === "text",
+  /**
+   * Send a message and get a complete response (non-streaming)
+   */
+  async chat(userMessage: string): Promise<string> {
+    const history: AgentMessage[] = this.messageHistory.map(
+      messageToAgentMessage,
     );
-    const content =
-      textBlocks.map((b) => (b.type === "text" ? b.text : "")).join("\n") ||
-      "I couldn't generate a response.";
 
-    this.anthropicMessages.push({ role: "assistant", content });
+    const response = await api.aiChat({
+      connection_id: this.connectionId,
+      session_id: crypto.randomUUID(),
+      message: userMessage,
+      model: this.model,
+      api_key: this.apiKey,
+      db_type: this.dbType,
+      history,
+    });
 
-    return content;
+    // Update message history
+    this.messageHistory.push({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: userMessage,
+    });
+
+    this.messageHistory.push({
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: response.content,
+    });
+
+    return response.content;
   }
 
-  // -------------------------------------------------------------------------
-  // Helpers
-  // -------------------------------------------------------------------------
-
-  private ensureOpenAIClient(): void {
-    if (!this.openaiClient) {
-      this.openaiClient = new OpenAI({
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true,
-      });
+  private cleanup(): void {
+    if (this.unlistenFn) {
+      this.unlistenFn();
+      this.unlistenFn = null;
     }
+    this.pendingResolve = null;
   }
 
-  private ensureAnthropicClient(): void {
-    if (!this.anthropicClient) {
-      this.anthropicClient = new Anthropic({
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true,
-      });
+  /**
+   * Cancel the current stream
+   */
+  cancel(): void {
+    this.isCancelled = true;
+    // Resolve any pending promise to unblock the generator
+    if (this.pendingResolve) {
+      this.pendingResolve({ done: true });
+      this.pendingResolve = null;
     }
+    this.cleanup();
+  }
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Get available AI models from the backend
+ */
+export async function getAvailableModels(): Promise<AIModelInfo[]> {
+  try {
+    return await api.aiGetModels();
+  } catch {
+    // Fall back to hardcoded models if backend is unavailable
+    return AI_MODELS;
+  }
+}
+
+/**
+ * Validate an API key
+ */
+export async function validateApiKey(
+  apiKey: string,
+  model: ModelId = "gpt-5",
+): Promise<boolean> {
+  try {
+    return await api.aiValidateKey(apiKey, model);
+  } catch {
+    return false;
   }
 }

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import { useConnectionStore } from "./store";
-import type { ConnectionConfig, SavedConnection } from "./types";
+import type { ConnectionConfig, DatabaseType, SavedConnection } from "./types";
 
 export function useTables(connectionId: string | null) {
   return useQuery({
@@ -217,11 +217,13 @@ export function useConnect() {
     mutationFn: async ({
       id,
       name,
+      db_type,
       config,
       save = true,
     }: {
       id: string;
       name: string;
+      db_type: DatabaseType;
       config: ConnectionConfig;
       save?: boolean;
     }) => {
@@ -237,13 +239,18 @@ export function useConnect() {
                 database: config.database,
                 username: config.username,
               };
-        await saveConnection.mutateAsync({ id, name, config: savedConfig });
+        await saveConnection.mutateAsync({
+          id,
+          name,
+          db_type,
+          config: savedConfig,
+        });
       }
 
-      return { id, name, config };
+      return { id, name, db_type, config };
     },
-    onSuccess: ({ id, name, config }) => {
-      setConnection({ id, name, config });
+    onSuccess: ({ id, name, db_type, config }) => {
+      setConnection({ id, name, db_type, config });
       queryClient.invalidateQueries({ queryKey: ["tables"] });
     },
   });

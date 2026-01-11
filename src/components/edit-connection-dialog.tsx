@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Database } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,15 +11,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSaveConnection, useTestConnection } from "@/lib/hooks";
 import { toast } from "sonner";
-import type { SavedConnection, ConnectionConfig } from "@/lib/types";
+import type {
+  SavedConnection,
+  ConnectionConfig,
+  DatabaseType,
+} from "@/lib/types";
 
 interface EditConnectionDialogProps {
   connection: SavedConnection | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const DATABASE_CONFIGS: Record<
+  DatabaseType,
+  { port: string; database: string; username: string }
+> = {
+  postgres: { port: "5432", database: "postgres", username: "postgres" },
+  mysql: { port: "3306", database: "mysql", username: "root" },
+  libsql: { port: "443", database: "default", username: "" },
+};
 
 export function EditConnectionDialog({
   connection,
@@ -28,6 +48,7 @@ export function EditConnectionDialog({
 }: EditConnectionDialogProps) {
   const [testing, setTesting] = useState(false);
   const [mode, setMode] = useState<"params" | "string">("params");
+  const [dbType, setDbType] = useState<DatabaseType>("postgres");
   const [formData, setFormData] = useState({
     name: "",
     host: "localhost",
@@ -45,14 +66,16 @@ export function EditConnectionDialog({
   // Populate form when connection changes
   useEffect(() => {
     if (connection) {
+      setDbType(connection.db_type || "postgres");
       if ("connection_string" in connection.config) {
         setMode("string");
+        const defaults = DATABASE_CONFIGS[connection.db_type || "postgres"];
         setFormData({
           name: connection.name,
           host: "localhost",
-          port: "5432",
-          database: "postgres",
-          username: "postgres",
+          port: defaults.port,
+          database: defaults.database,
+          username: defaults.username,
           password: "",
           connectionString: connection.config.connection_string,
         });
@@ -72,12 +95,26 @@ export function EditConnectionDialog({
     }
   }, [connection]);
 
+  const handleDbTypeChange = (newType: DatabaseType) => {
+    setDbType(newType);
+    const defaults = DATABASE_CONFIGS[newType];
+    setFormData((prev) => ({
+      ...prev,
+      port: defaults.port,
+      database: defaults.database,
+      username: defaults.username,
+    }));
+  };
+
   const validateParams = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.host.trim()) newErrors.host = "Host is required";
     if (!formData.database.trim()) newErrors.database = "Database is required";
-    if (!formData.username.trim()) newErrors.username = "Username is required";
+    // Username is optional for libSQL/Turso
+    if (dbType !== "libsql" && !formData.username.trim()) {
+      newErrors.username = "Username is required";
+    }
     const port = parseInt(formData.port, 10);
     if (isNaN(port) || port < 1 || port > 65535) {
       newErrors.port = "Invalid port";
@@ -113,9 +150,10 @@ export function EditConnectionDialog({
 
   const getTestConfig = (): ConnectionConfig => {
     if (mode === "string") {
-      return { connection_string: formData.connectionString };
+      return { db_type: dbType, connection_string: formData.connectionString };
     }
     return {
+      db_type: dbType,
       host: formData.host,
       port: parseInt(formData.port, 10),
       database: formData.database,
@@ -134,6 +172,7 @@ export function EditConnectionDialog({
       await saveConnection.mutateAsync({
         id: connection.id,
         name: formData.name,
+        db_type: dbType,
         config: savedConfig,
       });
       toast.success("Connection updated successfully");
@@ -170,11 +209,40 @@ export function EditConnectionDialog({
     }
   };
 
+  const getConnectionStringPlaceholder = () => {
+    if (dbType === "mysql") {
+      return "mysql://user:password@localhost:3306/database";
+    }
+    if (dbType === "libsql") {
+      return "libsql://your-database.turso.io?authToken=your-token";
+    }
+    return "postgresql://user:password@localhost:5432/database";
+  };
+
+  const getConnectionStringHelp = () => {
+    if (dbType === "mysql") {
+      return "Supports MySQL connection URI format";
+    }
+    if (dbType === "libsql") {
+      return "Turso URL with auth token: libsql://db.turso.io?authToken=token";
+    }
+    return "Supports PostgreSQL connection URI or key-value format";
+  };
+
+  const getDbTypeLabel = () => {
+    if (dbType === "mysql") return "MySQL";
+    if (dbType === "libsql") return "libSQL/Turso";
+    return "PostgreSQL";
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Connection</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Edit {getDbTypeLabel()} Connection
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -190,6 +258,38 @@ export function EditConnectionDialog({
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="edit-dbType">Database Type</Label>
+            <Select
+              value={dbType}
+              onValueChange={(v) => handleDbTypeChange(v as DatabaseType)}
+            >
+              <SelectTrigger id="edit-dbType">
+                <SelectValue placeholder="Select database type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="postgres">
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-500 font-semibold">P</span>
+                    PostgreSQL
+                  </div>
+                </SelectItem>
+                <SelectItem value="mysql">
+                  <div className="flex items-center gap-2">
+                    <span className="text-orange-500 font-semibold">M</span>
+                    MySQL
+                  </div>
+                </SelectItem>
+                <SelectItem value="libsql">
+                  <div className="flex items-center gap-2">
+                    <span className="text-teal-500 font-semibold">T</span>
+                    libSQL / Turso
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Tabs
             value={mode}
             onValueChange={(v) => setMode(v as "params" | "string")}
@@ -202,10 +302,12 @@ export function EditConnectionDialog({
             <TabsContent value="params" className="mt-4 space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2 space-y-2">
-                  <Label htmlFor="edit-host">Host</Label>
+                  <Label htmlFor="edit-host">
+                    {dbType === "libsql" ? "Turso Host" : "Host"}
+                  </Label>
                   <Input
                     id="edit-host"
-                    placeholder="localhost"
+                    placeholder={dbType === "libsql" ? "turso.io" : "localhost"}
                     value={formData.host}
                     onChange={(e) => updateField("host", e.target.value)}
                   />
@@ -218,7 +320,7 @@ export function EditConnectionDialog({
                   <Input
                     id="edit-port"
                     type="number"
-                    placeholder="5432"
+                    placeholder={DATABASE_CONFIGS[dbType].port}
                     value={formData.port}
                     onChange={(e) => updateField("port", e.target.value)}
                   />
@@ -229,10 +331,12 @@ export function EditConnectionDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-database">Database</Label>
+                <Label htmlFor="edit-database">
+                  {dbType === "libsql" ? "Database Name" : "Database"}
+                </Label>
                 <Input
                   id="edit-database"
-                  placeholder="postgres"
+                  placeholder={DATABASE_CONFIGS[dbType].database}
                   value={formData.database}
                   onChange={(e) => updateField("database", e.target.value)}
                 />
@@ -241,33 +345,52 @@ export function EditConnectionDialog({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-username">Username</Label>
-                  <Input
-                    id="edit-username"
-                    placeholder="postgres"
-                    value={formData.username}
-                    onChange={(e) => updateField("username", e.target.value)}
-                  />
-                  {errors.username && (
-                    <p className="text-xs text-red-500">{errors.username}</p>
-                  )}
+              {dbType !== "libsql" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-username">Username</Label>
+                    <Input
+                      id="edit-username"
+                      placeholder={DATABASE_CONFIGS[dbType].username}
+                      value={formData.username}
+                      onChange={(e) => updateField("username", e.target.value)}
+                    />
+                    {errors.username && (
+                      <p className="text-xs text-red-500">{errors.username}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-password">Password</Label>
+                    <Input
+                      id="edit-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => updateField("password", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Required for testing
+                    </p>
+                  </div>
                 </div>
+              )}
+
+              {dbType === "libsql" && (
                 <div className="space-y-2">
-                  <Label htmlFor="edit-password">Password</Label>
+                  <Label htmlFor="edit-password">Auth Token (optional)</Label>
                   <Input
                     id="edit-password"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Your Turso auth token"
                     value={formData.password}
                     onChange={(e) => updateField("password", e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Required for testing
+                    Optional for local instances. Get your token from the Turso
+                    dashboard or CLI for cloud databases.
                   </p>
                 </div>
-              </div>
+              )}
             </TabsContent>
 
             <TabsContent value="string" className="mt-4 space-y-4">
@@ -275,7 +398,7 @@ export function EditConnectionDialog({
                 <Label htmlFor="edit-connectionString">Connection String</Label>
                 <Textarea
                   id="edit-connectionString"
-                  placeholder="postgresql://user:password@localhost:5432/database"
+                  placeholder={getConnectionStringPlaceholder()}
                   value={formData.connectionString}
                   onChange={(e) =>
                     updateField("connectionString", e.target.value)
@@ -288,7 +411,7 @@ export function EditConnectionDialog({
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Supports PostgreSQL connection URI or key-value format
+                  {getConnectionStringHelp()}
                 </p>
               </div>
             </TabsContent>

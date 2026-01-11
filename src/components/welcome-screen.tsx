@@ -1,9 +1,41 @@
 import { useEffect, useRef } from "react";
-import { Plus, Server, Pencil } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSavedConnections } from "@/lib/hooks";
 import { getLastConnectionId } from "@/lib/store";
-import type { SavedConnection } from "@/lib/types";
+import type { DatabaseType, SavedConnection } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+function DatabaseIcon({
+  type,
+  className,
+}: {
+  type: DatabaseType;
+  className?: string;
+}) {
+  if (type === "mysql") {
+    return (
+      <span
+        className={cn(
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500/20 text-[10px] font-bold text-orange-500",
+          className,
+        )}
+      >
+        M
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-blue-500/20 text-[10px] font-bold text-blue-500",
+        className,
+      )}
+    >
+      P
+    </span>
+  );
+}
 
 interface WelcomeScreenProps {
   onNewConnection: () => void;
@@ -35,10 +67,11 @@ export function WelcomeScreen({
   }, [isLoading, savedConnections, onSelectConnection]);
 
   const getConnectionDescription = (connection: SavedConnection) => {
+    const dbLabel = connection.db_type === "mysql" ? "MySQL" : "PostgreSQL";
     if ("connection_string" in connection.config) {
-      return "Connection string";
+      return `${dbLabel} · Connection string`;
     }
-    return `${connection.config.host}:${connection.config.port}/${connection.config.database}`;
+    return `${dbLabel} · ${connection.config.host}:${connection.config.port}/${connection.config.database}`;
   };
 
   return (
@@ -72,7 +105,7 @@ export function WelcomeScreen({
                       onClick={() => onSelectConnection(connection)}
                       className="flex flex-1 items-start gap-3 min-w-0 text-left"
                     >
-                      <Server className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <DatabaseIcon type={connection.db_type || "postgres"} />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-foreground truncate">
                           {connection.name}
