@@ -142,3 +142,54 @@ export interface ChatSession {
   createdAt: number;
   updatedAt: number;
 }
+
+// ============================================================================
+// License Types
+// ============================================================================
+
+export type OsType = "ios" | "android" | "macos" | "windows" | "linux";
+
+export interface LicenseStatus {
+  is_activated: boolean;
+  is_pro: boolean;
+  max_connections: number;
+  device_name: string | null;
+}
+
+export interface DeviceInfo {
+  id: string;
+  name: string;
+  active: boolean;
+  osType: string | null;
+  lastSeenAt: string | null;
+}
+
+export interface ActivateResponse {
+  success: boolean;
+  deviceToken: string | null;
+  message: string | null;
+  error: string | null;
+}
+
+export interface VerifyResponse {
+  valid: boolean;
+  active: boolean;
+  isPro: boolean | null;
+  message: string | null;
+  error: string | null;
+}
+
+export interface CheckResponse {
+  valid: boolean;
+  isPro: boolean | null;
+  activeDevices: number | null;
+  maxDevices: number | null;
+  message: string | null;
+  error: string | null;
+}
+
+export interface DeactivateResponse {
+  success: boolean;
+  message: string | null;
+  error: string | null;
+}

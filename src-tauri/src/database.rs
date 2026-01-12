@@ -26,6 +26,10 @@ impl ConnectionManager {
         }
     }
 
+    pub fn connection_count(&self) -> usize {
+        self.connections.read().len()
+    }
+
     pub async fn connect(&self, id: String, config: ConnectionConfig) -> Result<(), String> {
         let provider = create_provider(config.db_type, config.params)
             .await

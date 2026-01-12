@@ -149,6 +149,8 @@ async function validateLicenseWithPolar(licenseKey: string): Promise<{
   valid: boolean
   error?: string
   status?: string
+  customerId?: string
+  benefitId?: string
 }> {
   try {
     const result = await polar.licenseKeys.validate({
@@ -162,6 +164,8 @@ async function validateLicenseWithPolar(licenseKey: string): Promise<{
     }
 
     const status = (result as { status?: string }).status
+    const customerId = (result as { customerId?: string }).customerId
+    const benefitId = (result as { benefitId?: string }).benefitId
 
     if (status === 'revoked') {
       return { valid: false, error: 'License key has been revoked', status }
@@ -171,7 +175,7 @@ async function validateLicenseWithPolar(licenseKey: string): Promise<{
       return { valid: false, error: 'License key has been disabled', status }
     }
 
-    return { valid: true, status }
+    return { valid: true, status, customerId, benefitId }
   } catch (error) {
     console.error('[License API] Polar validation error:', error)
 
@@ -213,17 +217,77 @@ const app = new Hono()
         return c.json({ error: polarValidation.error, status: polarValidation.status }, 401)
       }
 
-      // Find user by license key
-      const user = await db.query.user.findFirst({
+      // Find user by license key, or by Polar customer ID
+      let user = await db.query.user.findFirst({
         where: eq(userTable.licenseKey, licenseKey),
       })
 
-      if (!user) {
-        return c.json({ error: 'License key not associated with any user' }, 401)
+      // If no user found by license key, try to find by Polar customer ID and update
+      if (!user && polarValidation.customerId) {
+        user = await db.query.user.findFirst({
+          where: eq(userTable.polarCustomerId, polarValidation.customerId),
+        })
+
+        // If found by customer ID, update the license key
+        if (user) {
+          await db.update(userTable).set({ licenseKey, isPro: true }).where(eq(userTable.id, user.id))
+          user = { ...user, licenseKey, isPro: true }
+        }
       }
 
+      // If still no user found, the license is valid with Polar but not linked to any account
+      // For desktop app activation, we allow this - create a device linked by license key only
+      if (!user) {
+        // Create devices without a user account - they're linked by license key
+        // This allows desktop-only users to activate without creating a web account
+        // Count active devices for this license key (across all users or no user)
+        const [activeDevicesResult] = await db
+          .select({ count: count() })
+          .from(deviceTable)
+          .where(and(eq(deviceTable.licenseKey, licenseKey), eq(deviceTable.active, true)))
+
+        const activeDeviceCount = activeDevicesResult?.count ?? 0
+
+        if (activeDeviceCount >= MAX_ACTIVE_DEVICES) {
+          return c.json(
+            {
+              error: `Maximum number of active devices (${MAX_ACTIVE_DEVICES}) reached. Please deactivate a device first.`,
+              activeDevices: activeDeviceCount,
+              maxDevices: MAX_ACTIVE_DEVICES,
+            },
+            403,
+          )
+        }
+
+        // Create device without user (linked by license key only)
+        const [newDevice] = await db
+          .insert(deviceTable)
+          .values({
+            name: deviceName,
+            userId: null,
+            osType: osType ?? null,
+            licenseKey,
+            active: true,
+            lastSeenAt: new Date(),
+          })
+          .returning()
+
+        return c.json({
+          success: true,
+          device: {
+            id: newDevice.id,
+            name: newDevice.name,
+            deviceToken: newDevice.deviceToken,
+            active: newDevice.active,
+          },
+          message: 'Device activated successfully (license key mode)',
+        })
+      }
+
+      // User exists - mark as Pro if valid Polar license
       if (!user.isPro) {
-        return c.json({ error: 'License key is not associated with a Pro account' }, 403)
+        await db.update(userTable).set({ isPro: true }).where(eq(userTable.id, user.id))
+        user = { ...user, isPro: true }
       }
 
       // Count active devices for this user
@@ -297,7 +361,9 @@ const app = new Hono()
         return c.json({ error: 'Device has been deactivated' }, 403)
       }
 
-      if (!device.user.isPro) {
+      // For user-linked devices, check if user is still Pro
+      // For license-only devices (no user), we rely on Polar validation
+      if (device.user && !device.user.isPro) {
         return c.json({ error: 'User is no longer a Pro subscriber' }, 403)
       }
 
@@ -321,11 +387,14 @@ const app = new Hono()
           name: device.name,
           active: device.active,
         },
-        user: {
-          id: device.user.id,
-          name: device.user.name,
-          isPro: device.user.isPro,
-        },
+        user: device.user
+          ? {
+              id: device.user.id,
+              name: device.user.name,
+              isPro: device.user.isPro,
+            }
+          : null,
+        isPro: true, // Valid Polar license means Pro
       })
     },
   )
@@ -349,22 +418,19 @@ const app = new Hono()
         return c.json({ error: polarValidation.error, status: polarValidation.status }, 401)
       }
 
-      // Find user by license key
+      // Find user by license key (may not exist for license-only devices)
       const user = await db.query.user.findFirst({
         where: eq(userTable.licenseKey, licenseKey),
       })
 
-      if (!user) {
-        return c.json({ error: 'Invalid license key' }, 401)
-      }
-
-      if (!user.isPro) {
+      // For user-linked devices, check Pro status
+      if (user && !user.isPro) {
         return c.json({ error: 'User is no longer a Pro subscriber' }, 403)
       }
 
-      // Find device
+      // Find device by ID and license key (works for both user-linked and license-only devices)
       const device = await db.query.device.findFirst({
-        where: and(eq(deviceTable.id, deviceId), eq(deviceTable.userId, user.id), eq(deviceTable.licenseKey, licenseKey)),
+        where: and(eq(deviceTable.id, deviceId), eq(deviceTable.licenseKey, licenseKey)),
       })
 
       if (!device) {
@@ -385,11 +451,14 @@ const app = new Hono()
           name: device.name,
           active: device.active,
         },
-        user: {
-          id: user.id,
-          name: user.name,
-          isPro: user.isPro,
-        },
+        user: user
+          ? {
+              id: user.id,
+              name: user.name,
+              isPro: user.isPro,
+            }
+          : null,
+        isPro: true, // Valid Polar license means Pro
       })
     },
   )
@@ -437,22 +506,20 @@ const app = new Hono()
     async (c) => {
       const { licenseKey, deviceId } = c.req.valid('json')
 
-      // Verify license key belongs to a user
-      const user = await db.query.user.findFirst({
-        where: eq(userTable.licenseKey, licenseKey),
-      })
+      // Validate license key with Polar
+      const polarValidation = await validateLicenseWithPolar(licenseKey)
 
-      if (!user) {
-        return c.json({ error: 'Invalid license key' }, 401)
+      if (!polarValidation.valid) {
+        return c.json({ error: polarValidation.error, status: polarValidation.status }, 401)
       }
 
-      // Find device and verify it belongs to this user
+      // Find device by ID and license key (works for both user-linked and license-only devices)
       const device = await db.query.device.findFirst({
-        where: and(eq(deviceTable.id, deviceId), eq(deviceTable.userId, user.id)),
+        where: and(eq(deviceTable.id, deviceId), eq(deviceTable.licenseKey, licenseKey)),
       })
 
       if (!device) {
-        return c.json({ error: 'Device not found or does not belong to this license' }, 404)
+        return c.json({ error: 'Device not found' }, 404)
       }
 
       // Deactivate the device
@@ -480,16 +547,18 @@ const app = new Hono()
       // Validate license key with Polar
       const polarValidation = await validateLicenseWithPolar(licenseKey)
 
+      if (!polarValidation.valid) {
+        return c.json({ error: polarValidation.error, status: polarValidation.status }, 401)
+      }
+
+      // Try to find user by license key (may not exist for license-key-only activations)
       const user = await db.query.user.findFirst({
         where: eq(userTable.licenseKey, licenseKey),
       })
 
-      if (!user) {
-        return c.json({ error: 'Invalid license key' }, 401)
-      }
-
+      // Query devices by license key (works for both user-linked and license-only devices)
       const devices = await db.query.device.findMany({
-        where: eq(deviceTable.userId, user.id),
+        where: eq(deviceTable.licenseKey, licenseKey),
         orderBy: (device, { desc }) => [desc(device.lastSeenAt)],
       })
 
@@ -506,7 +575,7 @@ const app = new Hono()
         })),
         activeCount,
         maxDevices: MAX_ACTIVE_DEVICES,
-        isPro: user.isPro,
+        isPro: user?.isPro ?? true, // If no user, assume Pro (valid Polar license)
         licenseStatus: polarValidation.valid ? 'active' : polarValidation.status,
         licenseValid: polarValidation.valid,
       })
@@ -526,20 +595,20 @@ const app = new Hono()
     async (c) => {
       const { licenseKey, deviceId } = c.req.valid('json')
 
-      const user = await db.query.user.findFirst({
-        where: eq(userTable.licenseKey, licenseKey),
-      })
+      // Validate license key with Polar
+      const polarValidation = await validateLicenseWithPolar(licenseKey)
 
-      if (!user) {
-        return c.json({ error: 'Invalid license key' }, 401)
+      if (!polarValidation.valid) {
+        return c.json({ error: polarValidation.error, status: polarValidation.status }, 401)
       }
 
+      // Find device by ID and license key (works for both user-linked and license-only devices)
       const device = await db.query.device.findFirst({
-        where: and(eq(deviceTable.id, deviceId), eq(deviceTable.userId, user.id)),
+        where: and(eq(deviceTable.id, deviceId), eq(deviceTable.licenseKey, licenseKey)),
       })
 
       if (!device) {
-        return c.json({ error: 'Device not found or does not belong to this license' }, 404)
+        return c.json({ error: 'Device not found' }, 404)
       }
 
       await db.delete(deviceTable).where(eq(deviceTable.id, device.id))
@@ -563,24 +632,8 @@ const app = new Hono()
     async (c) => {
       const { licenseKey } = c.req.valid('json')
 
-      // Validate with Polar
+      // Validate with Polar first - this is the source of truth
       const polarValidation = await validateLicenseWithPolar(licenseKey)
-
-      // Find user
-      const user = await db.query.user.findFirst({
-        where: eq(userTable.licenseKey, licenseKey),
-      })
-
-      if (!user) {
-        return c.json(
-          {
-            valid: false,
-            error: 'License key not associated with any user',
-            polarStatus: polarValidation.status,
-          },
-          401,
-        )
-      }
 
       if (!polarValidation.valid) {
         return c.json(
@@ -588,41 +641,36 @@ const app = new Hono()
             valid: false,
             error: polarValidation.error,
             polarStatus: polarValidation.status,
-            isPro: user.isPro,
-          },
-          403,
-        )
-      }
-
-      if (!user.isPro) {
-        return c.json(
-          {
-            valid: false,
-            error: 'User is not a Pro subscriber',
-            polarStatus: polarValidation.status,
             isPro: false,
           },
           403,
         )
       }
 
-      // Count active devices
+      // Find user (may not exist for license-key-only activations)
+      const user = await db.query.user.findFirst({
+        where: eq(userTable.licenseKey, licenseKey),
+      })
+
+      // Count active devices by license key (works for both user-linked and license-only devices)
       const [activeDevicesResult] = await db
         .select({ count: count() })
         .from(deviceTable)
-        .where(and(eq(deviceTable.userId, user.id), eq(deviceTable.active, true)))
+        .where(and(eq(deviceTable.licenseKey, licenseKey), eq(deviceTable.active, true)))
 
       const activeDeviceCount = activeDevicesResult?.count ?? 0
 
       return c.json({
         valid: true,
         polarStatus: polarValidation.status,
-        isPro: user.isPro,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
+        isPro: true, // Valid Polar license means Pro
+        user: user
+          ? {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+            }
+          : null,
         activeDevices: activeDeviceCount,
         maxDevices: MAX_ACTIVE_DEVICES,
         canActivateNewDevice: activeDeviceCount < MAX_ACTIVE_DEVICES,

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Connection, TableInfo } from "./types";
+import type { Connection, TableInfo, LicenseStatus } from "./types";
 
 // Storage keys
 const LAST_CONNECTION_KEY = "querystudio_last_connection";
@@ -217,6 +217,46 @@ export const useLastChatStore = create<LastChatState>()(
     }),
     {
       name: LAST_CHAT_SESSION_KEY,
+    },
+  ),
+);
+
+// License state
+interface LicenseState {
+  status: LicenseStatus | null;
+  isLoading: boolean;
+  error: string | null;
+
+  setStatus: (status: LicenseStatus | null) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  clear: () => void;
+}
+
+const defaultLicenseStatus: LicenseStatus = {
+  is_activated: false,
+  is_pro: false,
+  max_connections: 2,
+  device_name: null,
+};
+
+export const useLicenseStore = create<LicenseState>()(
+  persist(
+    (set) => ({
+      status: null,
+      isLoading: false,
+      error: null,
+
+      setStatus: (status: LicenseStatus | null) => set({ status, error: null }),
+      setLoading: (isLoading: boolean) => set({ isLoading }),
+      setError: (error: string | null) => set({ error, isLoading: false }),
+      clear: () => set({ status: defaultLicenseStatus, error: null }),
+    }),
+    {
+      name: "querystudio_license",
+      partialize: (state) => ({
+        status: state.status,
+      }),
     },
   ),
 );

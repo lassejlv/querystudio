@@ -1,16 +1,22 @@
 mod ai;
 mod database;
+mod license;
 mod providers;
 mod storage;
 
 use ai::{ai_chat, ai_chat_stream, ai_get_models, ai_validate_key};
 use database::{test_connection, ConnectionConfig, ConnectionManager};
+use license::{
+    create_license_manager, license_activate, license_check, license_clear, license_deactivate,
+    license_get_max_connections, license_get_status, license_is_pro, license_list_devices,
+    license_verify, LicenseState_,
+};
 use providers::{ColumnInfo, QueryResult, TableInfo};
 use std::sync::Arc;
 use storage::{SavedConnection, SavedConnections};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
-    AppHandle, Emitter, State,
+    AppHandle, Emitter, Manager, State,
 };
 
 type DbState = Arc<ConnectionManager>;
@@ -18,9 +24,21 @@ type DbState = Arc<ConnectionManager>;
 #[tauri::command]
 async fn connect(
     state: State<'_, DbState>,
+    license_state: State<'_, LicenseState_>,
     id: String,
     config: ConnectionConfig,
 ) -> Result<(), String> {
+    // Check connection limit for non-pro users
+    let current_connections = state.connection_count();
+    let max_connections = license_state.get_max_connections();
+
+    if current_connections >= max_connections {
+        return Err(format!(
+            "Connection limit reached. Free tier allows {} connections. Upgrade to Pro for unlimited connections.",
+            max_connections
+        ));
+    }
+
     state.connect(id, config).await
 }
 
@@ -102,6 +120,11 @@ async fn delete_saved_connection(app_handle: AppHandle, id: String) -> Result<()
     storage::remove_connection(&app_handle, &id)
 }
 
+#[tauri::command]
+fn get_connection_count(state: State<'_, DbState>) -> usize {
+    state.connection_count()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db_state: DbState = Arc::new(ConnectionManager::new());
@@ -110,6 +133,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(db_state)
         .setup(|app| {
+            // Initialize license manager
+            let license_manager = create_license_manager(&app.handle())?;
+            let license_state: LicenseState_ = Arc::new(license_manager);
+            app.manage(license_state);
+
             // Create the menu
             let app_menu = Submenu::with_items(
                 app,
@@ -272,6 +300,7 @@ pub fn run() {
             get_table_data,
             execute_query,
             get_table_count,
+            get_connection_count,
             // Storage commands
             get_saved_connections,
             save_connection,
@@ -281,6 +310,16 @@ pub fn run() {
             ai_validate_key,
             ai_chat,
             ai_chat_stream,
+            // License commands
+            license_activate,
+            license_verify,
+            license_check,
+            license_deactivate,
+            license_list_devices,
+            license_get_status,
+            license_get_max_connections,
+            license_is_pro,
+            license_clear,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

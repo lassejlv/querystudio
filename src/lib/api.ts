@@ -8,6 +8,12 @@ import type {
   AIModelInfo,
   ChatRequest,
   ChatResponse,
+  LicenseStatus,
+  DeviceInfo,
+  ActivateResponse,
+  VerifyResponse,
+  CheckResponse,
+  DeactivateResponse,
 } from "./types";
 
 export const api = {
@@ -66,4 +72,27 @@ export const api = {
 
   aiChatStream: (request: ChatRequest) =>
     invoke<void>("ai_chat_stream", { request }),
+
+  // License API
+  licenseActivate: (licenseKey: string, deviceName?: string) =>
+    invoke<ActivateResponse>("license_activate", { licenseKey, deviceName }),
+
+  licenseVerify: () => invoke<VerifyResponse>("license_verify"),
+
+  licenseCheck: (licenseKey: string) =>
+    invoke<CheckResponse>("license_check", { licenseKey }),
+
+  licenseDeactivate: () => invoke<DeactivateResponse>("license_deactivate"),
+
+  licenseListDevices: () => invoke<DeviceInfo[]>("license_list_devices"),
+
+  licenseGetStatus: () => invoke<LicenseStatus>("license_get_status"),
+
+  licenseGetMaxConnections: () => invoke<number>("license_get_max_connections"),
+
+  licenseIsPro: () => invoke<boolean>("license_is_pro"),
+
+  licenseClear: () => invoke<void>("license_clear"),
+
+  getConnectionCount: () => invoke<number>("get_connection_count"),
 };

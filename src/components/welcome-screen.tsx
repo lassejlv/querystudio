@@ -1,10 +1,13 @@
-import { useEffect, useRef } from "react";
-import { Plus, Pencil } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Pencil, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSavedConnections } from "@/lib/hooks";
-import { getLastConnectionId } from "@/lib/store";
+import { getLastConnectionId, useLicenseStore } from "@/lib/store";
 import type { DatabaseType, SavedConnection } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { LicenseSettings } from "@/components/license-settings";
+import { api } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 
 function DatabaseIcon({
   type,
@@ -50,6 +53,21 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
   const { data: savedConnections, isLoading } = useSavedConnections();
   const autoConnectAttempted = useRef(false);
+  const [licenseSettingsOpen, setLicenseSettingsOpen] = useState(false);
+  const { status, setStatus } = useLicenseStore();
+
+  // Load license status on mount
+  useEffect(() => {
+    const loadLicenseStatus = async () => {
+      try {
+        const licenseStatus = await api.licenseGetStatus();
+        setStatus(licenseStatus);
+      } catch (err) {
+        console.error("Failed to load license status:", err);
+      }
+    };
+    loadLicenseStatus();
+  }, [setStatus]);
 
   useEffect(() => {
     if (isLoading || autoConnectAttempted.current) return;
@@ -74,6 +92,8 @@ export function WelcomeScreen({
     return `${dbLabel} · ${connection.config.host}:${connection.config.port}/${connection.config.database}`;
   };
 
+  const isPro = status?.is_pro && status?.is_activated;
+
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <div
@@ -84,10 +104,28 @@ export function WelcomeScreen({
 
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="w-full max-w-sm">
-          <div className="flex items-center gap-2 mb-8">
+          <div className="flex items-center justify-between mb-8">
             <span className="text-lg font-medium text-foreground">
               QueryStudio
             </span>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant={isPro ? "default" : "secondary"}
+                className="text-xs"
+              >
+                {isPro
+                  ? "Pro"
+                  : `Free · ${status?.max_connections || 2} connections`}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setLicenseSettingsOpen(true)}
+                title="License Settings"
+              >
+                <Key className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </div>
           </div>
 
           {!isLoading && savedConnections && savedConnections.length > 0 && (
@@ -144,6 +182,11 @@ export function WelcomeScreen({
           </p>
         </div>
       </div>
+
+      <LicenseSettings
+        open={licenseSettingsOpen}
+        onOpenChange={setLicenseSettingsOpen}
+      />
     </div>
   );
 }

@@ -11,10 +11,7 @@ export const device = p.pgTable('devices', () => ({
   id: p.text().primaryKey().$defaultFn(id),
   name: p.text().notNull(),
   active: p.boolean().default(false),
-  userId: p
-    .text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
+  userId: p.text('user_id').references(() => user.id, { onDelete: 'cascade' }),
   osType: osTypeEnum('os_type'),
   lastSeenAt: p.timestamp('last_seen_at'),
   licenseKey: p.text('license_key').notNull(),

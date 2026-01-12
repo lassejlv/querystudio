@@ -17,26 +17,37 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
   const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
   const disconnect = useDisconnect();
 
-  // Refresh all data for current connection
   const refreshAll = () => {
     if (!connection) return;
-    
-    // Invalidate tables list
+
     queryClient.invalidateQueries({ queryKey: ["tables", connection.id] });
-    
-    // Invalidate all columns (for autocomplete)
+
     queryClient.invalidateQueries({ queryKey: ["allColumns", connection.id] });
-    
-    // Invalidate current table data if a table is selected
+
     if (selectedTable) {
-      queryClient.invalidateQueries({ 
-        queryKey: ["tableData", connection.id, selectedTable.schema, selectedTable.name] 
+      queryClient.invalidateQueries({
+        queryKey: [
+          "tableData",
+          connection.id,
+          selectedTable.schema,
+          selectedTable.name,
+        ],
       });
-      queryClient.invalidateQueries({ 
-        queryKey: ["tableCount", connection.id, selectedTable.schema, selectedTable.name] 
+      queryClient.invalidateQueries({
+        queryKey: [
+          "tableCount",
+          connection.id,
+          selectedTable.schema,
+          selectedTable.name,
+        ],
       });
-      queryClient.invalidateQueries({ 
-        queryKey: ["columns", connection.id, selectedTable.schema, selectedTable.name] 
+      queryClient.invalidateQueries({
+        queryKey: [
+          "columns",
+          connection.id,
+          selectedTable.schema,
+          selectedTable.name,
+        ],
       });
     }
   };
@@ -85,14 +96,14 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
-      
+
       // Cmd+R - Refresh data (prevent browser reload)
       if (isMod && e.key === "r") {
         e.preventDefault();
         refreshAll();
         return;
       }
-      
+
       // Cmd+1/2/3 - Switch tabs
       if (isMod && e.key === "1") {
         e.preventDefault();
@@ -109,7 +120,7 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
         setActiveTab("ai");
         return;
       }
-      
+
       // Cmd+N - New connection
       if (isMod && e.key === "n") {
         e.preventDefault();
