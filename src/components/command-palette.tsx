@@ -10,6 +10,7 @@ import {
   Sparkles,
   LogOut,
   Lock,
+  Download,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/hooks";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import type { SavedConnection } from "@/lib/types";
+import { useUpdateChecker } from "@/hooks/use-update-checker";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -54,6 +56,7 @@ export function CommandPalette({
   const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
   const [search, setSearch] = useState("");
   const { canSave, maxSaved } = useCanSaveConnection();
+  const { checking, checkForUpdates } = useUpdateChecker();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -221,6 +224,16 @@ export function CommandPalette({
               </span>
             )}
             {canSave && <CommandShortcut>⌘N</CommandShortcut>}
+          </CommandItem>
+          <CommandItem
+            onSelect={() => {
+              checkForUpdates(false);
+              onOpenChange(false);
+            }}
+            disabled={checking}
+          >
+            <Download className="h-4 w-4" />
+            <span>{checking ? "Checking..." : "Check for Updates"}</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>
