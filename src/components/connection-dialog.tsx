@@ -74,20 +74,6 @@ const DATABASE_OPTIONS: DatabaseOption[] = [
       host: "localhost",
     },
   },
-  {
-    id: "libsql",
-    name: "Turso",
-    icon: <Cloud className="h-4 w-4" />,
-    color: "text-teal-500",
-    bgColor: "bg-teal-500/10",
-    borderColor: "border-teal-500",
-    defaults: {
-      port: "443",
-      database: "default",
-      username: "",
-      host: "turso.io",
-    },
-  },
 ];
 
 type ConnectionMode = "params" | "string";
