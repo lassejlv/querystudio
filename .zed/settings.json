@@ -5,5 +5,9 @@
     ".tanstack",
     ".git",
     "tsconfig.node.json",
+    ".vscode",
+    ".cursor",
+    ".output",
+    "node_modules",
   ],
 }
