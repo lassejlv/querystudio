@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import { useConnectionStore } from "./store";
+import { useConnectionStore, useLicenseStore } from "./store";
 import type { ConnectionConfig, DatabaseType, SavedConnection } from "./types";
 
 export function useTables(connectionId: string | null) {
@@ -193,6 +193,7 @@ export function useSaveConnection() {
     mutationFn: (connection: SavedConnection) => api.saveConnection(connection),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedConnections"] });
+      queryClient.invalidateQueries({ queryKey: ["savedConnectionCount"] });
     },
   });
 }
@@ -204,6 +205,7 @@ export function useDeleteSavedConnection() {
     mutationFn: (id: string) => api.deleteSavedConnection(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedConnections"] });
+      queryClient.invalidateQueries({ queryKey: ["savedConnectionCount"] });
     },
   });
 }
@@ -277,5 +279,129 @@ export function useDisconnect() {
 export function useTestConnection() {
   return useMutation({
     mutationFn: (config: ConnectionConfig) => api.testConnection(config),
+  });
+}
+
+// License hooks
+export function useLicenseStatus() {
+  const { setStatus } = useLicenseStore();
+
+  return useQuery({
+    queryKey: ["licenseStatus"],
+    queryFn: async () => {
+      // Use refresh to verify with remote API and update local state
+      const status = await api.licenseRefresh();
+      setStatus(status);
+      return status;
+    },
+    staleTime: 60 * 1000, // Cache for 1 minute
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes to catch revoked licenses
+    refetchOnWindowFocus: true, // Refresh when user returns to the app
+  });
+}
+
+export function useConnectionCount() {
+  return useQuery({
+    queryKey: ["connectionCount"],
+    queryFn: () => api.getConnectionCount(),
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+}
+
+export function useSavedConnectionCount() {
+  return useQuery({
+    queryKey: ["savedConnectionCount"],
+    queryFn: () => api.getSavedConnectionCount(),
+  });
+}
+
+export function useCanConnect() {
+  const { data: licenseStatus } = useLicenseStatus();
+  const { data: connectionCount } = useConnectionCount();
+
+  const maxConnections = licenseStatus?.max_connections ?? 2;
+  const currentConnections = connectionCount ?? 0;
+  const canConnect = currentConnections < maxConnections;
+  const isPro = licenseStatus?.is_pro && licenseStatus?.is_activated;
+
+  return {
+    canConnect,
+    currentConnections,
+    maxConnections,
+    isPro,
+    remainingConnections: Math.max(0, maxConnections - currentConnections),
+  };
+}
+
+export function useCanSaveConnection() {
+  const { data: licenseStatus } = useLicenseStatus();
+  const { data: savedConnectionCount } = useSavedConnectionCount();
+
+  const maxSaved = licenseStatus?.max_connections ?? 2;
+  const currentSaved = savedConnectionCount ?? 0;
+  const canSave = currentSaved < maxSaved;
+  const isPro = licenseStatus?.is_pro && licenseStatus?.is_activated;
+
+  return {
+    canSave,
+    currentSaved,
+    maxSaved,
+    isPro,
+    remainingSaved: Math.max(0, maxSaved - currentSaved),
+  };
+}
+
+export function useLicenseActivate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      licenseKey,
+      deviceName,
+    }: {
+      licenseKey: string;
+      deviceName?: string;
+    }) => api.licenseActivate(licenseKey, deviceName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
+    },
+  });
+}
+
+export function useLicenseDeactivate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.licenseDeactivate(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
+    },
+  });
+}
+
+export function useLicenseVerify() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.licenseVerify(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
+    },
+  });
+}
+
+export function useLicenseRefresh() {
+  const queryClient = useQueryClient();
+  const { setStatus } = useLicenseStore();
+
+  return useMutation({
+    mutationFn: async () => {
+      const status = await api.licenseRefresh();
+      setStatus(status);
+      return status;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
+    },
   });
 }

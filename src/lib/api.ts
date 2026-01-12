@@ -94,5 +94,9 @@ export const api = {
 
   licenseClear: () => invoke<void>("license_clear"),
 
+  licenseRefresh: () => invoke<LicenseStatus>("license_refresh"),
+
   getConnectionCount: () => invoke<number>("get_connection_count"),
+
+  getSavedConnectionCount: () => invoke<number>("get_saved_connection_count"),
 };

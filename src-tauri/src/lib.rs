@@ -9,7 +9,7 @@ use database::{test_connection, ConnectionConfig, ConnectionManager};
 use license::{
     create_license_manager, license_activate, license_check, license_clear, license_deactivate,
     license_get_max_connections, license_get_status, license_is_pro, license_list_devices,
-    license_verify, LicenseState_,
+    license_refresh, license_verify, LicenseState_,
 };
 use providers::{ColumnInfo, QueryResult, TableInfo};
 use std::sync::Arc;
@@ -28,14 +28,25 @@ async fn connect(
     id: String,
     config: ConnectionConfig,
 ) -> Result<(), String> {
-    // Check connection limit for non-pro users
+    // Verify license with remote API before allowing connection
+    let (is_pro, max_connections) = license_state.verify_for_connection().await;
+
     let current_connections = state.connection_count();
-    let max_connections = license_state.get_max_connections();
 
     if current_connections >= max_connections {
         return Err(format!(
-            "Connection limit reached. Free tier allows {} connections. Upgrade to Pro for unlimited connections.",
-            max_connections
+            "Connection limit reached. {} allows {} connections. {}",
+            if is_pro { "Your plan" } else { "Free tier" },
+            if max_connections == usize::MAX {
+                "unlimited".to_string()
+            } else {
+                max_connections.to_string()
+            },
+            if is_pro {
+                "Please disconnect an existing connection."
+            } else {
+                "Upgrade to Pro for unlimited connections."
+            }
         ));
     }
 
@@ -111,7 +122,28 @@ async fn get_saved_connections(app_handle: AppHandle) -> Result<SavedConnections
 }
 
 #[tauri::command]
-async fn save_connection(app_handle: AppHandle, connection: SavedConnection) -> Result<(), String> {
+async fn save_connection(
+    app_handle: AppHandle,
+    license_state: State<'_, LicenseState_>,
+    connection: SavedConnection,
+) -> Result<(), String> {
+    // Check if this is a new connection or an update to existing
+    let saved = storage::load_connections(&app_handle)?;
+    let is_update = saved.connections.iter().any(|c| c.id == connection.id);
+
+    // If it's a new connection, check the license limit
+    if !is_update {
+        let max_saved = license_state.get_max_connections();
+        let current_saved = saved.connections.len();
+
+        if current_saved >= max_saved {
+            return Err(format!(
+                "Saved connection limit reached. Free tier allows {} saved connections. Upgrade to Pro for unlimited.",
+                max_saved
+            ));
+        }
+    }
+
     storage::add_connection(&app_handle, connection)
 }
 
@@ -123,6 +155,12 @@ async fn delete_saved_connection(app_handle: AppHandle, id: String) -> Result<()
 #[tauri::command]
 fn get_connection_count(state: State<'_, DbState>) -> usize {
     state.connection_count()
+}
+
+#[tauri::command]
+async fn get_saved_connection_count(app_handle: AppHandle) -> Result<usize, String> {
+    let saved = storage::load_connections(&app_handle)?;
+    Ok(saved.connections.len())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -301,6 +339,7 @@ pub fn run() {
             execute_query,
             get_table_count,
             get_connection_count,
+            get_saved_connection_count,
             // Storage commands
             get_saved_connections,
             save_connection,
@@ -320,6 +359,7 @@ pub fn run() {
             license_get_max_connections,
             license_is_pro,
             license_clear,
+            license_refresh,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

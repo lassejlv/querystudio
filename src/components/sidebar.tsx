@@ -207,27 +207,6 @@ export function Sidebar() {
             )}
           </div>
         </ScrollArea>
-
-        {/* License Status Footer */}
-        <div className="border-t border-border p-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLicenseSettingsOpen(true)}
-            className="w-full justify-between text-xs"
-          >
-            <div className="flex items-center gap-2">
-              <Key className="h-3 w-3 text-muted-foreground" />
-              <span className="text-muted-foreground">License</span>
-            </div>
-            <Badge
-              variant={isPro ? "default" : "secondary"}
-              className="text-[10px] px-1.5 py-0"
-            >
-              {isPro ? "Pro" : "Free"}
-            </Badge>
-          </Button>
-        </div>
       </motion.div>
 
       <LicenseSettings

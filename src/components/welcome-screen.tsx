@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Key } from "lucide-react";
+import { Plus, Pencil, Key, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSavedConnections } from "@/lib/hooks";
+import { useSavedConnections, useCanSaveConnection } from "@/lib/hooks";
 import { getLastConnectionId, useLicenseStore } from "@/lib/store";
 import type { DatabaseType, SavedConnection } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,8 @@ export function WelcomeScreen({
   const { data: savedConnections, isLoading } = useSavedConnections();
   const autoConnectAttempted = useRef(false);
   const [licenseSettingsOpen, setLicenseSettingsOpen] = useState(false);
-  const { status, setStatus } = useLicenseStore();
+  const { setStatus } = useLicenseStore();
+  const { canSave, currentSaved, maxSaved, isPro } = useCanSaveConnection();
 
   // Load license status on mount
   useEffect(() => {
@@ -92,8 +93,6 @@ export function WelcomeScreen({
     return `${dbLabel} · ${connection.config.host}:${connection.config.port}/${connection.config.database}`;
   };
 
-  const isPro = status?.is_pro && status?.is_activated;
-
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <div
@@ -104,7 +103,7 @@ export function WelcomeScreen({
 
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="w-full max-w-sm">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <span className="text-lg font-medium text-foreground">
               QueryStudio
             </span>
@@ -113,9 +112,7 @@ export function WelcomeScreen({
                 variant={isPro ? "default" : "secondary"}
                 className="text-xs"
               >
-                {isPro
-                  ? "Pro"
-                  : `Free · ${status?.max_connections || 2} connections`}
+                {isPro ? "Pro" : `${currentSaved}/${maxSaved}`}
               </Badge>
               <Button
                 variant="ghost"
@@ -169,7 +166,11 @@ export function WelcomeScreen({
             </div>
           )}
 
-          <Button onClick={onNewConnection} className="w-full">
+          <Button
+            onClick={onNewConnection}
+            className="w-full"
+            disabled={!canSave}
+          >
             <Plus className="mr-2 h-4 w-4" />
             New Connection
           </Button>

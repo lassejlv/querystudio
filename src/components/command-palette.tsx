@@ -9,6 +9,7 @@ import {
   Terminal,
   Sparkles,
   LogOut,
+  Lock,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -24,6 +25,7 @@ import {
   useSavedConnections,
   useDeleteSavedConnection,
   useDisconnect,
+  useCanSaveConnection,
 } from "@/lib/hooks";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import type { SavedConnection } from "@/lib/types";
@@ -51,6 +53,7 @@ export function CommandPalette({
   const connection = useConnectionStore((s) => s.connection);
   const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
   const [search, setSearch] = useState("");
+  const { canSave, maxSaved } = useCanSaveConnection();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -201,10 +204,23 @@ export function CommandPalette({
         <CommandSeparator />
 
         <CommandGroup heading="Actions">
-          <CommandItem onSelect={handleNewConnection}>
-            <Plus className="h-4 w-4" />
+          <CommandItem
+            onSelect={handleNewConnection}
+            disabled={!canSave}
+            className={!canSave ? "opacity-50" : ""}
+          >
+            {canSave ? (
+              <Plus className="h-4 w-4" />
+            ) : (
+              <Lock className="h-4 w-4" />
+            )}
             <span>New Connection</span>
-            <CommandShortcut>⌘N</CommandShortcut>
+            {!canSave && (
+              <span className="text-xs text-muted-foreground ml-auto">
+                Limit: {maxSaved}
+              </span>
+            )}
+            {canSave && <CommandShortcut>⌘N</CommandShortcut>}
           </CommandItem>
         </CommandGroup>
       </CommandList>

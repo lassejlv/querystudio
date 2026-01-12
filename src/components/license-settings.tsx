@@ -155,46 +155,12 @@ export function LicenseSettings({ open, onOpenChange }: LicenseSettingsProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
             License Settings
           </DialogTitle>
-          <DialogDescription>
-            Manage your QueryStudio license for unlimited connections.
-          </DialogDescription>
+          <DialogDescription>Manage your QueryStudio license</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Current Status */}
-          <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full",
-                  isPro ? "bg-green-500/20" : "bg-muted",
-                )}
-              >
-                {isPro ? (
-                  <Check className="h-5 w-5 text-green-500" />
-                ) : (
-                  <X className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-              <div>
-                <p className="font-medium">
-                  {isPro ? "Pro License Active" : "Free Tier"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {isPro
-                    ? `Device: ${status?.device_name || "Unknown"}`
-                    : `Limited to ${status?.max_connections || 2} connections`}
-                </p>
-              </div>
-            </div>
-            <Badge variant={isPro ? "default" : "secondary"}>
-              {isPro ? "Pro" : "Free"}
-            </Badge>
-          </div>
-
           {/* Error/Success Messages */}
           {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
@@ -232,16 +198,13 @@ export function LicenseSettings({ open, onOpenChange }: LicenseSettingsProps) {
                     Activating...
                   </>
                 ) : (
-                  <>
-                    <Key className="mr-2 h-4 w-4" />
-                    Activate License
-                  </>
+                  <>Activate</>
                 )}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Don't have a license?{" "}
                 <a
-                  href="https://querystudio.dev/pricing"
+                  href="https://querystudio.dev/#pricing"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"

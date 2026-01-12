@@ -411,6 +411,46 @@ impl LicenseManager {
         }
     }
 
+    /// Verify license status before allowing a connection.
+    /// This checks with the remote API if we have a device token,
+    /// otherwise falls back to local state.
+    /// Returns (is_pro, max_connections)
+    pub async fn verify_for_connection(&self) -> (bool, usize) {
+        let has_device_token = {
+            let state = self.state.read();
+            state.device_token.is_some()
+        };
+
+        // If we have a device token, verify with the server
+        if has_device_token {
+            match self.verify().await {
+                Ok(result) => {
+                    let is_pro = result.valid && result.active && result.is_pro.unwrap_or(false);
+                    let max = if is_pro {
+                        usize::MAX
+                    } else {
+                        MAX_FREE_CONNECTIONS
+                    };
+                    return (is_pro, max);
+                }
+                Err(e) => {
+                    // Log the error but don't block - fall back to local state
+                    eprintln!("[License] Verification failed, using local state: {}", e);
+                }
+            }
+        }
+
+        // Fall back to local state
+        let state = self.state.read();
+        let is_pro = state.is_pro && state.is_activated;
+        let max = if is_pro {
+            usize::MAX
+        } else {
+            MAX_FREE_CONNECTIONS
+        };
+        (is_pro, max)
+    }
+
     pub fn is_pro(&self) -> bool {
         let state = self.state.read();
         state.is_pro && state.is_activated
@@ -505,4 +545,33 @@ pub fn license_is_pro(license_state: tauri::State<'_, LicenseState_>) -> bool {
 #[tauri::command]
 pub fn license_clear(license_state: tauri::State<'_, LicenseState_>) -> Result<(), String> {
     license_state.clear()
+}
+
+/// Refresh license status by verifying with the remote API.
+/// This should be called periodically (e.g., on app startup, every hour).
+/// Returns the updated license status.
+#[tauri::command]
+pub async fn license_refresh(
+    license_state: tauri::State<'_, LicenseState_>,
+) -> Result<LicenseStatus, String> {
+    // If we have a device token, verify with the server
+    let has_device_token = {
+        let state = license_state.state.read();
+        state.device_token.is_some()
+    };
+
+    if has_device_token {
+        // Try to verify - this updates local state
+        match license_state.verify().await {
+            Ok(_) => {
+                // Verification successful, return updated status
+            }
+            Err(e) => {
+                // Log error but don't fail - local state was already updated by verify()
+                eprintln!("[License] Refresh verification failed: {}", e);
+            }
+        }
+    }
+
+    Ok(license_state.get_status())
 }
