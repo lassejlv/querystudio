@@ -34,7 +34,7 @@ function LandingPage() {
       <section className='container mx-auto px-4 pb-16'>
         <div className='border rounded-lg overflow-hidden'>
           <video className='w-full' autoPlay loop muted playsInline>
-            <source src='https://assets-cdn.querystudio.dev/QueryStudioExample.mp4' type='video/mp4' />
+            <source src='https://assets-cdn.querystudio.dev/QueryStudioExampleNew.mp4' type='video/mp4' />
           </video>
         </div>
       </section>
