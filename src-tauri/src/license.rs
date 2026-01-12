@@ -96,9 +96,25 @@ pub struct VerifyRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifyDeviceInfo {
+    pub id: String,
+    pub name: String,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifyUserInfo {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "isPro")]
+    pub is_pro: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifyResponse {
     pub valid: bool,
-    pub active: bool,
+    pub device: Option<VerifyDeviceInfo>,
+    pub user: Option<VerifyUserInfo>,
     #[serde(rename = "isPro")]
     pub is_pro: Option<bool>,
     pub message: Option<String>,
@@ -173,9 +189,19 @@ impl LicenseManager {
             if path.exists() {
                 if let Ok(content) = fs::read_to_string(path) {
                     if let Ok(state) = serde_json::from_str::<LicenseState>(&content) {
+                        println!(
+                            "[License] Loaded state: activated={}, is_pro={}, has_token={}",
+                            state.is_activated,
+                            state.is_pro,
+                            state.device_token.is_some()
+                        );
                         *self.state.write() = state;
+                    } else {
+                        println!("[License] Failed to parse stored state, using defaults");
                     }
                 }
+            } else {
+                println!("[License] No stored license state found");
             }
         }
         self
@@ -256,7 +282,9 @@ impl LicenseManager {
 
         let device_token = device_token.ok_or("No device token found. Please activate first.")?;
 
-        let request = VerifyRequest { device_token };
+        let request = VerifyRequest {
+            device_token: device_token.clone(),
+        };
 
         let response = self
             .client
@@ -266,30 +294,50 @@ impl LicenseManager {
             .await
             .map_err(|e| format!("Failed to connect to license server: {}", e))?;
 
-        if !response.status().is_success() {
-            let status = response.status();
+        let status = response.status();
+
+        // Get the response body as text first for better error reporting
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "<failed to read body>".to_string());
+
+        if !status.is_success() {
             if status.as_u16() == 401 || status.as_u16() == 403 {
                 // Token invalid or revoked, clear local state
                 let mut state = self.state.write();
                 state.is_activated = false;
                 state.is_pro = false;
+                state.device_token = None;
                 drop(state);
                 self.save_state()?;
             }
-            let body = response.text().await.unwrap_or_default();
             return Err(format!("Verification failed ({}): {}", status, body));
         }
 
-        let result: VerifyResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse verification response: {}", e))?;
+        // Try to parse the JSON response
+        let result: VerifyResponse = serde_json::from_str(&body).map_err(|e| {
+            format!(
+                "Failed to parse verification response: {}. Body: {}",
+                e,
+                if body.len() > 200 {
+                    format!("{}...", &body[..200])
+                } else {
+                    body.clone()
+                }
+            )
+        })?;
 
         // Update local state based on verification
         {
             let mut state = self.state.write();
-            state.is_activated = result.valid && result.active;
-            state.is_pro = result.is_pro.unwrap_or(false);
+            let device_active = result.device.as_ref().map(|d| d.active).unwrap_or(false);
+            state.is_activated = result.valid && device_active;
+            // is_pro can come from either top-level or user object
+            state.is_pro = result
+                .is_pro
+                .or_else(|| result.user.as_ref().map(|u| u.is_pro))
+                .unwrap_or(false);
         }
         self.save_state()?;
 
@@ -425,7 +473,13 @@ impl LicenseManager {
         if has_device_token {
             match self.verify().await {
                 Ok(result) => {
-                    let is_pro = result.valid && result.active && result.is_pro.unwrap_or(false);
+                    let device_active = result.device.as_ref().map(|d| d.active).unwrap_or(false);
+                    let is_pro = result.valid
+                        && device_active
+                        && result
+                            .is_pro
+                            .or_else(|| result.user.as_ref().map(|u| u.is_pro))
+                            .unwrap_or(false);
                     let max = if is_pro {
                         usize::MAX
                     } else {
@@ -456,10 +510,12 @@ impl LicenseManager {
         state.is_pro && state.is_activated
     }
 
+    #[allow(dead_code)]
     pub fn get_license_key(&self) -> Option<String> {
         self.state.read().license_key.clone()
     }
 
+    #[allow(dead_code)]
     pub fn get_device_token(&self) -> Option<String> {
         self.state.read().device_token.clone()
     }
@@ -563,14 +619,28 @@ pub async fn license_refresh(
     if has_device_token {
         // Try to verify - this updates local state
         match license_state.verify().await {
-            Ok(_) => {
-                // Verification successful, return updated status
+            Ok(response) => {
+                // Verification successful
+                let device_active = response.device.as_ref().map(|d| d.active).unwrap_or(false);
+                println!(
+                    "[License] Refresh verification successful: valid={}, active={}, is_pro={:?}",
+                    response.valid, device_active, response.is_pro
+                );
             }
             Err(e) => {
                 // Log error but don't fail - local state was already updated by verify()
-                eprintln!("[License] Refresh verification failed: {}", e);
+                // This can happen if:
+                // - No network connection
+                // - License server is down
+                // - Device token is invalid/expired (state will be cleared by verify())
+                println!(
+                    "[License] Refresh verification failed (this is normal if not activated): {}",
+                    e
+                );
             }
         }
+    } else {
+        println!("[License] No device token found, skipping verification (free tier)");
     }
 
     Ok(license_state.get_status())

@@ -3,33 +3,13 @@ pub mod providers;
 pub mod tools;
 
 use agent::Agent;
-use parking_lot::RwLock;
 use providers::get_available_models;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::database::ConnectionManager;
 use crate::providers::DatabaseType;
-
-pub struct AIAgentManager {
-    agents: RwLock<HashMap<String, Agent>>,
-}
-
-impl AIAgentManager {
-    pub fn new() -> Self {
-        Self {
-            agents: RwLock::new(HashMap::new()),
-        }
-    }
-}
-
-impl Default for AIAgentManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 #[derive(Debug, Deserialize)]
 pub struct ChatRequest {
@@ -179,5 +159,5 @@ pub async fn ai_chat(
     })
 }
 
-pub use agent::{AgentEvent, AgentMessage, AgentToolCall};
-pub use providers::{AIModel, AIProviderType, ModelInfo};
+pub use agent::AgentMessage;
+pub use providers::{AIModel, ModelInfo};

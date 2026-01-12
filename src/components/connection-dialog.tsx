@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  Loader2,
-  Database,
-  Server,
-  Cloud,
-  CheckCircle2,
-  Link2,
-  AlertTriangle,
-  Key,
-} from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Key } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   useConnect,
@@ -38,10 +28,6 @@ interface ConnectionDialogProps {
 interface DatabaseOption {
   id: DatabaseType;
   name: string;
-  icon: React.ReactNode;
-  color: string;
-  bgColor: string;
-  borderColor: string;
   defaults: { port: string; database: string; username: string; host: string };
 }
 
@@ -49,10 +35,6 @@ const DATABASE_OPTIONS: DatabaseOption[] = [
   {
     id: "postgres",
     name: "PostgreSQL",
-    icon: <Database className="h-4 w-4" />,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-    borderColor: "border-blue-500",
     defaults: {
       port: "5432",
       database: "postgres",
@@ -63,10 +45,6 @@ const DATABASE_OPTIONS: DatabaseOption[] = [
   {
     id: "mysql",
     name: "MySQL",
-    icon: <Server className="h-4 w-4" />,
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    borderColor: "border-orange-500",
     defaults: {
       port: "3306",
       database: "mysql",
@@ -251,50 +229,40 @@ export function ConnectionDialog({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                New Connection
-              </div>
-              <Badge
-                variant={isPro ? "default" : "secondary"}
-                className="text-xs"
-              >
-                {currentSaved}/{isPro ? "∞" : maxSaved}
-              </Badge>
+            <DialogTitle>
+              Add Connection
+              {!isPro && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  ({currentSaved}/{maxSaved})
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Saved Connection Limit Warning */}
           {!canSave && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
-              <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-amber-500">
-                  Connection limit reached
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Free tier allows {maxSaved} saved connections. Delete an
-                  existing connection or upgrade to Pro for unlimited
-                  connections.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLicenseSettingsOpen(true)}
-                  className="gap-1.5"
-                >
-                  <Key className="h-3.5 w-3.5" />
-                  Enter License Key
-                </Button>
+            <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+              <div className="flex items-center gap-2 font-medium text-amber-600">
+                <AlertTriangle className="h-4 w-4" />
+                Connection limit reached
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Free tier allows {maxSaved} saved connections.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLicenseSettingsOpen(true)}
+                className="mt-2"
+              >
+                <Key className="mr-1.5 h-3 w-3" />
+                Enter License Key
+              </Button>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Connection Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Connection Name</Label>
               <Input
                 id="name"
                 placeholder="My Database"
@@ -305,122 +273,85 @@ export function ConnectionDialog({
               />
             </div>
 
-            {/* Database Type Selector */}
-            <div className="space-y-2">
-              <Label>Database</Label>
-              <div className="flex gap-2">
-                {DATABASE_OPTIONS.map((db) => (
-                  <button
-                    key={db.id}
-                    type="button"
-                    onClick={() => handleDbSelect(db.id)}
-                    disabled={!canSave}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border text-sm font-medium transition-colors",
-                      dbType === db.id
-                        ? `${db.borderColor} ${db.bgColor} ${db.color}`
-                        : "border-border hover:bg-accent",
-                      !canSave && "opacity-50 cursor-not-allowed",
-                    )}
-                  >
-                    {db.icon}
-                    {db.name}
-                  </button>
-                ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="dbType">Database Type</Label>
+                <select
+                  id="dbType"
+                  value={dbType}
+                  onChange={(e) =>
+                    handleDbSelect(e.target.value as DatabaseType)
+                  }
+                  disabled={!canSave}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {DATABASE_OPTIONS.map((db) => (
+                    <option key={db.id} value={db.id}>
+                      {db.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            {/* Mode Toggle */}
-            <div className="flex gap-2 p-1 bg-muted rounded-md">
-              <button
-                type="button"
-                onClick={() => setMode("params")}
-                disabled={!canSave}
-                className={cn(
-                  "flex-1 py-1.5 px-3 rounded text-sm font-medium transition-colors",
-                  mode === "params"
-                    ? "bg-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                  !canSave && "opacity-50 cursor-not-allowed",
-                )}
-              >
-                Parameters
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("string")}
-                disabled={!canSave}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded text-sm font-medium transition-colors",
-                  mode === "string"
-                    ? "bg-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                  !canSave && "opacity-50 cursor-not-allowed",
-                )}
-              >
-                <Link2 className="h-3.5 w-3.5" />
-                URL
-              </button>
+              <div className="space-y-1.5">
+                <Label htmlFor="mode">Connection Method</Label>
+                <select
+                  id="mode"
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value as ConnectionMode)}
+                  disabled={!canSave}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="params">Parameters</option>
+                  <option value="string">Connection URL</option>
+                </select>
+              </div>
             </div>
 
             {mode === "params" ? (
               <div className="space-y-3">
-                {/* Host & Port */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2 space-y-1">
-                    <Label htmlFor="host" className="text-xs">
-                      Host
-                    </Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 space-y-1.5">
+                    <Label htmlFor="host">Host</Label>
                     <Input
                       id="host"
                       placeholder={selectedDb.defaults.host}
                       value={formData.host}
                       onChange={(e) => updateField("host", e.target.value)}
-                      className={cn("h-9", errors.host && "border-destructive")}
+                      className={cn(errors.host && "border-destructive")}
                       disabled={!canSave}
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="port" className="text-xs">
-                      Port
-                    </Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="port">Port</Label>
                     <Input
                       id="port"
                       type="number"
                       placeholder={selectedDb.defaults.port}
                       value={formData.port}
                       onChange={(e) => updateField("port", e.target.value)}
-                      className={cn("h-9", errors.port && "border-destructive")}
+                      className={cn(errors.port && "border-destructive")}
                       disabled={!canSave}
                     />
                   </div>
                 </div>
 
-                {/* Database */}
-                <div className="space-y-1">
-                  <Label htmlFor="database" className="text-xs">
-                    Database
-                  </Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="database">Database</Label>
                   <Input
                     id="database"
                     placeholder={selectedDb.defaults.database}
                     value={formData.database}
                     onChange={(e) => updateField("database", e.target.value)}
-                    className={cn(
-                      "h-9",
-                      errors.database && "border-destructive",
-                    )}
+                    className={cn(errors.database && "border-destructive")}
                     disabled={!canSave}
                   />
                 </div>
 
-                {/* Username & Password */}
                 {dbType !== "libsql" ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="username" className="text-xs">
-                        Username
-                      </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="username">Username</Label>
                       <Input
                         id="username"
                         placeholder={selectedDb.defaults.username}
@@ -428,17 +359,12 @@ export function ConnectionDialog({
                         onChange={(e) =>
                           updateField("username", e.target.value)
                         }
-                        className={cn(
-                          "h-9",
-                          errors.username && "border-destructive",
-                        )}
+                        className={cn(errors.username && "border-destructive")}
                         disabled={!canSave}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="password" className="text-xs">
-                        Password
-                      </Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="password">Password</Label>
                       <Input
                         id="password"
                         type="password"
@@ -447,14 +373,13 @@ export function ConnectionDialog({
                         onChange={(e) =>
                           updateField("password", e.target.value)
                         }
-                        className="h-9"
                         disabled={!canSave}
                       />
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    <Label htmlFor="password" className="text-xs">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password">
                       Auth Token{" "}
                       <span className="text-muted-foreground">(optional)</span>
                     </Label>
@@ -464,17 +389,14 @@ export function ConnectionDialog({
                       placeholder="Your Turso auth token"
                       value={formData.password}
                       onChange={(e) => updateField("password", e.target.value)}
-                      className="h-9"
                       disabled={!canSave}
                     />
                   </div>
                 )}
               </div>
             ) : (
-              <div className="space-y-1">
-                <Label htmlFor="connectionString" className="text-xs">
-                  Connection String
-                </Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="connectionString">Connection String</Label>
                 <Textarea
                   id="connectionString"
                   placeholder={getConnectionStringPlaceholder()}
@@ -491,30 +413,23 @@ export function ConnectionDialog({
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={handleTest}
                 disabled={testConnection.isPending || !canSave}
-                className="gap-1.5"
               >
                 {testConnection.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : tested ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                  <CheckCircle2 className="mr-1.5 h-4 w-4 text-green-500" />
                 ) : null}
                 Test
               </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={connect.isPending || !canSave}
-              >
+              <Button type="submit" disabled={connect.isPending || !canSave}>
                 {connect.isPending && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 )}
                 Connect
               </Button>

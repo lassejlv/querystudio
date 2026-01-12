@@ -68,6 +68,7 @@ impl AIModel {
         }
     }
 
+    #[allow(dead_code)]
     pub fn display_name(&self) -> &'static str {
         match self {
             AIModel::Gpt5 => "GPT-5",
@@ -264,6 +265,7 @@ pub enum StreamChunk {
 
 #[async_trait]
 pub trait AIProvider: Send + Sync {
+    #[allow(dead_code)]
     fn provider_type(&self) -> AIProviderType;
 
     async fn chat(

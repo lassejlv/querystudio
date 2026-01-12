@@ -1,5 +1,5 @@
 use super::providers::{
-    create_ai_provider, AIModel, AIProvider, AIProviderError, ChatMessage, ChatRole, FinishReason,
+    create_ai_provider, AIModel, AIProvider, AIProviderError, ChatMessage, FinishReason,
     StreamChunk, ToolCall,
 };
 use super::tools::{
@@ -12,15 +12,6 @@ use crate::providers::DatabaseType;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatSession {
-    pub id: String,
-    pub connection_id: String,
-    pub model: AIModel,
-    pub messages: Vec<AgentMessage>,
-    pub db_type: DatabaseType,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentMessage {
@@ -95,6 +86,7 @@ impl Agent {
         })
     }
 
+    #[allow(dead_code)]
     pub fn set_model(&mut self, model: AIModel, api_key: String) -> Result<(), AIProviderError> {
         let old_provider = self.model.provider();
         let new_provider = model.provider();

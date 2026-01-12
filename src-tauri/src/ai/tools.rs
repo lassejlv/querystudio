@@ -112,6 +112,7 @@ fn get_table_sample_tool(db_type: DatabaseType) -> ToolDefinition {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct ListTablesArgs {}
 

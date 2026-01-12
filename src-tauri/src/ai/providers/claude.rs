@@ -108,6 +108,7 @@ struct AnthropicError {
 struct AnthropicStreamEvent {
     #[serde(rename = "type")]
     event_type: String,
+    #[allow(dead_code)]
     #[serde(default)]
     index: Option<usize>,
     #[serde(default)]
@@ -130,8 +131,14 @@ struct AnthropicStreamMessage {
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 enum AnthropicStreamContentBlock {
-    Text { text: String },
-    ToolUse { id: String, name: String },
+    #[allow(dead_code)]
+    Text {
+        text: String,
+    },
+    ToolUse {
+        id: String,
+        name: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
