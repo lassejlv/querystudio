@@ -10,6 +10,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAIQueryStore } from "@/lib/store";
+import { ThemeSelector } from "./theme-selector";
 
 interface AppSettingsProps {
   open?: boolean;
@@ -64,6 +65,10 @@ export function AppSettings({ open, onOpenChange, trigger }: AppSettingsProps) {
           {/* Appearance Section */}
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-foreground">Appearance</h4>
+
+            <div className="space-y-4">
+              <ThemeSelector />
+            </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">

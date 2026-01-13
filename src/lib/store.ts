@@ -7,11 +7,7 @@ const LAST_CONNECTION_KEY = "querystudio_last_connection";
 const QUERY_HISTORY_KEY = "querystudio_query_history";
 const LAST_CHAT_SESSION_KEY = "querystudio_last_chat_session";
 
-// Initialize dark mode on load
-if (typeof document !== "undefined") {
-  document.documentElement.classList.add("dark");
-  document.body.classList.add("dark");
-}
+// Theme system now handles dark mode initialization
 
 // Connection state
 interface ConnectionState {

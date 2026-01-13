@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import {
   Database,
   Plus,
@@ -13,6 +12,8 @@ import {
   Lock,
   Download,
   Info,
+  Palette,
+  Check,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -31,6 +32,7 @@ import {
   useCanSaveConnection,
 } from "@/lib/hooks";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
+import { useThemeStore } from "@/lib/theme-store";
 import type { SavedConnection } from "@/lib/types";
 import { useUpdateChecker } from "@/hooks/use-update-checker";
 import { getVersion } from "@tauri-apps/api/app";
@@ -57,6 +59,7 @@ export function CommandPalette({
   const disconnect = useDisconnect();
   const connection = useConnectionStore((s) => s.connection);
   const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
+  const { getAllThemes, setActiveTheme, activeTheme } = useThemeStore();
   const [search, setSearch] = useState("");
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const { canSave, maxSaved } = useCanSaveConnection();
@@ -119,6 +122,8 @@ export function CommandPalette({
     }
     return `${connection.config.host}:${connection.config.port}/${connection.config.database}`;
   };
+
+  const themes = getAllThemes();
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
@@ -222,6 +227,27 @@ export function CommandPalette({
             ))}
           </CommandGroup>
         )}
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Themes">
+          {themes.map((theme) => (
+            <CommandItem
+              key={theme.id}
+              value={`theme ${theme.displayName || theme.name}`}
+              onSelect={() => {
+                setActiveTheme(theme.id);
+                // Don't close palette when switching themes so user can try multiple
+              }}
+            >
+              <Palette className="h-4 w-4" />
+              <div className="flex flex-1 items-center justify-between">
+                <span>{theme.displayName || theme.name}</span>
+                {activeTheme === theme.id && <Check className="h-4 w-4" />}
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
 
         <CommandSeparator />
 
