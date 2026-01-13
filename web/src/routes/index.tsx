@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/header'
 import { OptimizedVideo } from '@/components/optimized-video'
-import { Database, Terminal, Shield, Download, Check, Bot } from 'lucide-react'
+import { Download, ArrowRight } from 'lucide-react'
 import { getPricing } from '@/server/pricing'
 
 export const Route = createFileRoute('/')({
@@ -17,147 +17,132 @@ function LandingPage() {
     <div className='min-h-screen bg-background'>
       <Header />
 
-      {/* Hero */}
-      <section className='container mx-auto px-4 py-16 md:py-24'>
-        <div className='max-w-2xl'>
-          <h1 className='text-3xl md:text-4xl font-semibold tracking-tight mb-4'>A simple database studio</h1>
-          <p className='text-muted-foreground text-lg mb-6'>Query your databases with SQL or natural language. Built with Tauri, React, and Rust.</p>
-          <Button asChild>
-            <Link to='/download'>
-              <Download className='h-4 w-4 mr-2' />
-              Download
-            </Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* Video */}
-      <section className='container mx-auto px-4 pb-16'>
-        <OptimizedVideo src='https://assets-cdn.querystudio.dev/QueryStudioExampleNew.mp4' containerClassName='border rounded-lg overflow-hidden aspect-video' />
-      </section>
-
-      {/* Features */}
-      <section className='container mx-auto px-4 py-16 border-t'>
-        <h2 className='text-xl font-semibold mb-8'>Features</h2>
-        <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-8'>
-          <Feature icon={<Database className='h-5 w-5' />} title='Connection Management' description='Save and switch between database connections. Stored securely on your machine.' />
-          <Feature icon={<Terminal className='h-5 w-5' />} title='Query Editor' description='Execute SQL with syntax highlighting. Run queries with Cmd+Enter.' />
-          <Feature icon={<Bot className='h-5 w-5' />} title='AI-agent' description='Ask questions in natural language and get SQL queries generated for you.' />
-          <Feature icon={<Shield className='h-5 w-5' />} title='Safe by Default' description='AI queries are read-only. Your data stays on your machine.' />
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className='container mx-auto px-4 py-16 border-t'>
-        <div className='flex items-center justify-between mb-8'>
-          <div>
-            <h2 className='text-xl font-semibold mb-2'>Pricing</h2>
-            <p className='text-muted-foreground'>Start free, pay once for unlimited use.</p>
-          </div>
-          <Link to='/pricing' className='text-sm text-muted-foreground hover:text-foreground'>
-            View details →
-          </Link>
-        </div>
-
-        <div className='grid md:grid-cols-2 gap-6 max-w-2xl'>
-          {/* Free */}
-          <div className='border rounded-lg p-6'>
-            <div className='mb-4'>
-              <h3 className='font-medium'>{pricing.tiers.free.name}</h3>
-              <p className='text-2xl font-semibold mt-1'>${pricing.tiers.free.price}</p>
+      <main>
+        {/* Hero */}
+        <section className='container mx-auto px-4 pt-16 md:pt-24 pb-12'>
+          <div className='max-w-3xl'>
+            <h1 className='text-4xl md:text-5xl font-semibold tracking-tight text-foreground'>A database client that gets out of your way</h1>
+            <p className='mt-4 text-lg text-muted-foreground max-w-xl'>Write SQL, explore schemas, and query with natural language. Native desktop app for Mac, Windows, and Linux.</p>
+            <div className='mt-8 flex items-center gap-3'>
+              <Button asChild size='lg'>
+                <Link to='/download'>
+                  <Download className='h-4 w-4 mr-2' />
+                  Download
+                </Link>
+              </Button>
+              <Button variant='ghost' size='lg' asChild>
+                <Link to='/pricing'>
+                  View pricing
+                  <ArrowRight className='h-4 w-4 ml-2' />
+                </Link>
+              </Button>
             </div>
-            <ul className='space-y-2 text-sm text-muted-foreground mb-6'>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                {pricing.tiers.free.features.maxConnections} connections
-              </li>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                All features
-              </li>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                AI assistant (BYOK)
-              </li>
-            </ul>
-            <Button variant='outline' className='w-full' asChild>
-              <Link to='/download'>Download</Link>
-            </Button>
           </div>
+        </section>
 
-          {/* Pro */}
-          <div className='border rounded-lg p-6'>
-            <div className='mb-4'>
-              <h3 className='font-medium'>{pricing.tiers.pro.name}</h3>
-              <div className='flex items-baseline gap-2 mt-1'>
-                <p className='text-2xl font-semibold'>${pricing.tiers.pro.earlyBirdPrice}</p>
-                <p className='text-sm text-muted-foreground line-through'>${pricing.tiers.pro.price}</p>
-                <span className='text-xs text-muted-foreground'>one-time</span>
+        {/* Video */}
+        <section className='container mx-auto px-4 pb-20'>
+          <OptimizedVideo src='https://assets-cdn.querystudio.dev/QueryStudioExampleNew.mp4' containerClassName='border rounded-lg overflow-hidden aspect-video shadow-sm' />
+        </section>
+
+        {/* Features */}
+        <section className='border-t bg-muted/30'>
+          <div className='container mx-auto px-4 py-20'>
+            <div className='grid md:grid-cols-3 gap-12 md:gap-8'>
+              <div>
+                <h3 className='font-medium text-foreground'>Connections</h3>
+                <p className='mt-2 text-sm text-muted-foreground leading-relaxed'>PostgreSQL, MySQL, SQLite. Save connections locally with your credentials stored securely in your system keychain.</p>
+              </div>
+              <div>
+                <h3 className='font-medium text-foreground'>Query editor</h3>
+                <p className='mt-2 text-sm text-muted-foreground leading-relaxed'>Syntax highlighting, auto-complete, and keyboard shortcuts. Run queries with ⌘↵ and copy results directly.</p>
+              </div>
+              <div>
+                <h3 className='font-medium text-foreground'>AI assistant</h3>
+                <p className='mt-2 text-sm text-muted-foreground leading-relaxed'>Describe what you need in plain English. The assistant writes SQL based on your schema. Read-only by default.</p>
               </div>
             </div>
-            <ul className='space-y-2 text-sm text-muted-foreground mb-6'>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                Unlimited connections
-              </li>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                All features
-              </li>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                Priority support
-              </li>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />2 devices
-              </li>
-            </ul>
-            <Button className='w-full' asChild>
-              <Link to='/dashboard/billing' search={{ upgrade: true }}>
-                Get Pro
-              </Link>
-            </Button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Shortcuts */}
-      <section className='container mx-auto px-4 py-16 border-t'>
-        <h2 className='text-xl font-semibold mb-2'>Keyboard shortcuts</h2>
-        <p className='text-muted-foreground mb-6'>Navigate without leaving the keyboard.</p>
-        <div className='grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl'>
-          <Shortcut keys='⌘K' label='Switch connection' />
-          <Shortcut keys='⌘↵' label='Run query' />
-          <Shortcut keys='⌘C' label='Copy cell' />
-          <Shortcut keys='Right-click' label='Context menu' />
-        </div>
-      </section>
+        {/* Pricing summary */}
+        <section className='border-t'>
+          <div className='container mx-auto px-4 py-20'>
+            <div className='max-w-xl'>
+              <h2 className='text-2xl font-semibold tracking-tight'>Simple pricing</h2>
+              <p className='mt-2 text-muted-foreground'>Free to start. One-time payment for unlimited use.</p>
+
+              <div className='mt-8 space-y-4'>
+                <div className='flex items-baseline justify-between py-3 border-b'>
+                  <div>
+                    <span className='font-medium'>{pricing.tiers.free.name}</span>
+                    <span className='ml-3 text-sm text-muted-foreground'>{pricing.tiers.free.features.maxConnections} connections, all features</span>
+                  </div>
+                  <span className='font-medium'>$0</span>
+                </div>
+                <div className='flex items-baseline justify-between py-3 border-b'>
+                  <div>
+                    <span className='font-medium'>{pricing.tiers.pro.name}</span>
+                    <span className='ml-3 text-sm text-muted-foreground'>Unlimited connections, priority support</span>
+                  </div>
+                  <div className='text-right'>
+                    <span className='font-medium'>${pricing.tiers.pro.earlyBirdPrice}</span>
+                    <span className='ml-2 text-sm text-muted-foreground line-through'>${pricing.tiers.pro.price}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className='mt-8'>
+                <Button variant='outline' asChild>
+                  <Link to='/pricing'>
+                    See full details
+                    <ArrowRight className='h-4 w-4 ml-2' />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className='border-t bg-muted/30'>
+          <div className='container mx-auto px-4 py-16 text-center'>
+            <h2 className='text-xl font-medium'>Ready to try it?</h2>
+            <p className='mt-2 text-muted-foreground'>Download for free and start querying in minutes.</p>
+            <div className='mt-6'>
+              <Button asChild>
+                <Link to='/download'>
+                  <Download className='h-4 w-4 mr-2' />
+                  Download QueryStudio
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer className='container mx-auto px-4 py-8 border-t'>
-        <p className='text-sm text-muted-foreground'>QueryStudio</p>
+      <footer className='border-t'>
+        <div className='container mx-auto px-4 py-8'>
+          <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+            <div className='flex items-center gap-2'>
+              <img src='https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png' alt='QueryStudio' className='h-5 w-5' />
+              <span className='text-sm text-muted-foreground'>QueryStudio</span>
+            </div>
+            <nav className='flex items-center gap-6'>
+              <Link to='/download' className='text-sm text-muted-foreground hover:text-foreground'>
+                Download
+              </Link>
+              <Link to='/pricing' className='text-sm text-muted-foreground hover:text-foreground'>
+                Pricing
+              </Link>
+              <Link to='/login' className='text-sm text-muted-foreground hover:text-foreground'>
+                Login
+              </Link>
+            </nav>
+          </div>
+        </div>
       </footer>
-    </div>
-  )
-}
-
-function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
-  return (
-    <div>
-      <div className='flex items-center gap-2 mb-2'>
-        <span className='text-muted-foreground'>{icon}</span>
-        <h3 className='font-medium'>{title}</h3>
-      </div>
-      <p className='text-sm text-muted-foreground'>{description}</p>
-    </div>
-  )
-}
-
-function Shortcut({ keys, label }: { keys: string; label: string }) {
-  return (
-    <div>
-      <kbd className='inline-block px-2 py-1 bg-muted rounded text-sm font-mono mb-1'>{keys}</kbd>
-      <p className='text-sm text-muted-foreground'>{label}</p>
     </div>
   )
 }
