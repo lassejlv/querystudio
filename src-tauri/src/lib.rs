@@ -1,5 +1,6 @@
 mod ai;
 mod database;
+mod debug;
 mod license;
 mod providers;
 mod storage;
@@ -7,6 +8,7 @@ mod terminal;
 
 use ai::{ai_chat, ai_chat_stream, ai_get_models, ai_validate_key};
 use database::{test_connection, ConnectionConfig, ConnectionManager};
+use debug::{get_process_stats, DebugState};
 use license::{
     create_license_manager, license_activate, license_check, license_clear, license_deactivate,
     license_get_max_connections, license_get_status, license_is_pro, license_list_devices,
@@ -177,6 +179,7 @@ fn get_app_version() -> String {
 pub fn run() {
     let db_state: DbState = Arc::new(ConnectionManager::new());
     let terminal_state: TerminalState = Arc::new(TerminalManager::new());
+    let debug_state = Arc::new(DebugState::new());
 
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -184,6 +187,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(db_state)
         .manage(terminal_state)
+        .manage(debug_state)
         .setup(|app| {
             // Initialize license manager
             let license_manager = create_license_manager(&app.handle())?;
@@ -379,6 +383,8 @@ pub fn run() {
             terminal_write,
             terminal_resize,
             terminal_close,
+            // Debug commands
+            get_process_stats,
             // App info commands
             get_app_version,
         ])
