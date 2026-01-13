@@ -73,6 +73,18 @@ interface AIQueryState {
   aiPanelOpen: boolean;
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
+
+  // Sidebar state (persisted)
+  sidebarWidth: number;
+  sidebarCollapsed: boolean;
+  setSidebarWidth: (width: number) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
+
+  // Status bar visibility (persisted)
+  statusBarVisible: boolean;
+  setStatusBarVisible: (visible: boolean) => void;
+  toggleStatusBar: () => void;
 }
 
 export const useAIQueryStore = create<AIQueryState>()(
@@ -94,12 +106,29 @@ export const useAIQueryStore = create<AIQueryState>()(
       setAiPanelOpen: (open: boolean) => set({ aiPanelOpen: open }),
       toggleAiPanel: () =>
         set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
+
+      sidebarWidth: 256,
+      sidebarCollapsed: false,
+      setSidebarWidth: (width: number) => set({ sidebarWidth: width }),
+      setSidebarCollapsed: (collapsed: boolean) =>
+        set({ sidebarCollapsed: collapsed }),
+      toggleSidebar: () =>
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+      statusBarVisible: true,
+      setStatusBarVisible: (visible: boolean) =>
+        set({ statusBarVisible: visible }),
+      toggleStatusBar: () =>
+        set((state) => ({ statusBarVisible: !state.statusBarVisible })),
     }),
     {
       name: "querystudio_ui_state",
       partialize: (state) => ({
         activeTab: state.activeTab,
         aiPanelOpen: state.aiPanelOpen,
+        sidebarWidth: state.sidebarWidth,
+        sidebarCollapsed: state.sidebarCollapsed,
+        statusBarVisible: state.statusBarVisible,
       }),
     },
   ),

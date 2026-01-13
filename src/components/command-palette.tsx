@@ -33,6 +33,7 @@ import {
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import type { SavedConnection } from "@/lib/types";
 import { useUpdateChecker } from "@/hooks/use-update-checker";
+import { getVersion } from "@tauri-apps/api/app";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -63,7 +64,7 @@ export function CommandPalette({
 
   const fetchAppVersion = useCallback(async () => {
     try {
-      const version = await invoke<string>("get_app_version");
+      const version = await getVersion();
       setAppVersion(version);
     } catch (error) {
       console.error("Failed to get app version:", error);

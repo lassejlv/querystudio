@@ -12,10 +12,20 @@ import { AIChat } from "@/components/ai-chat";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
+import { StatusBar } from "@/components/status-bar";
+import { AppSettings } from "@/components/app-settings";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import type { SavedConnection } from "@/lib/types";
-import { Bot, X, PanelRightClose, PanelRight } from "lucide-react";
+import {
+  Bot,
+  X,
+  PanelRightClose,
+  PanelRight,
+  PanelLeftClose,
+  PanelLeft,
+  Settings,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: App,
@@ -40,6 +50,16 @@ function App() {
   const aiPanelOpen = useAIQueryStore((s) => s.aiPanelOpen);
   const setAiPanelOpen = useAIQueryStore((s) => s.setAiPanelOpen);
   const toggleAiPanel = useAIQueryStore((s) => s.toggleAiPanel);
+
+  // Sidebar state
+  const sidebarCollapsed = useAIQueryStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useAIQueryStore((s) => s.toggleSidebar);
+
+  // Status bar visibility
+  const statusBarVisible = useAIQueryStore((s) => s.statusBarVisible);
+
+  // Settings dialog state
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // AI Panel width (resizable)
   const [aiPanelWidth, setAiPanelWidth] = useState(() => {
@@ -91,7 +111,7 @@ function App() {
   // Keyboard shortcut for AI panel (Cmd+Option+B / Ctrl+Alt+B)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Option+Cmd+B on Mac (keyCode 66 = B), Ctrl+Alt+B on Windows/Linux
+      // Option+Cmd+B on Mac (keyCode 66 = B), Ctrl+Alt+B on Windows/Linux - Toggle AI Panel
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
@@ -105,6 +125,20 @@ function App() {
         toggleAiPanel();
         return;
       }
+
+      // Cmd+B on Mac, Ctrl+B on Windows/Linux - Toggle Sidebar
+      if (
+        modifier &&
+        !e.altKey &&
+        !e.shiftKey &&
+        (e.key === "b" || e.key === "B" || e.keyCode === 66)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSidebar();
+        return;
+      }
+
       // Escape to close AI panel
       if (e.key === "Escape" && aiPanelOpen) {
         setAiPanelOpen(false);
@@ -113,7 +147,7 @@ function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [aiPanelOpen, toggleAiPanel, setAiPanelOpen]);
+  }, [aiPanelOpen, toggleAiPanel, setAiPanelOpen, toggleSidebar]);
 
   // Global keyboard shortcuts and menu event handling
   const { refreshAll } = useGlobalShortcuts({
@@ -195,36 +229,68 @@ function App() {
               onValueChange={setActiveTab}
               className="flex h-full flex-col"
             >
-              <div className="flex items-center justify-between border-b border-border px-4">
-                <TabsList className="h-12 bg-transparent">
-                  <TabsTrigger
-                    value="data"
-                    className="data-[state=active]:bg-secondary transition-all duration-200"
+              <div className="flex h-10 items-center justify-between border-b border-border px-2">
+                <div className="flex items-center">
+                  {/* Sidebar Toggle Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={toggleSidebar}
+                    title="Toggle sidebar (⌘B)"
                   >
-                    Table Data
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="query"
-                    className="data-[state=active]:bg-secondary transition-all duration-200"
-                  >
-                    Query
-                  </TabsTrigger>
-                </TabsList>
+                    {sidebarCollapsed ? (
+                      <PanelLeft className="h-4 w-4" />
+                    ) : (
+                      <PanelLeftClose className="h-4 w-4" />
+                    )}
+                  </Button>
 
-                {/* AI Panel Toggle Button */}
-                <Button
-                  variant={aiPanelOpen ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={toggleAiPanel}
-                  className="gap-2"
-                  title="Toggle Querybuddy (⌥⌘B)"
-                >
-                  {aiPanelOpen ? (
-                    <PanelRightClose className="h-3.5 w-3.5 text-muted-foreground" />
-                  ) : (
-                    <PanelRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </Button>
+                  <div className="mx-2 h-4 w-px bg-border" />
+
+                  <TabsList className="h-10 gap-1 bg-transparent p-0">
+                    <TabsTrigger
+                      value="data"
+                      className="h-7 rounded-md border-0 bg-transparent px-3 text-sm text-muted-foreground shadow-none data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                    >
+                      Data
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="query"
+                      className="h-7 rounded-md border-0 bg-transparent px-3 text-sm text-muted-foreground shadow-none data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                    >
+                      Query
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {/* Settings Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => setSettingsOpen(true)}
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+
+                  {/* AI Panel Toggle Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={toggleAiPanel}
+                    title="Toggle Querybuddy (⌥⌘B)"
+                  >
+                    {aiPanelOpen ? (
+                      <PanelRightClose className="h-4 w-4" />
+                    ) : (
+                      <PanelRight className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <AnimatePresence mode="wait">
@@ -259,54 +325,56 @@ function App() {
             </Tabs>
           </main>
 
-          {/* AI Panel - Right Side */}
-          <AnimatePresence>
-            {aiPanelOpen && (
-              <motion.aside
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: aiPanelWidth, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={
-                  isResizing
-                    ? { duration: 0 }
-                    : { duration: 0.2, ease: "easeInOut" }
-                }
-                className="relative flex flex-col border-l border-border bg-background overflow-hidden shrink-0"
-                style={{ width: aiPanelWidth }}
-              >
-                {/* Resize Handle */}
-                <div
-                  onMouseDown={handleResizeStart}
-                  className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/30 active:bg-primary/40 z-10 -ml-1"
-                />
+          {/* AI Panel - Right Side - Always mounted to preserve state */}
+          <div
+            className="relative shrink-0 overflow-hidden"
+            style={{
+              width: aiPanelOpen ? aiPanelWidth : 0,
+              transition: isResizing ? "none" : "width 0.2s ease-in-out",
+            }}
+          >
+            <aside
+              className="absolute inset-y-0 right-0 flex flex-col border-l border-border bg-background"
+              style={{ width: aiPanelWidth }}
+            >
+              {/* Resize Handle */}
+              <div
+                onMouseDown={handleResizeStart}
+                className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/30 active:bg-primary/40 z-10 -ml-1"
+              />
 
-                {/* AI Panel Header */}
-                <div className="flex items-center justify-between border-b border-border px-3 py-2 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-sm">Querybuddy</span>
-                    <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-                      <span className="text-xs">⌥⌘</span>B
-                    </kbd>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setAiPanelOpen(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+              {/* AI Panel Header */}
+              <div className="flex items-center justify-between border-b border-border px-3 py-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">Querybuddy</span>
+                  <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                    <span className="text-xs">⌥⌘</span>B
+                  </kbd>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setAiPanelOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
 
-                <div className="flex-1 overflow-hidden">
-                  <AIChat />
-                </div>
-              </motion.aside>
-            )}
-          </AnimatePresence>
+              <div className="flex-1 overflow-hidden">
+                <AIChat />
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
+
+      {/* Status Bar */}
+      {statusBarVisible && <StatusBar />}
+
+      {/* Settings Dialog */}
+      <AppSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <ConnectionDialog
         open={connectionDialogOpen}

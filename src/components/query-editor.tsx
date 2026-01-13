@@ -33,6 +33,7 @@ import {
   useAIQueryStore,
   useQueryHistoryStore,
 } from "@/lib/store";
+import { useStatusBarStore } from "@/components/status-bar";
 import { useExecuteQuery, useAllTableColumns } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type { QueryResult } from "@/lib/types";
@@ -81,7 +82,18 @@ export function QueryEditor() {
   const pendingSql = useAIQueryStore((s) => s.pendingSql);
   const clearPendingSql = useAIQueryStore((s) => s.clearPendingSql);
   const requestDebug = useAIQueryStore((s) => s.requestDebug);
-  const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
+  const setAiPanelOpen = useAIQueryStore((s) => s.setAiPanelOpen);
+
+  // Status bar store for cursor position and query results
+  const setQueryResult = useStatusBarStore((s) => s.setQueryResult);
+  const setCursorPosition = useStatusBarStore((s) => s.setCursorPosition);
+
+  // Clear cursor position when component unmounts (switching away from query tab)
+  useEffect(() => {
+    return () => {
+      setCursorPosition(null);
+    };
+  }, [setCursorPosition]);
 
   const executeQueryMutation = useExecuteQuery(connectionId);
 
@@ -221,19 +233,26 @@ export function QueryEditor() {
       }
 
       const endTime = performance.now();
-      setExecutionTime(endTime - startTime);
+      const totalTime = endTime - startTime;
+      const totalRows = allResults.reduce((sum, r) => sum + r.row_count, 0);
+      setExecutionTime(totalTime);
       setResults(allResults);
+      // Update status bar
+      setQueryResult(totalTime, totalRows, true);
       // Add to query history
       addQueryToHistory(connectionId, {
         query: query.trim(),
         success: true,
-        rowCount: allResults.reduce((sum, r) => sum + r.row_count, 0),
+        rowCount: totalRows,
       });
     } catch (err) {
       const endTime = performance.now();
-      setExecutionTime(endTime - startTime);
+      const totalTime = endTime - startTime;
+      setExecutionTime(totalTime);
       const errorMessage = String(err);
       setError(errorMessage);
+      // Update status bar with error
+      setQueryResult(totalTime, 0, false);
       // Show partial results if any succeeded
       if (allResults.length > 0) {
         setResults(allResults);
@@ -253,13 +272,30 @@ export function QueryEditor() {
   const handleDebugWithAssistant = () => {
     if (query && error) {
       requestDebug(query, error);
-      setActiveTab("ai");
+      setAiPanelOpen(true);
     }
   };
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // Track cursor position for status bar
+    const updateCursorPosition = () => {
+      const position = editor.getPosition();
+      if (position) {
+        setCursorPosition({
+          line: position.lineNumber,
+          column: position.column,
+        });
+      }
+    };
+
+    // Set initial cursor position
+    updateCursorPosition();
+
+    // Listen for cursor position changes
+    editor.onDidChangeCursorPosition(updateCursorPosition);
 
     // Add Cmd+Enter / Ctrl+Enter keybinding (uses ref to avoid stale closure)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {

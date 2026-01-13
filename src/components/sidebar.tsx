@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
-import { Table, LogOut, ChevronRight, Key } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Table, LogOut, ChevronRight, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -19,6 +18,9 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { LicenseSettings } from "@/components/license-settings";
 import type { DatabaseType } from "@/lib/types";
+
+const MIN_SIDEBAR_WIDTH = 180;
+const MAX_SIDEBAR_WIDTH = 400;
 
 function DatabaseIcon({
   type,
@@ -36,6 +38,18 @@ function DatabaseIcon({
         )}
       >
         M
+      </span>
+    );
+  }
+  if (type === "libsql") {
+    return (
+      <span
+        className={cn(
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-cyan-500/20 text-xs font-bold text-cyan-500",
+          className,
+        )}
+      >
+        L
       </span>
     );
   }
@@ -58,8 +72,15 @@ export function Sidebar() {
   const selectedTable = useConnectionStore((s) => s.selectedTable);
   const setSelectedTable = useConnectionStore((s) => s.setSelectedTable);
   const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
-  const { status, setStatus } = useLicenseStore();
+  const { setStatus } = useLicenseStore();
 
+  // Sidebar state from store
+  const sidebarWidth = useAIQueryStore((s) => s.sidebarWidth);
+  const sidebarCollapsed = useAIQueryStore((s) => s.sidebarCollapsed);
+  const setSidebarWidth = useAIQueryStore((s) => s.setSidebarWidth);
+  const toggleSidebar = useAIQueryStore((s) => s.toggleSidebar);
+
+  const [isResizing, setIsResizing] = useState(false);
   const [licenseSettingsOpen, setLicenseSettingsOpen] = useState(false);
 
   const { data: fetchedTables } = useTables(connection?.id ?? null);
@@ -82,6 +103,41 @@ export function Sidebar() {
     setTables(fetchedTables);
   }
 
+  // Handle resize drag
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      e.preventDefault();
+      const newWidth = e.clientX;
+      setSidebarWidth(
+        Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, newWidth)),
+      );
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, setSidebarWidth]);
+
   const groupedTables = tables.reduce(
     (acc, table) => {
       if (!acc[table.schema]) {
@@ -93,39 +149,135 @@ export function Sidebar() {
     {} as Record<string, typeof tables>,
   );
 
-  const isPro = status?.is_pro && status?.is_activated;
-
   if (!connection) return null;
 
-  return (
-    <>
+  // Collapsed state - show minimal sidebar
+  if (sidebarCollapsed) {
+    return (
       <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.2 }}
-        className="flex h-full w-64 flex-col border-r border-border bg-card"
+        initial={{ width: sidebarWidth, opacity: 1 }}
+        animate={{ width: 48, opacity: 1 }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        className="flex h-full flex-col border-r border-border bg-card shrink-0"
       >
-        {/* Header - traffic lights are above this in the titlebar */}
-        <div className="flex items-center justify-between border-b border-border p-3">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <DatabaseIcon type={connection.db_type || "postgres"} />
-            <div className="flex flex-col overflow-hidden">
-              <span className="truncate text-sm font-medium text-foreground">
-                {connection.name}
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {connection.db_type === "mysql" ? "MySQL" : "PostgreSQL"}
-              </span>
-            </div>
-          </div>
+        {/* Collapsed header */}
+        <div className="flex flex-col items-center border-b border-border p-2 gap-2">
+          <DatabaseIcon type={connection.db_type || "postgres"} />
           <Button
             variant="ghost"
             size="icon"
+            className="h-7 w-7"
+            onClick={toggleSidebar}
+            title="Expand sidebar (⌘B)"
+          >
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </div>
+
+        {/* Collapsed table list - just icons */}
+        <ScrollArea className="flex-1">
+          <div className="flex flex-col items-center p-2 gap-1">
+            {tables.slice(0, 10).map((table) => (
+              <Button
+                key={`${table.schema}.${table.name}`}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-7 w-7",
+                  selectedTable?.schema === table.schema &&
+                    selectedTable?.name === table.name &&
+                    "bg-secondary",
+                )}
+                onClick={() => {
+                  setSelectedTable({
+                    schema: table.schema,
+                    name: table.name,
+                  });
+                  setActiveTab("data");
+                }}
+                title={`${table.schema}.${table.name}`}
+              >
+                <Table className="h-3 w-3" />
+              </Button>
+            ))}
+            {tables.length > 10 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{tables.length - 10}
+              </span>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Disconnect button */}
+        <div className="border-t border-border p-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
             onClick={() => disconnect.mutate()}
             title="Disconnect"
           >
             <LogOut className="h-4 w-4 text-muted-foreground" />
           </Button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <>
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1, width: sidebarWidth }}
+        transition={
+          isResizing ? { duration: 0 } : { duration: 0.2, ease: "easeInOut" }
+        }
+        className="relative flex h-full flex-col border-r border-border bg-card shrink-0"
+        style={{ width: sidebarWidth }}
+      >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleResizeStart}
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/40 z-10"
+        />
+
+        {/* Header - traffic lights are above this in the titlebar */}
+        <div className="flex items-center justify-between border-b border-border p-3">
+          <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
+            <DatabaseIcon type={connection.db_type || "postgres"} />
+            <div className="flex flex-col overflow-hidden min-w-0">
+              <span className="truncate text-sm font-medium text-foreground">
+                {connection.name}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {connection.db_type === "mysql"
+                  ? "MySQL"
+                  : connection.db_type === "libsql"
+                    ? "LibSQL"
+                    : "PostgreSQL"}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={toggleSidebar}
+              title="Collapse sidebar (⌘B)"
+            >
+              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => disconnect.mutate()}
+              title="Disconnect"
+            >
+              <LogOut className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
@@ -182,7 +334,7 @@ export function Sidebar() {
                                   setActiveTab("data");
                                 }}
                               >
-                                <Table className="h-3 w-3" />
+                                <Table className="h-3 w-3 shrink-0" />
                                 <span className="truncate">{table.name}</span>
                               </Button>
                             </motion.div>
