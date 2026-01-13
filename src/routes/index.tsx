@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +13,6 @@ import { WelcomeScreen } from "@/components/welcome-screen";
 import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { StatusBar } from "@/components/status-bar";
-import { AppSettings } from "@/components/app-settings";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import type { SavedConnection } from "@/lib/types";
@@ -32,6 +31,7 @@ export const Route = createFileRoute("/")({
 });
 
 function App() {
+  const navigate = useNavigate();
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [editConnectionDialogOpen, setEditConnectionDialogOpen] =
@@ -57,9 +57,6 @@ function App() {
 
   // Status bar visibility
   const statusBarVisible = useAIQueryStore((s) => s.statusBarVisible);
-
-  // Settings dialog state
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // AI Panel width (resizable)
   const [aiPanelWidth, setAiPanelWidth] = useState(() => {
@@ -154,8 +151,7 @@ function App() {
     onNewConnection: () => setConnectionDialogOpen(true),
     onOpenCommandPalette: () => setCommandPaletteOpen(true),
     onOpenSettings: () => {
-      // Open AI panel where settings are accessible
-      setAiPanelOpen(true);
+      navigate({ to: "/settings" });
     },
   });
 
@@ -270,7 +266,7 @@ function App() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={() => setSettingsOpen(true)}
+                    onClick={() => navigate({ to: "/settings" })}
                     title="Settings"
                   >
                     <Settings className="h-4 w-4" />
@@ -372,9 +368,6 @@ function App() {
 
       {/* Status Bar */}
       {statusBarVisible && <StatusBar />}
-
-      {/* Settings Dialog */}
-      <AppSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <ConnectionDialog
         open={connectionDialogOpen}
