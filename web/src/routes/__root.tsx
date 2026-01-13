@@ -99,7 +99,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient()
 
   return (
-    <html lang='en'>
+    <html lang='en' className='dark'>
       <head>
         <HeadContent />
       </head>
