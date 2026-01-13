@@ -3,8 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { authClient } from '@/lib/auth-client'
 import { toast } from 'sonner'
-import { Check, X, RefreshCw } from 'lucide-react'
-import Spinner from '@/components/ui/spinner'
+import { RefreshCw } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export const Route = createFileRoute('/_authed/dashboard/admin')({
@@ -51,7 +50,7 @@ function AdminPage() {
       if (response.error) throw response.error
     },
     onSuccess: () => {
-      toast.success('Entry approved successfully')
+      toast.success('Entry approved')
       queryClient.invalidateQueries({ queryKey: ['waitlist-entries'] })
     },
     onError: () => {
@@ -82,12 +81,9 @@ function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <div className='max-w-lg'>
-        <h1 className='text-xl font-semibold mb-1'>Admin</h1>
-        <p className='text-sm text-muted-foreground mb-6'>Manage waitlist entries</p>
-        <div className='border rounded-lg p-8 text-center'>
-          <p className='text-sm text-muted-foreground'>You don't have permission to access this page.</p>
-        </div>
+      <div className='max-w-md'>
+        <h1 className='text-lg font-medium'>Admin</h1>
+        <p className='mt-1 text-sm text-muted-foreground'>You don't have permission to access this page.</p>
       </div>
     )
   }
@@ -102,93 +98,103 @@ function AdminPage() {
 
   return (
     <div className='max-w-2xl'>
-      <div className='flex items-center justify-between mb-6'>
+      <div className='flex items-baseline justify-between'>
         <div>
-          <h1 className='text-xl font-semibold mb-1'>Admin</h1>
-          <p className='text-sm text-muted-foreground'>Manage waitlist entries</p>
+          <h1 className='text-lg font-medium'>Admin</h1>
+          <p className='mt-1 text-sm text-muted-foreground'>Manage waitlist entries.</p>
         </div>
-        <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+        <button onClick={() => refetch()} disabled={isLoading} className='text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5'>
+          <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
-        </Button>
+        </button>
       </div>
 
       {/* Stats */}
-      <div className='grid grid-cols-4 gap-4 mb-6'>
-        <div className='border rounded-lg p-4'>
-          <p className='text-2xl font-semibold'>{entries.length}</p>
-          <p className='text-sm text-muted-foreground'>Total</p>
+      <div className='mt-8 flex gap-8 text-sm'>
+        <div>
+          <span className='text-2xl font-semibold'>{entries.length}</span>
+          <p className='text-muted-foreground'>Total</p>
         </div>
-        <div className='border rounded-lg p-4'>
-          <p className='text-2xl font-semibold'>{pendingEntries.length}</p>
-          <p className='text-sm text-muted-foreground'>Pending</p>
+        <div>
+          <span className='text-2xl font-semibold'>{pendingEntries.length}</span>
+          <p className='text-muted-foreground'>Pending</p>
         </div>
-        <div className='border rounded-lg p-4'>
-          <p className='text-2xl font-semibold'>{acceptedEntries.length}</p>
-          <p className='text-sm text-muted-foreground'>Accepted</p>
+        <div>
+          <span className='text-2xl font-semibold'>{acceptedEntries.length}</span>
+          <p className='text-muted-foreground'>Accepted</p>
         </div>
-        <div className='border rounded-lg p-4'>
-          <p className='text-2xl font-semibold'>{rejectedEntries.length}</p>
-          <p className='text-sm text-muted-foreground'>Rejected</p>
+        <div>
+          <span className='text-2xl font-semibold'>{rejectedEntries.length}</span>
+          <p className='text-muted-foreground'>Rejected</p>
         </div>
       </div>
 
-      {/* Pending Entries */}
-      <div className='border rounded-lg p-5 mb-6'>
-        <h2 className='font-medium mb-1'>Pending requests</h2>
-        <p className='text-sm text-muted-foreground mb-4'>Review and approve or reject waitlist requests</p>
+      {/* Pending */}
+      {pendingEntries.length > 0 && (
+        <div className='mt-12'>
+          <h2 className='text-sm font-medium'>Pending requests</h2>
+          <p className='mt-1 text-sm text-muted-foreground'>Review and approve or reject waitlist requests.</p>
+
+          <table className='mt-4 w-full'>
+            <thead>
+              <tr className='border-b text-left'>
+                <th className='pb-3 text-sm font-medium'>Email</th>
+                <th className='pb-3 text-sm font-medium'>Requested</th>
+                <th className='pb-3 text-sm font-medium text-right'>Actions</th>
+              </tr>
+            </thead>
+            <tbody className='text-sm'>
+              {pendingEntries.map((entry) => (
+                <tr key={entry.id} className='border-b'>
+                  <td className='py-3'>{entry.email}</td>
+                  <td className='py-3 text-muted-foreground'>{formatDate(entry.requestedAt)}</td>
+                  <td className='py-3 text-right'>
+                    <div className='flex items-center justify-end gap-3'>
+                      <button onClick={() => rejectMutation.mutate(entry.id)} disabled={processingId === entry.id} className='text-muted-foreground hover:text-foreground disabled:opacity-50'>
+                        Reject
+                      </button>
+                      <Button size='sm' onClick={() => approveMutation.mutate(entry.id)} disabled={processingId === entry.id}>
+                        {processingId === entry.id ? 'Processing...' : 'Approve'}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* All entries */}
+      <div className='mt-12'>
+        <h2 className='text-sm font-medium'>All entries</h2>
+        <p className='mt-1 text-sm text-muted-foreground'>Complete list of waitlist entries.</p>
 
         {isLoading ? (
-          <div className='flex items-center justify-center py-8'>
-            <Spinner size={24} color='currentColor' className='text-muted-foreground' />
-          </div>
-        ) : pendingEntries.length === 0 ? (
-          <p className='text-sm text-muted-foreground py-4'>No pending requests</p>
-        ) : (
-          <div className='space-y-2'>
-            {pendingEntries.map((entry) => (
-              <div key={entry.id} className='flex items-center justify-between p-3 border rounded'>
-                <div>
-                  <p className='text-sm font-medium'>{entry.email}</p>
-                  <p className='text-xs text-muted-foreground'>Requested {formatDate(entry.requestedAt)}</p>
-                </div>
-                <div className='flex items-center gap-2'>
-                  <Button size='sm' variant='outline' onClick={() => rejectMutation.mutate(entry.id)} disabled={processingId === entry.id}>
-                    {processingId === entry.id && rejectMutation.isPending ? <Spinner size={14} color='currentColor' /> : <X className='h-4 w-4' />}
-                  </Button>
-                  <Button size='sm' onClick={() => approveMutation.mutate(entry.id)} disabled={processingId === entry.id}>
-                    {processingId === entry.id && approveMutation.isPending ? <Spinner size={14} color='currentColor' /> : <Check className='h-4 w-4' />}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* All Entries */}
-      <div className='border rounded-lg p-5'>
-        <h2 className='font-medium mb-1'>All entries</h2>
-        <p className='text-sm text-muted-foreground mb-4'>Complete list of waitlist entries</p>
-
-        {isLoading ? (
-          <div className='flex items-center justify-center py-8'>
-            <Spinner size={24} color='currentColor' className='text-muted-foreground' />
-          </div>
+          <p className='mt-4 text-sm text-muted-foreground'>Loading...</p>
         ) : entries.length === 0 ? (
-          <p className='text-sm text-muted-foreground py-4'>No waitlist entries yet</p>
+          <p className='mt-4 text-sm text-muted-foreground'>No waitlist entries yet.</p>
         ) : (
-          <div className='space-y-1'>
-            {entries.map((entry) => (
-              <div key={entry.id} className='flex items-center justify-between p-2 rounded hover:bg-muted'>
-                <div className='flex items-center gap-3'>
-                  <span className='text-xs bg-muted px-2 py-0.5 rounded'>{entry.status}</span>
-                  <span className='text-sm'>{entry.email}</span>
-                </div>
-                <span className='text-xs text-muted-foreground'>{formatDate(entry.requestedAt)}</span>
-              </div>
-            ))}
-          </div>
+          <table className='mt-4 w-full'>
+            <thead>
+              <tr className='border-b text-left'>
+                <th className='pb-3 text-sm font-medium'>Email</th>
+                <th className='pb-3 text-sm font-medium'>Status</th>
+                <th className='pb-3 text-sm font-medium text-right'>Date</th>
+              </tr>
+            </thead>
+            <tbody className='text-sm'>
+              {entries.map((entry) => (
+                <tr key={entry.id} className='border-b'>
+                  <td className='py-3'>{entry.email}</td>
+                  <td className='py-3'>
+                    <span className={entry.status === 'accepted' ? 'text-foreground' : entry.status === 'rejected' ? 'text-muted-foreground' : 'text-muted-foreground'}>{entry.status}</span>
+                  </td>
+                  <td className='py-3 text-right text-muted-foreground'>{formatDate(entry.requestedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

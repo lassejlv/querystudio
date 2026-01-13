@@ -1,5 +1,4 @@
 import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router'
-import { User, Shield, CreditCard, Users, Monitor } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_authed/dashboard')({
@@ -7,31 +6,11 @@ export const Route = createFileRoute('/_authed/dashboard')({
 })
 
 const sidebarItems = [
-  {
-    label: 'Account',
-    href: '/dashboard/account',
-    icon: User,
-  },
-  {
-    label: 'Security',
-    href: '/dashboard/security',
-    icon: Shield,
-  },
-  {
-    label: 'Billing',
-    href: '/dashboard/billing',
-    icon: CreditCard,
-  },
-  {
-    label: 'Devices',
-    href: '/dashboard/devices',
-    icon: Monitor,
-  },
-  {
-    label: 'Admin',
-    href: '/dashboard/admin',
-    icon: Users,
-  },
+  { label: 'Account', href: '/dashboard/account' },
+  { label: 'Security', href: '/dashboard/security' },
+  { label: 'Billing', href: '/dashboard/billing' },
+  { label: 'Devices', href: '/dashboard/devices' },
+  { label: 'Admin', href: '/dashboard/admin' },
 ]
 
 function DashboardLayout() {
@@ -39,35 +18,49 @@ function DashboardLayout() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <div className='flex'>
-        {/* Sidebar */}
-        <aside className='w-56 border-r min-h-screen p-4'>
-          <Link to='/' className='flex items-center gap-2 mb-6 px-2'>
+      {/* Header */}
+      <header className='border-b'>
+        <div className='container mx-auto px-4 h-14 flex items-center justify-between'>
+          <Link to='/' className='flex items-center gap-2 hover:opacity-70 transition-opacity'>
             <img src='https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png' alt='QueryStudio' className='h-6 w-6' />
             <span className='font-medium'>QueryStudio</span>
           </Link>
-
-          <nav className='space-y-1'>
-            {sidebarItems.map((item) => {
-              const isActive = location.pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn('flex items-center gap-2 px-2 py-1.5 rounded text-sm', isActive ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground')}
-                >
-                  <item.icon className='h-4 w-4' />
-                  {item.label}
-                </Link>
-              )
-            })}
+          <nav className='flex items-center gap-6'>
+            <Link to='/download' className='text-sm text-muted-foreground hover:text-foreground'>
+              Download
+            </Link>
+            <Link to='/pricing' className='text-sm text-muted-foreground hover:text-foreground'>
+              Pricing
+            </Link>
           </nav>
-        </aside>
+        </div>
+      </header>
 
-        {/* Main content */}
-        <main className='flex-1 p-6'>
-          <Outlet />
-        </main>
+      <div className='container mx-auto px-4 py-8'>
+        <div className='flex gap-12'>
+          {/* Sidebar */}
+          <aside className='w-40 shrink-0'>
+            <nav className='space-y-1'>
+              {sidebarItems.map((item) => {
+                const isActive = location.pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={cn('block py-1.5 text-sm transition-colors', isActive ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground')}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </nav>
+          </aside>
+
+          {/* Main content */}
+          <main className='flex-1 min-w-0'>
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   )

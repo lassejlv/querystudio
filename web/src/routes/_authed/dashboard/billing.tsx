@@ -1,11 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Check, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { getPricing } from '@/server/pricing'
 import { useMutation } from '@tanstack/react-query'
 import { createCheckout, createCustomerPortal } from '@/server/billing'
 import { toast } from 'sonner'
-import Spinner from '@/components/ui/spinner'
 
 export const Route = createFileRoute('/_authed/dashboard/billing')({
   component: BillingPage,
@@ -27,7 +26,7 @@ function BillingPage() {
       return window.location.replace(data.url)
     },
     onError: (err) => {
-      toast.error('Error!', { description: err.message })
+      toast.error('Error', { description: err.message })
     },
   })
 
@@ -44,73 +43,70 @@ function BillingPage() {
   })
 
   return (
-    <div className='max-w-lg'>
-      <h1 className='text-xl font-semibold mb-1'>Billing</h1>
-      <p className='text-sm text-muted-foreground mb-6'>Manage your subscription</p>
+    <div className='max-w-md'>
+      <h1 className='text-lg font-medium'>Billing</h1>
+      <p className='mt-1 text-sm text-muted-foreground'>Manage your subscription and license.</p>
 
-      <div className='border rounded-lg p-5'>
-        <div className='flex items-center justify-between mb-4'>
+      <div className='mt-8'>
+        <div className='flex items-baseline justify-between pb-4 border-b'>
           <div>
-            <h2 className='font-medium'>{user.isPro ? 'Pro' : 'Free'}</h2>
-            <p className='text-sm text-muted-foreground'>{user.isPro ? 'Lifetime access' : 'Basic features'}</p>
+            <span className='font-medium'>{user.isPro ? 'Pro' : 'Free'}</span>
+            <span className='ml-2 text-sm text-muted-foreground'>{user.isPro ? 'Lifetime access' : 'Basic features'}</span>
           </div>
-          <span className='text-xs bg-muted px-2 py-1 rounded'>{user.isPro ? 'Active' : 'Current'}</span>
+          {user.isPro && (
+            <button onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending} className='text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1'>
+              Manage
+              <ExternalLink className='h-3 w-3' />
+            </button>
+          )}
         </div>
 
         {user.isPro ? (
-          <div className='space-y-4'>
-            <ul className='space-y-2 text-sm text-muted-foreground'>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                Unlimited connections
-              </li>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                Priority support
-              </li>
-              <li className='flex items-center gap-2'>
-                <Check className='h-4 w-4 text-foreground' />
-                Lifetime updates
-              </li>
+          <div className='mt-6'>
+            <h2 className='text-sm font-medium'>What's included</h2>
+            <ul className='mt-3 space-y-2 text-sm text-muted-foreground'>
+              <li>Unlimited connections</li>
+              <li>Priority support</li>
+              <li>2 devices</li>
+              <li>Lifetime updates</li>
             </ul>
-            <Button variant='outline' size='sm' onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending}>
-              {portalMutation.isPending ? <Spinner className='h-4 w-4 mr-2' color='#101010' /> : <ExternalLink className='h-4 w-4 mr-2' />}
-              Manage License
-            </Button>
           </div>
         ) : (
-          <div className='space-y-4'>
-            <p className='text-sm text-muted-foreground'>Upgrade to unlock all features.</p>
+          <div className='mt-6'>
+            <h2 className='text-sm font-medium'>Upgrade to Pro</h2>
+            <p className='mt-1 text-sm text-muted-foreground'>One-time payment for unlimited access.</p>
 
-            <div className='border rounded p-4'>
-              <div className='flex items-center justify-between mb-3'>
-                <span className='font-medium'>Pro</span>
-                <div className='text-right'>
-                  <span className='font-semibold'>${pricing.tiers.pro.earlyBirdPrice}</span>
-                  <span className='text-sm text-muted-foreground line-through ml-2'>${pricing.tiers.pro.price}</span>
+            <div className='mt-4 py-4 border-b'>
+              <div className='flex items-baseline justify-between'>
+                <span className='text-sm'>Pro license</span>
+                <div>
+                  <span className='font-medium'>${pricing.tiers.pro.earlyBirdPrice}</span>
+                  <span className='ml-2 text-sm text-muted-foreground line-through'>${pricing.tiers.pro.price}</span>
                 </div>
               </div>
-              <ul className='space-y-1 text-sm text-muted-foreground mb-4'>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-3 w-3' />
-                  Unlimited connections
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-3 w-3' />
-                  Priority support
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-3 w-3' />
-                  Lifetime updates
-                </li>
+              <ul className='mt-3 space-y-1 text-sm text-muted-foreground'>
+                <li>Unlimited connections</li>
+                <li>Priority support</li>
+                <li>2 devices</li>
+                <li>Lifetime updates</li>
               </ul>
-              <Button className='w-full' size='sm' onClick={() => createCheckoutMutation.mutate()} disabled={createCheckoutMutation.isPending}>
-                {createCheckoutMutation.isPending && <Spinner className='h-4 w-4 mr-2' />}
-                Upgrade
-              </Button>
             </div>
+
+            <Button size='sm' className='mt-4' onClick={() => createCheckoutMutation.mutate()} disabled={createCheckoutMutation.isPending}>
+              {createCheckoutMutation.isPending ? 'Loading...' : 'Upgrade'}
+            </Button>
           </div>
         )}
+      </div>
+
+      <div className='mt-16 pt-8 border-t'>
+        <h2 className='text-sm font-medium'>Need help?</h2>
+        <p className='mt-1 text-sm text-muted-foreground'>
+          Contact support at{' '}
+          <a href='mailto:support@querystudio.dev' className='text-foreground hover:underline'>
+            support@querystudio.dev
+          </a>
+        </p>
       </div>
     </div>
   )
