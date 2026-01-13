@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Database,
   Plus,
@@ -11,6 +12,7 @@ import {
   LogOut,
   Lock,
   Download,
+  Info,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -55,8 +57,24 @@ export function CommandPalette({
   const connection = useConnectionStore((s) => s.connection);
   const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
   const [search, setSearch] = useState("");
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const { canSave, maxSaved } = useCanSaveConnection();
   const { checking, checkForUpdates } = useUpdateChecker();
+
+  const fetchAppVersion = useCallback(async () => {
+    try {
+      const version = await invoke<string>("get_app_version");
+      setAppVersion(version);
+    } catch (error) {
+      console.error("Failed to get app version:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && !appVersion) {
+      fetchAppVersion();
+    }
+  }, [open, appVersion, fetchAppVersion]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -235,6 +253,12 @@ export function CommandPalette({
             <Download className="h-4 w-4" />
             <span>{checking ? "Checking..." : "Check for Updates"}</span>
           </CommandItem>
+          {appVersion && (
+            <CommandItem disabled className="opacity-70">
+              <Info className="h-4 w-4" />
+              <span>Version {appVersion}</span>
+            </CommandItem>
+          )}
         </CommandGroup>
       </CommandList>
     </CommandDialog>

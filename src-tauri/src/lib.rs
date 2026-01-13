@@ -163,6 +163,11 @@ async fn get_saved_connection_count(app_handle: AppHandle) -> Result<usize, Stri
     Ok(saved.connections.len())
 }
 
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db_state: DbState = Arc::new(ConnectionManager::new());
@@ -362,6 +367,8 @@ pub fn run() {
             license_is_pro,
             license_clear,
             license_refresh,
+            // App info commands
+            get_app_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
