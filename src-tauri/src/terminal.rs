@@ -44,11 +44,37 @@ impl TerminalManager {
         // Get the default shell
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
 
+        // Use login shell to ensure profile files are sourced (e.g., .zprofile, .zshrc)
+        // This is especially important on macOS where Homebrew sets up PATH in profile files
         let mut cmd = CommandBuilder::new(&shell);
+        cmd.arg("-l"); // Login shell flag
         cmd.cwd(std::env::var("HOME").unwrap_or_else(|_| "/".to_string()));
 
         // Set TERM environment variable for proper terminal emulation
         cmd.env("TERM", "xterm-256color");
+
+        // On macOS, ensure common Homebrew paths are available
+        // This helps when the app is launched from Finder/Dock where PATH is minimal
+        #[cfg(target_os = "macos")]
+        {
+            let current_path = std::env::var("PATH").unwrap_or_default();
+            let homebrew_paths = [
+                "/opt/homebrew/bin",  // Apple Silicon Homebrew
+                "/opt/homebrew/sbin", // Apple Silicon Homebrew
+                "/usr/local/bin",     // Intel Homebrew
+                "/usr/local/sbin",    // Intel Homebrew
+            ];
+
+            let mut path_parts: Vec<&str> = homebrew_paths.to_vec();
+            if !current_path.is_empty() {
+                path_parts.push(&current_path);
+            }
+            // Add standard paths as fallback
+            path_parts.extend(["/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
+
+            let new_path = path_parts.join(":");
+            cmd.env("PATH", new_path);
+        }
 
         let child = pair
             .slave
