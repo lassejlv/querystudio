@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "bun run .output/server/index.mjs",
+    "start": "bun server.ts",
     "gen-auth": "bun --bun better-auth generate --config src/lib/auth.tsx",
     "cf-tunnel": "cloudflared tunnel run lasse-local-tunnel",
     "test": "vitest run"
