@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAIQueryStore } from "@/lib/store";
 import { ThemeSelector } from "@/components/theme-selector";
-import { authClient, signInWithProvider } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({
@@ -127,7 +127,6 @@ function AccountSettings() {
   const handleSignIn = async (provider: "github") => {
     try {
       setIsSigningIn(true);
-      await signInWithProvider(provider);
     } catch (error) {
       console.error("Sign in error:", error);
       toast.error("Failed to start sign in");
