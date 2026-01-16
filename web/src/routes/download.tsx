@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Header } from '@/components/header'
 import { Button } from '@/components/ui/button'
-import { Download, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
+import { useEffect, useState } from 'react'
 
 const donateUrl = 'https://buy.polar.sh/polar_cl_GjR7lflPCEnKKPTB2QE5eNOfWOLqlRNYJAvsF2Tf9t6'
 
@@ -134,15 +135,23 @@ function getArchLabel(arch: FormattedAsset['arch']) {
 
 function DownloadPage() {
   const release = Route.useLoaderData()
+  const [userPlatform, setUserPlatform] = useState<'macos' | 'windows' | 'linux' | null>(null)
+
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase()
+    if (ua.includes('mac')) setUserPlatform('macos')
+    else if (ua.includes('win')) setUserPlatform('windows')
+    else if (ua.includes('linux') || ua.includes('x11')) setUserPlatform('linux')
+  }, [])
 
   if (!release) {
     return (
       <div className='min-h-screen bg-background'>
         <Header />
-        <main className='container mx-auto px-4 py-16 md:py-24'>
-          <h1 className='text-3xl font-semibold tracking-tight'>Download</h1>
+        <main className='container mx-auto px-4 py-16'>
+          <h1 className='text-2xl font-semibold'>Download</h1>
           <p className='mt-2 text-muted-foreground'>No releases available yet.</p>
-          <div className='mt-8'>
+          <div className='mt-6'>
             <Button variant='outline' asChild>
               <Link to='/'>Back to home</Link>
             </Button>
@@ -160,160 +169,104 @@ function DownloadPage() {
     <div className='min-h-screen bg-background'>
       <Header />
 
-      <main className='container mx-auto px-4 py-16 md:py-24'>
-        <div className='max-w-2xl'>
-          <h1 className='text-3xl font-semibold tracking-tight'>Download QueryStudio</h1>
-          <p className='mt-2 text-muted-foreground'>
-            Version {release.version}
-            {release.isPrerelease && ' (pre-release)'}
+      <main className='container mx-auto px-4 py-16 max-w-4xl'>
+        <div className='mb-12'>
+          <h1 className='text-2xl font-semibold'>Download QueryStudio</h1>
+          <p className='mt-1 text-muted-foreground'>
+            Version {release.version} · {new Date(release.publishedAt).toLocaleDateString()}
           </p>
         </div>
 
-        {/* Download cards */}
-        <div className='mt-12 grid gap-6 md:grid-cols-3 max-w-4xl'>
+        <div className='grid md:grid-cols-3 gap-8 mb-10'>
           {/* macOS */}
-          <div className='border rounded-lg p-6'>
-            <h2 className='text-lg font-medium'>macOS</h2>
-            <p className='mt-1 text-sm text-muted-foreground'>.dmg installer</p>
-
+          <section>
+            <div className='flex items-center gap-2 mb-4'>
+              <h2 className='font-medium'>macOS</h2>
+              {userPlatform === 'macos' && <span className='text-xs bg-muted px-2 py-0.5 rounded'>Your platform</span>}
+            </div>
             {macosAssets.length > 0 ? (
-              <div className='mt-6 space-y-3'>
+              <div className='space-y-2'>
                 {macosAssets.map((asset) => (
-                  <Button key={asset.name} asChild className='w-full justify-start'>
-                    <a href={asset.downloadUrl} download>
-                      <Download className='h-4 w-4 mr-2' />
-                      {getArchLabel(asset.arch)}
-                      <span className='ml-auto text-xs opacity-70'>{formatBytes(asset.size)}</span>
-                    </a>
-                  </Button>
+                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-2 px-3 -mx-3 rounded hover:bg-muted transition-colors'>
+                    <span>{getArchLabel(asset.arch)}</span>
+                    <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
+                  </a>
                 ))}
               </div>
             ) : (
-              <p className='mt-6 text-sm text-muted-foreground'>Coming soon</p>
+              <p className='text-sm text-muted-foreground'>Coming soon</p>
             )}
-          </div>
+          </section>
 
           {/* Windows */}
-          <div className='border rounded-lg p-6'>
-            <h2 className='text-lg font-medium'>Windows</h2>
-            <p className='mt-1 text-sm text-muted-foreground'>.msi or .exe installer</p>
-
+          <section>
+            <div className='flex items-center gap-2 mb-4'>
+              <h2 className='font-medium'>Windows</h2>
+              {userPlatform === 'windows' && <span className='text-xs bg-muted px-2 py-0.5 rounded'>Your platform</span>}
+            </div>
             {windowsAssets.length > 0 ? (
-              <div className='mt-6 space-y-3'>
+              <div className='space-y-2'>
                 {windowsAssets.map((asset) => {
-                  const label = asset.name.toLowerCase().includes('.msi') ? 'Installer (.msi)' : 'Installer (.exe)'
+                  const label = asset.name.toLowerCase().includes('.msi') ? '.msi installer' : '.exe installer'
                   return (
-                    <Button key={asset.name} asChild className='w-full justify-start'>
-                      <a href={asset.downloadUrl} download>
-                        <Download className='h-4 w-4 mr-2' />
-                        {label}
-                        <span className='ml-auto text-xs opacity-70'>{formatBytes(asset.size)}</span>
-                      </a>
-                    </Button>
+                    <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-2 px-3 -mx-3 rounded hover:bg-muted transition-colors'>
+                      <span>{label}</span>
+                      <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
+                    </a>
                   )
                 })}
               </div>
             ) : (
-              <p className='mt-6 text-sm text-muted-foreground'>Coming soon</p>
+              <p className='text-sm text-muted-foreground'>Coming soon</p>
             )}
-          </div>
+          </section>
 
           {/* Linux */}
-          <div className='border rounded-lg p-6'>
-            <h2 className='text-lg font-medium'>Linux</h2>
-            <p className='mt-1 text-sm text-muted-foreground'>AppImage, .deb, or .rpm</p>
-
+          <section>
+            <div className='flex items-center gap-2 mb-4'>
+              <h2 className='font-medium'>Linux</h2>
+              {userPlatform === 'linux' && <span className='text-xs bg-muted px-2 py-0.5 rounded'>Your platform</span>}
+            </div>
             {linuxAssets.length > 0 ? (
-              <div className='mt-6 space-y-3'>
+              <div className='space-y-2'>
                 {linuxAssets.map((asset) => {
                   const lower = asset.name.toLowerCase()
-                  let label = 'Download'
+                  let label = asset.name
                   if (lower.includes('.appimage')) label = 'AppImage'
                   else if (lower.includes('.deb')) label = '.deb (Debian/Ubuntu)'
                   else if (lower.includes('.rpm')) label = '.rpm (Fedora/RHEL)'
 
                   return (
-                    <Button key={asset.name} variant='outline' asChild className='w-full justify-start'>
-                      <a href={asset.downloadUrl} download>
-                        <Download className='h-4 w-4 mr-2' />
-                        {label}
-                        <span className='ml-auto text-xs opacity-70'>{formatBytes(asset.size)}</span>
-                      </a>
-                    </Button>
+                    <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-2 px-3 -mx-3 rounded hover:bg-muted transition-colors'>
+                      <span>{label}</span>
+                      <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
+                    </a>
                   )
                 })}
               </div>
             ) : (
-              <p className='mt-6 text-sm text-muted-foreground'>Coming soon</p>
+              <p className='text-sm text-muted-foreground'>Coming soon</p>
             )}
-          </div>
+          </section>
         </div>
 
-        {/* Release notes link */}
-        <div className='mt-8 max-w-4xl'>
-          <a href={release.htmlUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground'>
-            View release notes on GitHub
-            <ExternalLink className='h-3 w-3' />
+        <hr className='my-10' />
+
+        {/* Notes */}
+        <section className='mb-10'>
+          <h2 className='font-medium mb-3'>macOS note</h2>
+          <p className='text-sm text-muted-foreground leading-relaxed'>The app isn't signed yet. Right-click and select "Open" on first launch to bypass Gatekeeper.</p>
+          <a href={donateUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm mt-2 hover:underline'>
+            Support signing <ExternalLink className='h-3 w-3' />
           </a>
-        </div>
+        </section>
 
-        {/* macOS signing note */}
-        <div className='mt-16 max-w-xl'>
-          <h2 className='text-lg font-medium'>macOS not signed</h2>
-          <p className='mt-2 text-sm text-muted-foreground leading-relaxed'>
-            The macOS app isn't signed with an Apple Developer certificate yet. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
-          </p>
-          <p className='mt-3 text-sm text-muted-foreground leading-relaxed'>Signing requires a $99/year developer account. As a student, I'd appreciate any support towards this goal.</p>
-          <div className='mt-4'>
-            <a href={donateUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground'>
-              Support signing
-              <ExternalLink className='h-3 w-3' />
-            </a>
-          </div>
-        </div>
-
-        {/* Installation */}
-        <div className='mt-16 max-w-xl'>
-          <h2 className='text-lg font-medium'>Installation</h2>
-          <dl className='mt-4 space-y-4 text-sm'>
-            <div>
-              <dt className='font-medium'>macOS</dt>
-              <dd className='mt-1 text-muted-foreground'>Open the .dmg and drag QueryStudio to Applications.</dd>
-            </div>
-            <div>
-              <dt className='font-medium'>Windows</dt>
-              <dd className='mt-1 text-muted-foreground'>Run the installer. You may need to allow the app through Windows Defender.</dd>
-            </div>
-            <div>
-              <dt className='font-medium'>Linux</dt>
-              <dd className='mt-1 text-muted-foreground'>Install the .deb or .rpm with your package manager, or make the AppImage executable and run it.</dd>
-            </div>
-          </dl>
-        </div>
+        <section>
+          <a href={release.htmlUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground'>
+            View release notes on GitHub <ExternalLink className='h-3 w-3' />
+          </a>
+        </section>
       </main>
-
-      {/* Footer */}
-      <footer className='border-t'>
-        <div className='container mx-auto px-4 py-8'>
-          <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
-            <div className='flex items-center gap-2'>
-              <img src='https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png' alt='QueryStudio' className='h-5 w-5' />
-              <span className='text-sm text-muted-foreground'>QueryStudio</span>
-            </div>
-            <nav className='flex items-center gap-6'>
-              <Link to='/download' className='text-sm text-muted-foreground hover:text-foreground'>
-                Download
-              </Link>
-              <Link to='/pricing' className='text-sm text-muted-foreground hover:text-foreground'>
-                Pricing
-              </Link>
-              <Link to='/login' className='text-sm text-muted-foreground hover:text-foreground'>
-                Login
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

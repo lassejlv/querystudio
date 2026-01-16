@@ -149,6 +149,7 @@ const app = new Hono()
       return c.json({ error: 'Failed to fetch releases' }, 500)
     }
   })
+  .basePath('/api/downloads')
 
 export const Route = createFileRoute('/api/downloads/$')({
   server: {

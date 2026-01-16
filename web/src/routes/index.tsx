@@ -21,7 +21,7 @@ function LandingPage() {
         {/* Hero */}
         <section className='container mx-auto px-4 pt-16 md:pt-24 pb-12'>
           <div className='max-w-3xl'>
-            <h1 className='text-4xl md:text-5xl font-semibold tracking-tight text-foreground'>A database client that gets out of your way</h1>
+            <h1 className='text-4xl md:text-5xl font-semibold tracking-tight text-foreground'>The database studio you deserve</h1>
             <p className='mt-4 text-lg text-muted-foreground max-w-xl'>Write SQL, explore schemas, and query with natural language. Native desktop app for Mac, Windows, and Linux.</p>
             <div className='mt-8 flex items-center gap-3'>
               <Button asChild size='lg'>
