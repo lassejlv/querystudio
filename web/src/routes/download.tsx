@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ExternalLink } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useEffect, useState } from 'react'
+import { redis } from '@/lib/redis'
 
 const donateUrl = 'https://buy.polar.sh/polar_cl_GjR7lflPCEnKKPTB2QE5eNOfWOLqlRNYJAvsF2Tf9t6'
 
@@ -32,6 +33,11 @@ interface FormattedRelease {
 const getLatestRelease = createServerFn({ method: 'GET' }).handler(async () => {
   const GITHUB_REPO = 'lassejlv/querystudio-releases'
   const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`
+
+  const isCached = await redis.get('latest-release')
+  if (isCached) {
+    return isCached as FormattedRelease
+  }
 
   try {
     const response = await fetch(GITHUB_API_URL, {
@@ -78,7 +84,7 @@ const getLatestRelease = createServerFn({ method: 'GET' }).handler(async () => {
       return 'unknown'
     }
 
-    return {
+    const data = {
       id: release.id,
       version: release.tag_name,
       name: release.name || release.tag_name,
@@ -97,6 +103,10 @@ const getLatestRelease = createServerFn({ method: 'GET' }).handler(async () => {
         arch: detectArch(asset.name),
       })),
     } as FormattedRelease
+
+    await redis.set('latest-release', JSON.stringify(data), { ex: 3600 })
+
+    return data
   } catch (error) {
     console.error('Error fetching latest release:', error)
     return null

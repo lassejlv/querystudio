@@ -1,8 +1,6 @@
 import { Realtime, InferRealtimeEvents } from '@upstash/realtime'
-import { Redis } from '@upstash/redis'
 import { z } from 'zod/v4'
-
-const redis = Redis.fromEnv()
+import { redis } from './redis'
 
 const schema = {
   messages: {
