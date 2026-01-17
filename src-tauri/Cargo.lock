@@ -4443,6 +4443,7 @@ dependencies = [
  "futures-util",
  "itertools 0.13.0",
  "itoa",
+ "native-tls",
  "num-bigint",
  "percent-encoding",
  "pin-project-lite",
@@ -4450,6 +4451,7 @@ dependencies = [
  "sha1_smol",
  "socket2 0.5.10",
  "tokio",
+ "tokio-native-tls",
  "tokio-util",
  "url",
 ]
