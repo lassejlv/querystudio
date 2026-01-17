@@ -12,37 +12,7 @@ import { cn } from "@/lib/utils";
 import { LicenseSettings } from "@/components/license-settings";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-
-function DatabaseIcon({
-  type,
-  className,
-}: {
-  type: DatabaseType;
-  className?: string;
-}) {
-  if (type === "mysql") {
-    return (
-      <span
-        className={cn(
-          "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500/20 text-[10px] font-bold text-orange-500",
-          className,
-        )}
-      >
-        M
-      </span>
-    );
-  }
-  return (
-    <span
-      className={cn(
-        "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-blue-500/20 text-[10px] font-bold text-blue-500",
-        className,
-      )}
-    >
-      P
-    </span>
-  );
-}
+import { DatabaseIcon } from "./sidebar";
 
 interface WelcomeScreenProps {
   onNewConnection: () => void;
@@ -91,11 +61,22 @@ export function WelcomeScreen({
   }, [isLoading, savedConnections, onSelectConnection, autoReconnect]);
 
   const getConnectionDescription = (connection: SavedConnection) => {
-    const dbLabel = connection.db_type === "mysql" ? "MySQL" : "PostgreSQL";
+    const dbLabel =
+      connection.db_type === "mysql"
+        ? "MySQL"
+        : connection.db_type === "redis"
+          ? "Redis"
+          : connection.db_type === "postgres"
+            ? "PostgreSQL"
+            : connection.db_type === "sqlite"
+              ? "SQLite"
+              : "Unkown";
+
     if ("connection_string" in connection.config) {
       return `${dbLabel} · Connection string`;
     }
-    return `${dbLabel} · ${connection.config.host}:${connection.config.port}/${connection.config.database}`;
+
+    return `${dbLabel} · ${connection.config.host}`;
   };
 
   return (

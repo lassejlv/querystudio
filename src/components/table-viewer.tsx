@@ -220,15 +220,19 @@ export function TableViewer() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAddRowOpen(true)}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            Add Row
-          </Button>
-          <div className="mx-2 h-4 w-px bg-secondary" />
+          {connection?.db_type !== "redis" && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddRowOpen(true)}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Add Row
+              </Button>
+              <div className="mx-2 h-4 w-px bg-secondary" />
+            </>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -309,8 +313,13 @@ export function TableViewer() {
                 tableData?.rows.map((row, i) => (
                   <TableRow
                     key={i}
-                    className="border-border hover:bg-card/50 cursor-pointer"
-                    onClick={() => handleEditRow(row)}
+                    className={cn(
+                      "border-border hover:bg-card/50",
+                      connection?.db_type !== "redis" && "cursor-pointer",
+                    )}
+                    onClick={() =>
+                      connection?.db_type !== "redis" && handleEditRow(row)
+                    }
                   >
                     {row.map((cell, j) => {
                       const isNull = cell === null;
@@ -337,26 +346,30 @@ export function TableViewer() {
                               <Copy className="h-4 w-4" />
                               Copy cell content
                             </ContextMenuItem>
-                            <ContextMenuSeparator />
-                            <ContextMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditRow(row);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              Edit row
-                            </ContextMenuItem>
-                            <ContextMenuItem
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteRowClick(row);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete row
-                            </ContextMenuItem>
+                            {connection?.db_type !== "redis" && (
+                              <>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditRow(row);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  Edit row
+                                </ContextMenuItem>
+                                <ContextMenuItem
+                                  variant="destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteRowClick(row);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete row
+                                </ContextMenuItem>
+                              </>
+                            )}
                           </ContextMenuContent>
                         </ContextMenu>
                       );

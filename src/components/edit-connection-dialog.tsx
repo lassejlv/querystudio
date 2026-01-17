@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Database } from "lucide-react";
+import { Loader2, Database, FolderOpen } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,8 +38,8 @@ const DATABASE_CONFIGS: Record<
 > = {
   postgres: { port: "5432", database: "postgres", username: "postgres" },
   mysql: { port: "3306", database: "mysql", username: "root" },
-  libsql: { port: "443", database: "default", username: "" },
   sqlite: { port: "0", database: "", username: "" },
+  redis: { port: "6379", database: "0", username: "" },
 };
 
 export function EditConnectionDialog({
@@ -69,7 +69,8 @@ export function EditConnectionDialog({
     if (connection) {
       setDbType(connection.db_type || "postgres");
       if ("connection_string" in connection.config) {
-        setMode("string");
+        // SQLite uses file mode, others use string mode
+        setMode(connection.db_type === "sqlite" ? "file" : "string");
         const defaults = DATABASE_CONFIGS[connection.db_type || "postgres"];
         setFormData({
           name: connection.name,
@@ -116,9 +117,11 @@ export function EditConnectionDialog({
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.host.trim()) newErrors.host = "Host is required";
-    if (!formData.database.trim()) newErrors.database = "Database is required";
-    // Username is optional for libSQL/Turso
-    if (dbType !== "libsql" && !formData.username.trim()) {
+    // Database is optional for Redis (defaults to 0)
+    if (dbType !== "redis" && !formData.database.trim())
+      newErrors.database = "Database is required";
+    // Username is optional for Redis
+    if (dbType !== "redis" && !formData.username.trim()) {
       newErrors.username = "Username is required";
     }
     const port = parseInt(formData.port, 10);
@@ -232,11 +235,11 @@ export function EditConnectionDialog({
     if (dbType === "mysql") {
       return "mysql://user:password@localhost:3306/database";
     }
-    if (dbType === "libsql") {
-      return "libsql://your-database.turso.io?authToken=your-token";
-    }
     if (dbType === "sqlite") {
       return "C:\\path\\to\\database.db";
+    }
+    if (dbType === "redis") {
+      return "redis://[:password@]localhost:6379[/database]";
     }
     return "postgresql://user:password@localhost:5432/database";
   };
@@ -245,19 +248,19 @@ export function EditConnectionDialog({
     if (dbType === "mysql") {
       return "Supports MySQL connection URI format";
     }
-    if (dbType === "libsql") {
-      return "Turso URL with auth token: libsql://db.turso.io?authToken=token";
-    }
     if (dbType === "sqlite") {
       return "Full path to your SQLite database file";
+    }
+    if (dbType === "redis") {
+      return "Redis connection URI format";
     }
     return "Supports PostgreSQL connection URI or key-value format";
   };
 
   const getDbTypeLabel = () => {
     if (dbType === "mysql") return "MySQL";
-    if (dbType === "libsql") return "libSQL/Turso";
     if (dbType === "sqlite") return "SQLite";
+    if (dbType === "redis") return "Redis";
     return "PostgreSQL";
   };
 
@@ -306,16 +309,16 @@ export function EditConnectionDialog({
                     MySQL
                   </div>
                 </SelectItem>
-                <SelectItem value="libsql">
-                  <div className="flex items-center gap-2">
-                    <span className="text-teal-500 font-semibold">T</span>
-                    libSQL / Turso
-                  </div>
-                </SelectItem>
                 <SelectItem value="sqlite">
                   <div className="flex items-center gap-2">
                     <span className="text-cyan-500 font-semibold">S</span>
                     SQLite
+                  </div>
+                </SelectItem>
+                <SelectItem value="redis">
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500 font-semibold">R</span>
+                    Redis
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -325,25 +328,49 @@ export function EditConnectionDialog({
           {dbType === "sqlite" ? (
             <div className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-connectionString">
-                  Database File Path
-                </Label>
-                <Input
-                  id="edit-connectionString"
-                  placeholder={getConnectionStringPlaceholder()}
-                  value={formData.connectionString}
-                  onChange={(e) =>
-                    updateField("connectionString", e.target.value)
-                  }
-                  className="font-mono text-sm"
-                />
+                <Label htmlFor="edit-connectionString">Database File</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-connectionString"
+                    placeholder="Select a SQLite database file..."
+                    value={formData.connectionString}
+                    onChange={(e) =>
+                      updateField("connectionString", e.target.value)
+                    }
+                    className="font-mono text-sm flex-1"
+                  />
+                  <input
+                    type="file"
+                    accept=".db,.sqlite,.sqlite3,.db3"
+                    className="hidden"
+                    id="edit-sqlite-file-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const path = (file as any).path || file.name;
+                        updateField("connectionString", path);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      document.getElementById("edit-sqlite-file-input")?.click()
+                    }
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                </div>
                 {errors.connectionString && (
                   <p className="text-xs text-red-500">
                     {errors.connectionString}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  {getConnectionStringHelp()}
+                  Browse for a .db, .sqlite, or .sqlite3 file
                 </p>
               </div>
             </div>
@@ -360,14 +387,10 @@ export function EditConnectionDialog({
               <TabsContent value="params" className="mt-4 space-y-4">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2 space-y-2">
-                    <Label htmlFor="edit-host">
-                      {dbType === "libsql" ? "Turso Host" : "Host"}
-                    </Label>
+                    <Label htmlFor="edit-host">Host</Label>
                     <Input
                       id="edit-host"
-                      placeholder={
-                        dbType === "libsql" ? "turso.io" : "localhost"
-                      }
+                      placeholder="localhost"
                       value={formData.host}
                       onChange={(e) => updateField("host", e.target.value)}
                     />
@@ -391,9 +414,7 @@ export function EditConnectionDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-database">
-                    {dbType === "libsql" ? "Database Name" : "Database"}
-                  </Label>
+                  <Label htmlFor="edit-database">Database</Label>
                   <Input
                     id="edit-database"
                     placeholder={DATABASE_CONFIGS[dbType].database}
@@ -405,58 +426,33 @@ export function EditConnectionDialog({
                   )}
                 </div>
 
-                {dbType !== "libsql" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-username">Username</Label>
-                      <Input
-                        id="edit-username"
-                        placeholder={DATABASE_CONFIGS[dbType].username}
-                        value={formData.username}
-                        onChange={(e) =>
-                          updateField("username", e.target.value)
-                        }
-                      />
-                      {errors.username && (
-                        <p className="text-xs text-red-500">
-                          {errors.username}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-password">Password</Label>
-                      <Input
-                        id="edit-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={(e) =>
-                          updateField("password", e.target.value)
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Required for testing
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {dbType === "libsql" && (
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-password">Auth Token (optional)</Label>
+                    <Label htmlFor="edit-username">Username</Label>
+                    <Input
+                      id="edit-username"
+                      placeholder={DATABASE_CONFIGS[dbType].username}
+                      value={formData.username}
+                      onChange={(e) => updateField("username", e.target.value)}
+                    />
+                    {errors.username && (
+                      <p className="text-xs text-red-500">{errors.username}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-password">Password</Label>
                     <Input
                       id="edit-password"
                       type="password"
-                      placeholder="Your Turso auth token"
+                      placeholder="••••••••"
                       value={formData.password}
                       onChange={(e) => updateField("password", e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Optional for local instances. Get your token from the
-                      Turso dashboard or CLI for cloud databases.
+                      Required for testing
                     </p>
                   </div>
-                )}
+                </div>
               </TabsContent>
 
               <TabsContent value="string" className="mt-4 space-y-4">

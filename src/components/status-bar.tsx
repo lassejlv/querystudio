@@ -34,7 +34,9 @@ interface StatusBarState {
   setLastQueryTime: (time: number | null) => void;
   setLastRowCount: (count: number | null) => void;
   setLastQueryStatus: (status: "success" | "error" | null) => void;
-  setCursorPosition: (position: { line: number; column: number } | null) => void;
+  setCursorPosition: (
+    position: { line: number; column: number } | null,
+  ) => void;
   setQueryResult: (time: number, rowCount: number, success: boolean) => void;
 }
 
@@ -68,30 +70,45 @@ function DatabaseTypeIcon({
       <span
         className={cn(
           "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500/20 text-[10px] font-bold text-orange-500",
-          className
+          className,
         )}
       >
         M
       </span>
     );
   }
-  if (type === "libsql") {
+
+  if (type === "sqlite") {
     return (
       <span
         className={cn(
           "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-cyan-500/20 text-[10px] font-bold text-cyan-500",
-          className
+          className,
         )}
       >
-        L
+        S
       </span>
     );
   }
+
+  if (type === "redis") {
+    return (
+      <span
+        className={cn(
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-red-500/20 text-[10px] font-bold text-red-500",
+          className,
+        )}
+      >
+        R
+      </span>
+    );
+  }
+
   return (
     <span
       className={cn(
         "flex h-4 w-4 shrink-0 items-center justify-center rounded bg-blue-500/20 text-[10px] font-bold text-blue-500",
-        className
+        className,
       )}
     >
       P
@@ -247,7 +264,7 @@ export function StatusBar() {
               className={cn(
                 lastQueryStatus === "success"
                   ? "text-green-500"
-                  : "text-red-500"
+                  : "text-red-500",
               )}
             >
               {lastQueryStatus === "success" ? "Success" : "Error"}
@@ -303,7 +320,7 @@ export function StatusBar() {
                     onClick={handleTerminalClick}
                     className={cn(
                       "flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-accent hover:text-accent-foreground",
-                      terminals.length > 0 && "text-primary"
+                      terminals.length > 0 && "text-primary",
                     )}
                   >
                     <TerminalSquare className="h-3 w-3" />

@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Loader2, CheckCircle2, AlertTriangle, Key } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Key,
+  FolderOpen,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +68,16 @@ const DATABASE_OPTIONS: DatabaseOption[] = [
       host: "",
     },
   },
+  {
+    id: "redis",
+    name: "Redis",
+    defaults: {
+      port: "6379",
+      database: "0",
+      username: "",
+      host: "localhost",
+    },
+  },
 ];
 
 type ConnectionMode = "params" | "string" | "file";
@@ -117,8 +133,11 @@ export function ConnectionDialog({
 
     if (mode === "params") {
       if (!formData.host.trim()) newErrors.host = "Required";
-      if (!formData.database.trim()) newErrors.database = "Required";
-      if (dbType !== "libsql" && !formData.username.trim()) {
+      // Database is optional for Redis (defaults to 0)
+      if (dbType !== "redis" && !formData.database.trim())
+        newErrors.database = "Required";
+      // Username is optional for Redis
+      if (dbType !== "redis" && !formData.username.trim()) {
         newErrors.username = "Required";
       }
       const port = parseInt(formData.port, 10);
@@ -232,11 +251,11 @@ export function ConnectionDialog({
     if (dbType === "mysql") {
       return "mysql://user:password@localhost:3306/database";
     }
-    if (dbType === "libsql") {
-      return "libsql://your-database.turso.io?authToken=your-token";
-    }
     if (dbType === "sqlite") {
       return "C:\\path\\to\\database.db";
+    }
+    if (dbType === "redis") {
+      return "redis://[:password@]localhost:6379[/database]";
     }
     return "postgresql://user:password@localhost:5432/database";
   };
@@ -363,7 +382,9 @@ export function ConnectionDialog({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="database">Database</Label>
+                  <Label htmlFor="database">
+                    {dbType === "redis" ? "Database Index" : "Database"}
+                  </Label>
                   <Input
                     id="database"
                     placeholder={selectedDb.defaults.database}
@@ -372,9 +393,29 @@ export function ConnectionDialog({
                     className={cn(errors.database && "border-destructive")}
                     disabled={!canSave}
                   />
+                  {dbType === "redis" && (
+                    <p className="text-xs text-muted-foreground">
+                      Redis database index (0-15, default: 0)
+                    </p>
+                  )}
                 </div>
 
-                {dbType !== "libsql" && dbType !== "sqlite" ? (
+                {dbType === "redis" ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password">
+                      Password{" "}
+                      <span className="text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => updateField("password", e.target.value)}
+                      disabled={!canSave}
+                    />
+                  </div>
+                ) : dbType !== "sqlite" ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="username">Username</Label>
@@ -403,41 +444,56 @@ export function ConnectionDialog({
                       />
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="password">
-                      Auth Token{" "}
-                      <span className="text-muted-foreground">(optional)</span>
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Your Turso auth token"
-                      value={formData.password}
-                      onChange={(e) => updateField("password", e.target.value)}
-                      disabled={!canSave}
-                    />
-                  </div>
-                )}
+                ) : null}
               </div>
             ) : mode === "file" ? (
               <div className="space-y-1.5">
-                <Label htmlFor="connectionString">Database File Path</Label>
-                <Input
-                  id="connectionString"
-                  placeholder={getConnectionStringPlaceholder()}
-                  value={formData.connectionString}
-                  onChange={(e) =>
-                    updateField("connectionString", e.target.value)
-                  }
-                  className={cn(
-                    "font-mono text-sm",
-                    errors.connectionString && "border-destructive",
-                  )}
-                  disabled={!canSave}
-                />
+                <Label htmlFor="connectionString">Database File</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="connectionString"
+                    placeholder="Select a SQLite database file..."
+                    value={formData.connectionString}
+                    onChange={(e) =>
+                      updateField("connectionString", e.target.value)
+                    }
+                    className={cn(
+                      "font-mono text-sm flex-1",
+                      errors.connectionString && "border-destructive",
+                    )}
+                    disabled={!canSave}
+                  />
+                  <input
+                    type="file"
+                    accept=".db,.sqlite,.sqlite3,.db3"
+                    className="hidden"
+                    id="sqlite-file-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Use webkitRelativePath or construct path from file
+                        // For Tauri, we get the full path via the file object
+                        const path = (file as any).path || file.name;
+                        updateField("connectionString", path);
+                      }
+                      e.target.value = "";
+                    }}
+                    disabled={!canSave}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      document.getElementById("sqlite-file-input")?.click()
+                    }
+                    disabled={!canSave}
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Enter the full path to your SQLite database file
+                  Browse for a .db, .sqlite, or .sqlite3 file
                 </p>
               </div>
             ) : (

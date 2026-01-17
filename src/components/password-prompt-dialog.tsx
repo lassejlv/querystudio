@@ -32,10 +32,13 @@ export function PasswordPromptDialog({
   const connectingRef = useRef(false);
   const { canConnect, maxConnections } = useCanConnect();
 
-  // Auto-connect for connection strings (no password needed)
+  // Auto-connect for connection strings, SQLite, or Redis (password optional)
   useEffect(() => {
     if (!connection || !open) return;
-    if (!("connection_string" in connection.config)) return;
+    const isConnectionString = "connection_string" in connection.config;
+    const isSqlite = connection.db_type === "sqlite";
+    const isRedis = connection.db_type === "redis";
+    if (!isConnectionString && !isSqlite && !isRedis) return;
     if (connectingRef.current) return;
     if (!canConnect) {
       toast.error(
@@ -47,10 +50,17 @@ export function PasswordPromptDialog({
 
     connectingRef.current = true;
 
-    const config = {
-      db_type: connection.db_type || "postgres",
-      connection_string: connection.config.connection_string,
-    };
+    const config =
+      "connection_string" in connection.config
+        ? {
+            db_type: connection.db_type || "postgres",
+            connection_string: connection.config.connection_string,
+          }
+        : {
+            db_type: connection.db_type || "postgres",
+            ...connection.config,
+            password: "",
+          };
 
     connect
       .mutateAsync({
@@ -113,10 +123,12 @@ export function PasswordPromptDialog({
     onOpenChange(newOpen);
   };
 
-  // Don't show dialog for connection strings (auto-connect via useEffect)
+  // Don't show dialog for connection strings, SQLite, or Redis (auto-connect via useEffect)
   const isConnectionString =
     connection && "connection_string" in connection.config;
-  if (isConnectionString) {
+  const isSqlite = connection?.db_type === "sqlite";
+  const isRedis = connection?.db_type === "redis";
+  if (isConnectionString || isSqlite || isRedis) {
     return null;
   }
 

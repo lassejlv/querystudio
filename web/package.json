@@ -1,15 +1,6 @@
 {
   "name": "web",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "start": "bun run .output/server/index.mjs",
-    "gen-auth": "bun --bun better-auth generate --config src/lib/auth.tsx",
-    "cf-tunnel": "cloudflared tunnel run lasse-local-tunnel",
-    "test": "vitest run"
-  },
+  "version": "0.0.0",
   "dependencies": {
     "@daveyplate/better-auth-tauri": "^0.1.6",
     "@hono/zod-validator": "^0.7.6",
@@ -53,6 +44,7 @@
     "@tanstack/react-start": "^1.149.1",
     "@tanstack/router-plugin": "^1.149.0",
     "@types/ms": "^2.1.0",
+    "@upstash/ratelimit": "^2.0.8",
     "@upstash/realtime": "^1.0.0",
     "@upstash/redis": "^1.36.1",
     "better-auth": "^1.4.11",
@@ -87,7 +79,7 @@
     "zero-id": "^0.0.7",
     "zod": "^4.3.5"
   },
-  "devDependencies": {
+  "dev_dependencies": {
     "@better-auth/cli": "^1.4.11",
     "@tanstack/devtools-vite": "^0.4.1",
     "@testing-library/dom": "^10.4.1",
@@ -103,7 +95,16 @@
     "vitest": "^4.0.16",
     "web-vitals": "^5.1.0"
   },
-  "overrides": {
-    "vite": "npm:rolldown-vite@latest"
-  }
+  "peerDependencies": {},
+  "optionalDependencies": {},
+  "scripts": {
+    "cf-tunnel": "cloudflared tunnel run lasse-local-tunnel",
+    "start": "bun run .output/server/index.mjs",
+    "test": "vitest run",
+    "build": "vite build",
+    "gen-auth": "bun --bun better-auth generate --config src/lib/auth.tsx",
+    "dev": "vite dev"
+  },
+  "bin": null,
+  "workspaces": []
 }

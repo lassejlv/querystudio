@@ -257,13 +257,13 @@ function App() {
                       value="data"
                       className="h-7 rounded-md border-0 bg-transparent px-3 text-sm text-muted-foreground shadow-none data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
                     >
-                      Data
+                      {connection?.db_type === "redis" ? "Keys" : "Data"}
                     </TabsTrigger>
                     <TabsTrigger
                       value="query"
                       className="h-7 rounded-md border-0 bg-transparent px-3 text-sm text-muted-foreground shadow-none data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
                     >
-                      Query
+                      {connection?.db_type === "redis" ? "Console" : "Query"}
                     </TabsTrigger>
                   </TabsList>
                 </div>

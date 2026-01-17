@@ -1,6 +1,6 @@
-pub mod libsql;
 pub mod mysql;
 pub mod postgres;
+pub mod redis;
 pub mod sqlite;
 
 use async_trait::async_trait;
@@ -13,8 +13,8 @@ pub enum DatabaseType {
     #[default]
     Postgres,
     Mysql,
-    Libsql,
     Sqlite,
+    Redis,
 }
 
 impl fmt::Display for DatabaseType {
@@ -22,8 +22,8 @@ impl fmt::Display for DatabaseType {
         match self {
             DatabaseType::Postgres => write!(f, "PostgreSQL"),
             DatabaseType::Mysql => write!(f, "MySQL"),
-            DatabaseType::Libsql => write!(f, "libSQL/Turso"),
             DatabaseType::Sqlite => write!(f, "SQLite"),
+            DatabaseType::Redis => write!(f, "Redis"),
         }
     }
 }
@@ -147,39 +147,30 @@ impl ConnectionParams {
         }
     }
 
-    pub fn to_libsql_url(&self) -> (String, Option<String>) {
+    pub fn to_redis_url(&self) -> String {
         match self {
-            ConnectionParams::ConnectionString { connection_string } => {
-                if let Some(idx) = connection_string.find("?authToken=") {
-                    let url = connection_string[..idx].to_string();
-                    let token = connection_string[idx + 11..].to_string();
-                    (url, Some(token))
-                } else if let Some(idx) = connection_string.find('#') {
-                    let url = connection_string[..idx].to_string();
-                    let token = connection_string[idx + 1..].to_string();
-                    (url, Some(token))
-                } else {
-                    (connection_string.clone(), None)
-                }
-            }
+            ConnectionParams::ConnectionString { connection_string } => connection_string.clone(),
             ConnectionParams::Parameters {
                 host,
                 port,
                 database,
-                username: _,
+                username,
                 password,
             } => {
-                let url = if *port == 443 || *port == 0 {
-                    format!("libsql://{}.{}", database, host)
+                // Redis URL format: redis://[username:password@]host[:port][/database]
+                let auth = if !username.is_empty() && !password.is_empty() {
+                    format!("{}:{}@", username, password)
+                } else if !password.is_empty() {
+                    format!(":{}@", password)
                 } else {
-                    format!("libsql://{}.{}:{}", database, host, port)
+                    String::new()
                 };
-                let auth_token = if password.is_empty() {
-                    None
+                let db = if !database.is_empty() && database != "0" {
+                    format!("/{}", database)
                 } else {
-                    Some(password.clone())
+                    String::new()
                 };
-                (url, auth_token)
+                format!("redis://{}{}:{}{}", auth, host, port, db)
             }
         }
     }
@@ -219,12 +210,12 @@ pub async fn create_provider(
             let provider = mysql::MysqlProvider::connect(params).await?;
             Ok(Box::new(provider))
         }
-        DatabaseType::Libsql => {
-            let provider = libsql::LibsqlProvider::connect(params).await?;
-            Ok(Box::new(provider))
-        }
         DatabaseType::Sqlite => {
             let provider = sqlite::SqliteProvider::connect(params).await?;
+            Ok(Box::new(provider))
+        }
+        DatabaseType::Redis => {
+            let provider = redis::RedisProvider::connect(params).await?;
             Ok(Box::new(provider))
         }
     }

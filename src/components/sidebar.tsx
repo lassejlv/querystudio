@@ -22,7 +22,7 @@ import type { DatabaseType } from "@/lib/types";
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 400;
 
-function DatabaseIcon({
+export function DatabaseIcon({
   type,
   className,
 }: {
@@ -41,7 +41,8 @@ function DatabaseIcon({
       </span>
     );
   }
-  if (type === "libsql") {
+
+  if (type === "sqlite") {
     return (
       <span
         className={cn(
@@ -49,10 +50,24 @@ function DatabaseIcon({
           className,
         )}
       >
-        L
+        S
       </span>
     );
   }
+
+  if (type === "redis") {
+    return (
+      <span
+        className={cn(
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-red-500/20 text-xs font-bold text-red-500",
+          className,
+        )}
+      >
+        R
+      </span>
+    );
+  }
+
   return (
     <span
       className={cn(
@@ -252,9 +267,11 @@ export function Sidebar() {
               <span className="text-[10px] text-muted-foreground">
                 {connection.db_type === "mysql"
                   ? "MySQL"
-                  : connection.db_type === "libsql"
-                    ? "LibSQL"
-                    : "PostgreSQL"}
+                  : connection.db_type === "sqlite"
+                    ? "SQLite"
+                    : connection.db_type === "redis"
+                      ? "Redis"
+                      : "PostgreSQL"}
               </span>
             </div>
           </div>

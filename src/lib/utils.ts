@@ -8,9 +8,8 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Quote an identifier (table name, column name, schema) based on database type.
- * - PostgreSQL uses double quotes: "identifier"
+ * - PostgreSQL/SQLite uses double quotes: "identifier"
  * - MySQL uses backticks: `identifier`
- * - libSQL uses double quotes (SQLite-compatible): "identifier"
  */
 export function quoteIdentifier(
   identifier: string,
@@ -19,7 +18,7 @@ export function quoteIdentifier(
   if (dbType === "mysql") {
     return `\`${identifier}\``;
   }
-  // PostgreSQL and libSQL use double quotes
+  // PostgreSQL and SQLite use double quotes
   return `"${identifier}"`;
 }
 

@@ -48,6 +48,7 @@ export function QueryEditor() {
   const connection = useConnectionStore((s) => s.connection);
   const connectionId = connection?.id ?? null;
   const tables = useConnectionStore((s) => s.tables);
+  const isRedis = connection?.db_type === "redis";
 
   // Fetch columns for all tables (for autocomplete)
   const { data: allColumns } = useAllTableColumns(connectionId, tables);
@@ -202,8 +203,17 @@ export function QueryEditor() {
   }, [tables]);
 
   // Split query into individual statements
-  const splitQueries = (sql: string): string[] => {
-    return sql
+  const splitQueries = (input: string): string[] => {
+    if (isRedis) {
+      // For Redis, split by newlines (each line is a command)
+      return input
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(
+          (s) => s.length > 0 && !s.startsWith("#") && !s.startsWith("//"),
+        );
+    }
+    return input
       .split(";")
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
@@ -219,7 +229,11 @@ export function QueryEditor() {
     const statements = splitQueries(query);
 
     if (statements.length === 0) {
-      setError("No valid SQL statements found");
+      setError(
+        isRedis
+          ? "No valid Redis commands found"
+          : "No valid SQL statements found",
+      );
       return;
     }
 
@@ -307,73 +321,183 @@ export function QueryEditor() {
       completionProviderRef.current.dispose();
     }
 
-    // Configure SQL language with table/column completions
+    // Configure language completions based on database type
+    const language = isRedis ? "plaintext" : "sql";
     completionProviderRef.current =
-      monaco.languages.registerCompletionItemProvider("sql", {
+      monaco.languages.registerCompletionItemProvider(language, {
         provideCompletionItems: () => {
-          const keywords = [
-            "SELECT",
-            "FROM",
-            "WHERE",
-            "AND",
-            "OR",
-            "INSERT",
-            "INTO",
-            "VALUES",
-            "UPDATE",
-            "SET",
-            "DELETE",
-            "CREATE",
-            "TABLE",
-            "DROP",
-            "ALTER",
-            "JOIN",
-            "LEFT",
-            "RIGHT",
-            "INNER",
-            "OUTER",
-            "ON",
-            "GROUP",
-            "BY",
-            "ORDER",
-            "ASC",
-            "DESC",
-            "LIMIT",
-            "OFFSET",
-            "HAVING",
-            "DISTINCT",
-            "COUNT",
-            "SUM",
-            "AVG",
-            "MIN",
-            "MAX",
-            "AS",
-            "NULL",
-            "NOT",
-            "IN",
-            "LIKE",
-            "BETWEEN",
-            "EXISTS",
-            "CASE",
-            "WHEN",
-            "THEN",
-            "ELSE",
-            "END",
-            "PRIMARY",
-            "KEY",
-            "FOREIGN",
-            "REFERENCES",
-            "UNIQUE",
-            "INDEX",
-            "BEGIN",
-            "COMMIT",
-            "ROLLBACK",
-            "TRANSACTION",
-          ].map((keyword) => ({
-            label: keyword,
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            insertText: keyword,
-          }));
+          const keywords = isRedis
+            ? [
+                // String commands
+                "GET",
+                "SET",
+                "SETNX",
+                "SETEX",
+                "PSETEX",
+                "MGET",
+                "MSET",
+                "INCR",
+                "INCRBY",
+                "INCRBYFLOAT",
+                "DECR",
+                "DECRBY",
+                "APPEND",
+                "STRLEN",
+                "GETRANGE",
+                "SETRANGE",
+                // Key commands
+                "DEL",
+                "EXISTS",
+                "EXPIRE",
+                "EXPIREAT",
+                "PEXPIRE",
+                "TTL",
+                "PTTL",
+                "PERSIST",
+                "KEYS",
+                "SCAN",
+                "TYPE",
+                "RENAME",
+                "RENAMENX",
+                "RANDOMKEY",
+                "DBSIZE",
+                "FLUSHDB",
+                "FLUSHALL",
+                // Hash commands
+                "HGET",
+                "HSET",
+                "HSETNX",
+                "HMGET",
+                "HMSET",
+                "HGETALL",
+                "HDEL",
+                "HEXISTS",
+                "HKEYS",
+                "HVALS",
+                "HLEN",
+                "HINCRBY",
+                "HINCRBYFLOAT",
+                "HSCAN",
+                // List commands
+                "LPUSH",
+                "RPUSH",
+                "LPOP",
+                "RPOP",
+                "LRANGE",
+                "LLEN",
+                "LINDEX",
+                "LSET",
+                "LINSERT",
+                "LREM",
+                "LTRIM",
+                // Set commands
+                "SADD",
+                "SREM",
+                "SMEMBERS",
+                "SISMEMBER",
+                "SCARD",
+                "SPOP",
+                "SRANDMEMBER",
+                "SDIFF",
+                "SINTER",
+                "SUNION",
+                "SSCAN",
+                // Sorted Set commands
+                "ZADD",
+                "ZREM",
+                "ZRANGE",
+                "ZREVRANGE",
+                "ZRANGEBYSCORE",
+                "ZREVRANGEBYSCORE",
+                "ZRANK",
+                "ZREVRANK",
+                "ZSCORE",
+                "ZCARD",
+                "ZCOUNT",
+                "ZINCRBY",
+                "ZSCAN",
+                // Stream commands
+                "XADD",
+                "XREAD",
+                "XRANGE",
+                "XREVRANGE",
+                "XLEN",
+                "XINFO",
+                // Server commands
+                "PING",
+                "ECHO",
+                "INFO",
+                "CONFIG",
+                "CLIENT",
+                "SELECT",
+              ].map((keyword) => ({
+                label: keyword,
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: keyword,
+              }))
+            : [
+                "SELECT",
+                "FROM",
+                "WHERE",
+                "AND",
+                "OR",
+                "INSERT",
+                "INTO",
+                "VALUES",
+                "UPDATE",
+                "SET",
+                "DELETE",
+                "CREATE",
+                "TABLE",
+                "DROP",
+                "ALTER",
+                "JOIN",
+                "LEFT",
+                "RIGHT",
+                "INNER",
+                "OUTER",
+                "ON",
+                "GROUP",
+                "BY",
+                "ORDER",
+                "ASC",
+                "DESC",
+                "LIMIT",
+                "OFFSET",
+                "HAVING",
+                "DISTINCT",
+                "COUNT",
+                "SUM",
+                "AVG",
+                "MIN",
+                "MAX",
+                "AS",
+                "NULL",
+                "NOT",
+                "IN",
+                "LIKE",
+                "BETWEEN",
+                "EXISTS",
+                "CASE",
+                "WHEN",
+                "THEN",
+                "ELSE",
+                "END",
+                "PRIMARY",
+                "KEY",
+                "FOREIGN",
+                "REFERENCES",
+                "UNIQUE",
+                "INDEX",
+                "BEGIN",
+                "COMMIT",
+                "ROLLBACK",
+                "TRANSACTION",
+              ].map((keyword) => ({
+                label: keyword,
+                kind: monaco.languages.CompletionItemKind.Keyword,
+                insertText: keyword,
+              }));
 
           // Add table names from connection
           const tableItems = tables.map((table) => ({
@@ -467,7 +591,8 @@ export function QueryEditor() {
         <div style={{ height: editorHeight }} className="w-full">
           <Editor
             height="100%"
-            defaultLanguage="sql"
+            defaultLanguage={isRedis ? "plaintext" : "sql"}
+            language={isRedis ? "plaintext" : "sql"}
             value={query}
             onChange={(value) => setQuery(value || "")}
             onMount={handleEditorMount}
@@ -506,7 +631,9 @@ export function QueryEditor() {
         </div>
         <div className="flex items-center justify-between px-4 py-2 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            Press Cmd+Enter (Ctrl+Enter) to execute
+            {isRedis
+              ? "Enter Redis commands (one per line). Press Cmd+Enter to execute."
+              : "Press Cmd+Enter (Ctrl+Enter) to execute"}
           </p>
           <div className="flex items-center gap-2">
             <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
