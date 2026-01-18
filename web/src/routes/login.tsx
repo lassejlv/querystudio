@@ -8,6 +8,9 @@ import { authClient } from '@/lib/auth-client'
 import { toast } from 'sonner'
 import Spinner from '@/components/ui/spinner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import TurnstileModule from 'react-turnstile'
+
+const Turnstile = (TurnstileModule as any).default || TurnstileModule
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -18,6 +21,7 @@ function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const loginGithub = () => {
     return authClient.signIn.social({ provider: 'github' })
@@ -25,12 +29,23 @@ function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!captchaToken) {
+      toast.error('Please complete the captcha')
+      return
+    }
+
     setIsLoading(true)
 
     try {
       const { error } = await authClient.signIn.email({
         email,
         password,
+        fetchOptions: {
+          headers: {
+            'x-captcha-response': captchaToken,
+          },
+        },
       })
 
       if (error) {
@@ -66,7 +81,15 @@ function LoginPage() {
                 <Label htmlFor='password'>Password</Label>
                 <Input id='password' type='password' placeholder='••••••••' value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading} />
               </div>
-              <Button type='submit' className='w-full' disabled={isLoading}>
+              <div className='flex justify-center'>
+                <Turnstile
+                  sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                  onSuccess={(token: string) => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                  onError={() => setCaptchaToken(null)}
+                />
+              </div>
+              <Button type='submit' className='w-full' disabled={isLoading || !captchaToken}>
                 {isLoading && <Spinner size={16} />}
                 Sign in
               </Button>

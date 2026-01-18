@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth'
+import { captcha } from 'better-auth/plugins'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { waitlist } from 'better-auth-waitlist'
 import { db } from 'drizzle'
@@ -63,6 +64,10 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    captcha({
+      provider: 'cloudflare-turnstile',
+      secretKey: env.TURNSTILE_SECRET_KEY,
+    }),
     waitlist({
       enabled: true,
       onJoinRequest: async ({ request }) => {

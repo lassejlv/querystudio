@@ -69,6 +69,7 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.0",
     "react-resizable-panels": "^4.4.0",
+    "react-turnstile": "^1.1.4",
     "recharts": "3.6.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
