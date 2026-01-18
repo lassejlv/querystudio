@@ -33,6 +33,7 @@ import {
   useAIQueryStore,
   useQueryHistoryStore,
 } from "@/lib/store";
+import { useLayoutStore } from "@/lib/layout-store";
 import { useStatusBarStore } from "@/components/status-bar";
 import { useExecuteQuery, useAllTableColumns } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -44,28 +45,54 @@ const MAX_EDITOR_HEIGHT = 600;
 const DEFAULT_EDITOR_HEIGHT = 200;
 const EDITOR_HEIGHT_KEY = "querystudio_editor_height";
 
-export function QueryEditor() {
+interface QueryEditorProps {
+  tabId: string;
+  paneId: string;
+}
+
+export function QueryEditor({ tabId, paneId }: QueryEditorProps) {
   const connection = useConnectionStore((s) => s.connection);
   const connectionId = connection?.id ?? null;
   const tables = useConnectionStore((s) => s.tables);
   const isRedis = connection?.db_type === "redis";
+  const isMongodb = connection?.db_type === "mongodb";
 
   // Fetch columns for all tables (for autocomplete)
   const { data: allColumns } = useAllTableColumns(connectionId, tables);
 
-  // Get persisted query for this connection
-  const getCurrentQuery = useQueryHistoryStore((s) => s.getCurrentQuery);
-  const setCurrentQuery = useQueryHistoryStore((s) => s.setCurrentQuery);
+  // Layout store for per-tab query content
+  const allPanes = useLayoutStore((s) => s.panes[connectionId ?? ""] || {});
+  const updateTab = useLayoutStore((s) => s.updateTab);
+
+  // Get initial state from tab
+  const getTabState = () => {
+    if (!connectionId) return { query: "", results: undefined };
+    const pane = allPanes[paneId];
+    if (!pane || pane.type !== "leaf") return { query: "", results: undefined };
+    const currentTab = pane.tabs.find((t) => t.id === tabId);
+    return {
+      query: currentTab?.queryContent ?? "",
+      results: currentTab?.queryResults,
+    };
+  };
+
+  const initialState = getTabState();
+
+  // Query history (still per-connection for history feature)
   const addQueryToHistory = useQueryHistoryStore((s) => s.addQuery);
   const getHistory = useQueryHistoryStore((s) => s.getHistory);
   const clearHistory = useQueryHistoryStore((s) => s.clearHistory);
 
-  const [query, setQuery] = useState(() =>
-    connectionId ? getCurrentQuery(connectionId) : "",
+  const [query, setQuery] = useState(initialState.query);
+  const [results, setResults] = useState<QueryResult[]>(
+    initialState.results?.results ?? [],
   );
-  const [results, setResults] = useState<QueryResult[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [executionTime, setExecutionTime] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(
+    initialState.results?.error ?? null,
+  );
+  const [executionTime, setExecutionTime] = useState<number | null>(
+    initialState.results?.executionTime ?? null,
+  );
   const [viewMode, setViewMode] = useState<"table" | "json">("table");
   const [editorHeight, setEditorHeight] = useState(() => {
     const saved = localStorage.getItem(EDITOR_HEIGHT_KEY);
@@ -98,23 +125,32 @@ export function QueryEditor() {
 
   const executeQueryMutation = useExecuteQuery(connectionId);
 
-  // Load persisted query when connection changes
+  // Load query content and results from tab when tab changes
   useEffect(() => {
-    if (connectionId) {
-      const savedQuery = getCurrentQuery(connectionId);
+    if (connectionId && paneId) {
+      const pane = allPanes[paneId];
+      if (!pane || pane.type !== "leaf") return;
+      const currentTab = pane.tabs.find((t) => t.id === tabId);
+      const savedQuery = currentTab?.queryContent ?? "";
       setQuery(savedQuery);
       if (editorRef.current) {
         editorRef.current.setValue(savedQuery);
       }
+      // Restore results from layout store
+      if (currentTab?.queryResults) {
+        setResults(currentTab.queryResults.results ?? []);
+        setError(currentTab.queryResults.error ?? null);
+        setExecutionTime(currentTab.queryResults.executionTime ?? null);
+      }
     }
-  }, [connectionId, getCurrentQuery]);
+  }, [connectionId, tabId, paneId, allPanes]);
 
-  // Save query when it changes (debounced via effect)
+  // Save query content to tab when it changes (debounced via effect)
   useEffect(() => {
-    if (connectionId) {
-      setCurrentQuery(connectionId, query);
+    if (connectionId && paneId) {
+      updateTab(connectionId, paneId, tabId, { queryContent: query });
     }
-  }, [query, connectionId, setCurrentQuery]);
+  }, [query, connectionId, paneId, tabId, updateTab]);
 
   // Keyboard shortcut for history (Cmd+Shift+H / Ctrl+Shift+H)
   useEffect(() => {
@@ -253,6 +289,14 @@ export function QueryEditor() {
       setResults(allResults);
       // Update status bar
       setQueryResult(totalTime, totalRows, true);
+      // Save results to layout store for persistence
+      updateTab(connectionId, paneId, tabId, {
+        queryResults: {
+          results: allResults,
+          error: null,
+          executionTime: totalTime,
+        },
+      });
       // Add to query history
       addQueryToHistory(connectionId, {
         query: query.trim(),
@@ -271,6 +315,14 @@ export function QueryEditor() {
       if (allResults.length > 0) {
         setResults(allResults);
       }
+      // Save error state to layout store
+      updateTab(connectionId, paneId, tabId, {
+        queryResults: {
+          results: allResults,
+          error: errorMessage,
+          executionTime: totalTime,
+        },
+      });
       // Add failed query to history
       addQueryToHistory(connectionId, {
         query: query.trim(),
@@ -581,6 +633,18 @@ export function QueryEditor() {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         <p>Connect to a database to run queries</p>
+      </div>
+    );
+  }
+
+  if (isMongodb) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+        <p className="text-lg font-medium">Query Editor Not Available</p>
+        <p className="mt-2 text-sm">
+          MongoDB uses its own query language. Use the Documents tab to browse
+          collections.
+        </p>
       </div>
     );
   }

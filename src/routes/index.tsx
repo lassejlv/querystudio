@@ -1,19 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar";
 import { ConnectionDialog } from "@/components/connection-dialog";
 import { EditConnectionDialog } from "@/components/edit-connection-dialog";
-import { TableViewer } from "@/components/table-viewer";
-import { QueryEditor } from "@/components/query-editor";
 import { AIChat } from "@/components/ai-chat";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { StatusBar } from "@/components/status-bar";
 import { TerminalPanel } from "@/components/terminal-panel";
+import { PaneContainer } from "@/components/pane-container";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import type { SavedConnection } from "@/lib/types";
@@ -43,10 +40,7 @@ function App() {
   const [passwordPromptConnection, setPasswordPromptConnection] =
     useState<SavedConnection | null>(null);
   const connection = useConnectionStore((s) => s.connection);
-
-  // Active tab from store for cross-component navigation
-  const activeTab = useAIQueryStore((s) => s.activeTab);
-  const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
+  const connectionId = connection?.id ?? "";
 
   // AI Panel state
   const aiPanelOpen = useAIQueryStore((s) => s.aiPanelOpen);
@@ -226,107 +220,65 @@ function App() {
 
         {/* Main content area */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Main tabs area */}
+          {/* Main content area with split panes */}
           <main className="flex flex-1 flex-col overflow-hidden">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="flex h-full flex-col"
-            >
-              <div className="flex h-10 items-center justify-between border-b border-border px-2">
-                <div className="flex items-center">
-                  {/* Sidebar Toggle Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={toggleSidebar}
-                    title="Toggle sidebar (⌘B)"
-                  >
-                    {sidebarCollapsed ? (
-                      <PanelLeft className="h-4 w-4" />
-                    ) : (
-                      <PanelLeftClose className="h-4 w-4" />
-                    )}
-                  </Button>
+            {/* Header with controls */}
+            <div className="flex h-10 items-center justify-between border-b border-border px-2">
+              <div className="flex items-center">
+                {/* Sidebar Toggle Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={toggleSidebar}
+                  title="Toggle sidebar (⌘B)"
+                >
+                  {sidebarCollapsed ? (
+                    <PanelLeft className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftClose className="h-4 w-4" />
+                  )}
+                </Button>
 
-                  <div className="mx-2 h-4 w-px bg-border" />
-
-                  <TabsList className="h-10 gap-1 bg-transparent p-0">
-                    <TabsTrigger
-                      value="data"
-                      className="h-7 rounded-md border-0 bg-transparent px-3 text-sm text-muted-foreground shadow-none data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                    >
-                      {connection?.db_type === "redis" ? "Keys" : "Data"}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="query"
-                      className="h-7 rounded-md border-0 bg-transparent px-3 text-sm text-muted-foreground shadow-none data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                    >
-                      {connection?.db_type === "redis" ? "Console" : "Query"}
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  {/* Settings Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={() => navigate({ to: "/settings" })}
-                    title="Settings"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-
-                  {/* AI Panel Toggle Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={toggleAiPanel}
-                    title="Toggle Querybuddy (⌥⌘B)"
-                  >
-                    {aiPanelOpen ? (
-                      <PanelRightClose className="h-4 w-4" />
-                    ) : (
-                      <PanelRight className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+                <div className="mx-2 h-4 w-px bg-border" />
               </div>
 
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="flex-1 overflow-hidden"
+              <div className="flex items-center gap-1">
+                {/* Settings Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={() => navigate({ to: "/settings" })}
+                  title="Settings"
                 >
-                  {activeTab === "data" && (
-                    <TabsContent
-                      value="data"
-                      className="mt-0 h-full"
-                      forceMount
-                    >
-                      <TableViewer />
-                    </TabsContent>
+                  <Settings className="h-4 w-4" />
+                </Button>
+
+                {/* AI Panel Toggle Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={toggleAiPanel}
+                  title="Toggle Querybuddy (⌥⌘B)"
+                >
+                  {aiPanelOpen ? (
+                    <PanelRightClose className="h-4 w-4" />
+                  ) : (
+                    <PanelRight className="h-4 w-4" />
                   )}
-                  {activeTab === "query" && (
-                    <TabsContent
-                      value="query"
-                      className="mt-0 h-full"
-                      forceMount
-                    >
-                      <QueryEditor />
-                    </TabsContent>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </Tabs>
+                </Button>
+              </div>
+            </div>
+
+            {/* Split pane container */}
+            <div className="flex-1 overflow-hidden">
+              <PaneContainer
+                connectionId={connectionId}
+                dbType={connection?.db_type}
+              />
+            </div>
           </main>
 
           {/* AI Panel - Right Side - Always mounted to preserve state */}

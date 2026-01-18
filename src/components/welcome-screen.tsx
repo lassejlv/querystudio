@@ -7,12 +7,21 @@ import {
   useLicenseStore,
   useAIQueryStore,
 } from "@/lib/store";
-import type { DatabaseType, SavedConnection } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import type { SavedConnection } from "@/lib/types";
 import { LicenseSettings } from "@/components/license-settings";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { DatabaseIcon } from "./sidebar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface WelcomeScreenProps {
   onNewConnection: () => void;
@@ -80,19 +89,20 @@ export function WelcomeScreen({
   };
 
   return (
-    <div className="flex h-screen w-full flex-col bg-background">
+    <div className="flex h-screen w-full flex-col bg-muted/10">
       <div
         data-tauri-drag-region
         className="h-7 w-full shrink-0"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       />
 
-      <div className="flex flex-1 items-center justify-center p-8">
-        <div className="w-full max-w-sm">
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-lg font-medium text-foreground">
-              QueryStudio
-            </span>
+      <div className="flex flex-1 items-center justify-center p-4">
+        <Card className="w-full max-w-[420px] shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <div className="flex flex-col gap-1">
+              <CardTitle className="text-xl">QueryStudio</CardTitle>
+              <CardDescription>Manage your connections</CardDescription>
+            </div>
             <div className="flex items-center gap-2">
               <Badge
                 variant={isPro ? "default" : "secondary"}
@@ -105,69 +115,74 @@ export function WelcomeScreen({
                 size="icon"
                 onClick={() => setLicenseSettingsOpen(true)}
                 title="License Settings"
+                className="h-8 w-8"
               >
                 <Key className="h-4 w-4 text-muted-foreground" />
               </Button>
             </div>
-          </div>
-
-          {!isLoading && savedConnections && savedConnections.length > 0 && (
-            <div className="mb-6">
-              <p className="text-xs text-muted-foreground mb-2">
-                Recent connections
-              </p>
-              <div className="space-y-1">
-                {savedConnections.map((connection) => (
-                  <div
-                    key={connection.id}
-                    className="group flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-secondary transition-colors"
-                  >
-                    <button
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            {!isLoading && savedConnections && savedConnections.length > 0 ? (
+              <ScrollArea className="h-[300px] w-full p-4">
+                <div className="flex flex-col gap-1">
+                  {savedConnections.map((connection) => (
+                    <div
+                      key={connection.id}
+                      className="group flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
                       onClick={() => onSelectConnection(connection)}
-                      className="flex flex-1 items-start gap-3 min-w-0 text-left"
                     >
                       <DatabaseIcon type={connection.db_type || "postgres"} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-foreground truncate">
+                        <p className="truncate text-sm font-medium leading-none">
                           {connection.name}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
                           {getConnectionDescription(connection)}
                         </p>
                       </div>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditConnection(connection);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-background transition-opacity"
-                      title="Edit connection"
-                    >
-                      <Pencil className="h-3 w-3 text-muted-foreground" />
-                    </button>
-                  </div>
-                ))}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditConnection(connection);
+                        }}
+                        className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                        title="Edit connection"
+                      >
+                        <Pencil className="h-3 w-3 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="flex h-[200px] items-center justify-center p-4 text-center text-sm text-muted-foreground">
+                No connections saved yet.
+                <br />
+                Create one to get started.
               </div>
-            </div>
-          )}
-
-          <Button
-            onClick={onNewConnection}
-            className="w-full"
-            disabled={!canSave}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Connection
-          </Button>
-
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            <kbd className="px-1 py-0.5 rounded bg-secondary font-mono text-[10px]">
-              ⌘K
-            </kbd>{" "}
-            command palette
-          </p>
-        </div>
+            )}
+          </CardContent>
+          <Separator />
+          <CardFooter className="flex-col gap-3 bg-muted/5 p-4">
+            <Button
+              onClick={onNewConnection}
+              className="w-full"
+              disabled={!canSave}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Connection
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                ⌘K
+              </kbd>{" "}
+              to open command palette
+            </p>
+          </CardFooter>
+        </Card>
       </div>
 
       <LicenseSettings

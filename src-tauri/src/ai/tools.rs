@@ -31,6 +31,7 @@ fn get_table_columns_tool(db_type: DatabaseType) -> ToolDefinition {
         DatabaseType::Mysql => "The database/schema name",
         DatabaseType::Sqlite => "The schema name (always 'main' for SQLite)",
         DatabaseType::Redis => "The database index (usually 'db0' for Redis)",
+        DatabaseType::Mongodb => "The database name",
     };
 
     ToolDefinition {
@@ -67,6 +68,9 @@ fn execute_select_query_tool(db_type: DatabaseType) -> ToolDefinition {
         DatabaseType::Redis => {
             "The Redis command to execute (e.g., GET key, KEYS pattern, HGETALL key)."
         }
+        DatabaseType::Mongodb => {
+            "MongoDB query execution is not supported. Use the data browser to explore collections."
+        }
     };
 
     ToolDefinition {
@@ -91,6 +95,7 @@ fn get_table_sample_tool(db_type: DatabaseType) -> ToolDefinition {
         DatabaseType::Mysql => "The database/schema name",
         DatabaseType::Sqlite => "The schema name (always 'main' for SQLite)",
         DatabaseType::Redis => "The database index (usually 'db0' for Redis)",
+        DatabaseType::Mongodb => "The database name",
     };
 
     ToolDefinition {
@@ -205,6 +210,7 @@ pub fn get_system_prompt(db_type: DatabaseType) -> String {
         DatabaseType::Mysql => "MySQL",
         DatabaseType::Sqlite => "SQLite",
         DatabaseType::Redis => "Redis",
+        DatabaseType::Mongodb => "MongoDB",
     };
 
     let sql_syntax_tips = match db_type {
@@ -242,6 +248,16 @@ pub fn get_system_prompt(db_type: DatabaseType) -> String {
 - Use KEYS pattern or SCAN for finding keys (SCAN is preferred for large datasets)
 - Use TYPE key to check a key's data type
 - Use TTL key to check expiration time (-1 = no expiry, -2 = expired/missing)"#
+        }
+        DatabaseType::Mongodb => {
+            r#"
+- MongoDB is a document database, not a SQL database
+- Data is stored in collections (similar to tables) containing documents (similar to rows)
+- Documents are JSON-like BSON objects with flexible schemas
+- Each document has an _id field (ObjectId by default)
+- Use the Documents tab to browse collections
+- Query execution is not yet supported - use list_tables and get_table_columns to explore
+- Common field types: ObjectId, String, Number, Boolean, Date, Array, Object"#
         }
     };
 

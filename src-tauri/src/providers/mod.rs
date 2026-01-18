@@ -1,3 +1,4 @@
+pub mod mongodb;
 pub mod mysql;
 pub mod postgres;
 pub mod redis;
@@ -15,6 +16,7 @@ pub enum DatabaseType {
     Mysql,
     Sqlite,
     Redis,
+    Mongodb,
 }
 
 impl fmt::Display for DatabaseType {
@@ -24,6 +26,7 @@ impl fmt::Display for DatabaseType {
             DatabaseType::Mysql => write!(f, "MySQL"),
             DatabaseType::Sqlite => write!(f, "SQLite"),
             DatabaseType::Redis => write!(f, "Redis"),
+            DatabaseType::Mongodb => write!(f, "MongoDB"),
         }
     }
 }
@@ -174,6 +177,32 @@ impl ConnectionParams {
             }
         }
     }
+
+    pub fn to_mongodb_url(&self) -> String {
+        match self {
+            ConnectionParams::ConnectionString { connection_string } => connection_string.clone(),
+            ConnectionParams::Parameters {
+                host,
+                port,
+                database,
+                username,
+                password,
+            } => {
+                // MongoDB URL format: mongodb://[username:password@]host[:port][/database]
+                let auth = if !username.is_empty() && !password.is_empty() {
+                    format!("{}:{}@", username, password)
+                } else {
+                    String::new()
+                };
+                let db = if !database.is_empty() {
+                    format!("/{}", database)
+                } else {
+                    String::new()
+                };
+                format!("mongodb://{}{}:{}{}", auth, host, port, db)
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -216,6 +245,10 @@ pub async fn create_provider(
         }
         DatabaseType::Redis => {
             let provider = redis::RedisProvider::connect(params).await?;
+            Ok(Box::new(provider))
+        }
+        DatabaseType::Mongodb => {
+            let provider = mongodb::MongoDbProvider::connect(params).await?;
             Ok(Box::new(provider))
         }
     }

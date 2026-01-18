@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useLayoutStore } from "@/lib/layout-store";
 import {
   Send,
   Bot,
@@ -98,7 +99,11 @@ const CodeBlock = memo(function CodeBlock({
   const code = String(children).replace(/\n$/, "");
 
   const appendSql = useAIQueryStore((s) => s.appendSql);
-  const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
+  const connection = useConnectionStore((s) => s.connection);
+  const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
+  const setActiveTab = useLayoutStore((s) => s.setActiveTab);
+  const createTab = useLayoutStore((s) => s.createTab);
+  const getActivePane = useLayoutStore((s) => s.getActivePane);
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(code);
@@ -108,8 +113,32 @@ const CodeBlock = memo(function CodeBlock({
 
   const handleAppendToRunner = useCallback(() => {
     appendSql(code);
-    setActiveTab("query");
-  }, [code, appendSql, setActiveTab]);
+    // Switch to an existing query tab or create a new one
+    if (connection?.id) {
+      const leafPanes = getAllLeafPanes(connection.id);
+      // Find any query tab in any pane
+      for (const pane of leafPanes) {
+        const queryTab = pane.tabs.find((t) => t.type === "query");
+        if (queryTab) {
+          setActiveTab(connection.id, pane.id, queryTab.id);
+          return;
+        }
+      }
+      // No query tab found, create one in the active pane
+      const activePane = getActivePane(connection.id);
+      if (activePane) {
+        createTab(connection.id, activePane.id, "query", { title: "Query" });
+      }
+    }
+  }, [
+    code,
+    appendSql,
+    connection,
+    getAllLeafPanes,
+    setActiveTab,
+    createTab,
+    getActivePane,
+  ]);
 
   return (
     <div className="relative group my-1.5 rounded-md overflow-hidden border border-border/40">

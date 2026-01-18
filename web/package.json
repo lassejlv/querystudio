@@ -1,6 +1,7 @@
 {
   "name": "web",
   "version": "0.0.0",
+  "type": "module",
   "dependencies": {
     "@daveyplate/better-auth-tauri": "^0.1.6",
     "@hono/zod-validator": "^0.7.6",
@@ -91,7 +92,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^27.4.0",
     "typescript": "^5.9.3",
-    "vite": "npm:rolldown-vite@^7.3.1",
+    "vite": "npm:rolldown-vite@latest",
     "vitest": "^4.0.16",
     "web-vitals": "^5.1.0"
   },
@@ -105,6 +106,11 @@
     "gen-auth": "bun --bun better-auth generate --config src/lib/auth.tsx",
     "dev": "vite dev"
   },
-  "bin": null,
-  "workspaces": []
+  "devDependencies": {
+    "@tanstack/devtools-vite": "^0.4.1",
+    "babel-plugin-react-compiler": "^1.0.0"
+  },
+  "overrides": {
+    "vite": "npm:rolldown-vite@latest"
+  }
 }

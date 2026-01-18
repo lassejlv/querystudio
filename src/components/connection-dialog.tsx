@@ -78,6 +78,16 @@ const DATABASE_OPTIONS: DatabaseOption[] = [
       host: "localhost",
     },
   },
+  {
+    id: "mongodb",
+    name: "MongoDB",
+    defaults: {
+      port: "27017",
+      database: "test",
+      username: "",
+      host: "localhost",
+    },
+  },
 ];
 
 type ConnectionMode = "params" | "string" | "file";
@@ -256,6 +266,9 @@ export function ConnectionDialog({
     }
     if (dbType === "redis") {
       return "redis://[:password@]localhost:6379[/database]";
+    }
+    if (dbType === "mongodb") {
+      return "mongodb://[user:password@]localhost:27017/database";
     }
     return "postgresql://user:password@localhost:5432/database";
   };

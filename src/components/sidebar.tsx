@@ -13,6 +13,7 @@ import {
   useAIQueryStore,
   useLicenseStore,
 } from "@/lib/store";
+import { useLayoutStore } from "@/lib/layout-store";
 import { useTables, useDisconnect } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -86,8 +87,10 @@ export function Sidebar() {
   const setTables = useConnectionStore((s) => s.setTables);
   const selectedTable = useConnectionStore((s) => s.selectedTable);
   const setSelectedTable = useConnectionStore((s) => s.setSelectedTable);
-  const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
   const { setStatus } = useLicenseStore();
+
+  // Layout store for multi-tab support
+  const openDataTab = useLayoutStore((s) => s.openDataTab);
 
   // Sidebar state from store
   const sidebarWidth = useAIQueryStore((s) => s.sidebarWidth);
@@ -208,7 +211,9 @@ export function Sidebar() {
                     schema: table.schema,
                     name: table.name,
                   });
-                  setActiveTab("data");
+                  if (connection?.id) {
+                    openDataTab(connection.id, table.schema, table.name);
+                  }
                 }}
                 title={`${table.schema}.${table.name}`}
               >
@@ -348,7 +353,13 @@ export function Sidebar() {
                                     schema: table.schema,
                                     name: table.name,
                                   });
-                                  setActiveTab("data");
+                                  if (connection?.id) {
+                                    openDataTab(
+                                      connection.id,
+                                      table.schema,
+                                      table.name,
+                                    );
+                                  }
                                 }}
                               >
                                 <Table className="h-3 w-3 shrink-0" />

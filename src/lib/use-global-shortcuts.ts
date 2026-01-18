@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useConnectionStore, useAIQueryStore } from "./store";
+import { useLayoutStore } from "./layout-store";
 import { useDisconnect } from "./hooks";
 
 interface GlobalShortcutsOptions {
@@ -14,8 +15,39 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
   const queryClient = useQueryClient();
   const connection = useConnectionStore((s) => s.connection);
   const selectedTable = useConnectionStore((s) => s.selectedTable);
-  const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
+  const connectionId = connection?.id ?? "";
+
+  // Layout store for multi-pane/tab support
+  const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
+  const setActiveTab = useLayoutStore((s) => s.setActiveTab);
+  const createTab = useLayoutStore((s) => s.createTab);
+  const getActivePane = useLayoutStore((s) => s.getActivePane);
+
+  // AI panel control
+  const setAiPanelOpen = useAIQueryStore((s) => s.setAiPanelOpen);
+
   const disconnect = useDisconnect();
+
+  // Helper to switch to or create a tab of a specific type
+  const switchToTabType = (type: "data" | "query") => {
+    if (!connectionId) return;
+    const leafPanes = getAllLeafPanes(connectionId);
+    // Find existing tab of this type in any pane
+    for (const pane of leafPanes) {
+      const existingTab = pane.tabs.find((t) => t.type === type);
+      if (existingTab) {
+        setActiveTab(connectionId, pane.id, existingTab.id);
+        return;
+      }
+    }
+    // No existing tab found, create one in active pane
+    const activePane = getActivePane(connectionId);
+    if (activePane) {
+      createTab(connectionId, activePane.id, type, {
+        title: type === "data" ? "Data" : "Query",
+      });
+    }
+  };
 
   const refreshAll = () => {
     if (!connection) return;
@@ -68,13 +100,13 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
           options.onOpenSettings?.();
           break;
         case "view_data":
-          setActiveTab("data");
+          switchToTabType("data");
           break;
         case "view_query":
-          setActiveTab("query");
+          switchToTabType("query");
           break;
         case "view_ai":
-          setActiveTab("ai");
+          setAiPanelOpen(true);
           break;
         case "refresh":
           refreshAll();
@@ -91,7 +123,17 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [connection, disconnect, options, setActiveTab]);
+  }, [
+    connection,
+    connectionId,
+    disconnect,
+    options,
+    getAllLeafPanes,
+    setActiveTab,
+    createTab,
+    getActivePane,
+    setAiPanelOpen,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -107,17 +149,17 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
       // Cmd+1/2/3 - Switch tabs
       if (isMod && e.key === "1") {
         e.preventDefault();
-        setActiveTab("data");
+        switchToTabType("data");
         return;
       }
       if (isMod && e.key === "2") {
         e.preventDefault();
-        setActiveTab("query");
+        switchToTabType("query");
         return;
       }
       if (isMod && e.key === "3") {
         e.preventDefault();
-        setActiveTab("ai");
+        setAiPanelOpen(true);
         return;
       }
 
@@ -131,7 +173,17 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [connection, selectedTable, setActiveTab, options.onNewConnection]);
+  }, [
+    connection,
+    connectionId,
+    selectedTable,
+    getAllLeafPanes,
+    setActiveTab,
+    createTab,
+    getActivePane,
+    setAiPanelOpen,
+    options.onNewConnection,
+  ]);
 
   return { refreshAll };
 }

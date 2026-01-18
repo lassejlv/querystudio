@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Key,
@@ -8,6 +8,7 @@ import {
   Copy,
   Pencil,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Table,
@@ -39,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AddRowSheet } from "@/components/add-row-sheet";
 import { EditRowSheet } from "@/components/edit-row-sheet";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConnectionStore } from "@/lib/store";
 import { quoteIdentifier, quoteTableRef } from "@/lib/utils";
 import {
@@ -53,10 +55,26 @@ import type { ColumnInfo } from "@/lib/types";
 
 const PAGE_SIZE = 100;
 
-export function TableViewer() {
+interface TableViewerProps {
+  tabId: string;
+  tableInfo?: {
+    schema: string;
+    name: string;
+  };
+}
+
+export function TableViewer({ tabId: _tabId, tableInfo }: TableViewerProps) {
   const connection = useConnectionStore((s) => s.connection);
-  const selectedTable = useConnectionStore((s) => s.selectedTable);
+  const globalSelectedTable = useConnectionStore((s) => s.selectedTable);
+
+  // Use tableInfo from props if provided (for dedicated table tabs), otherwise use global selection
+  const selectedTable = tableInfo || globalSelectedTable;
   const [page, setPage] = useState(0);
+
+  // Reset page when table changes
+  useEffect(() => {
+    setPage(0);
+  }, [selectedTable?.schema, selectedTable?.name]);
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [editRowOpen, setEditRowOpen] = useState(false);
   const [editRowData, setEditRowData] = useState<Record<
@@ -70,14 +88,23 @@ export function TableViewer() {
   > | null>(null);
 
   const connectionId = connection?.id ?? null;
+  const queryClient = useQueryClient();
 
-  const { data: columns, isLoading: columnsLoading } = useTableColumns(
+  const {
+    data: columns,
+    isLoading: columnsLoading,
+    isFetching: columnsFetching,
+  } = useTableColumns(
     connectionId,
     selectedTable?.schema ?? null,
     selectedTable?.name ?? null,
   );
 
-  const { data: tableData, isLoading: dataLoading } = useTableData(
+  const {
+    data: tableData,
+    isLoading: dataLoading,
+    isFetching: dataFetching,
+  } = useTableData(
     connectionId,
     selectedTable?.schema ?? null,
     selectedTable?.name ?? null,
@@ -85,7 +112,7 @@ export function TableViewer() {
     page * PAGE_SIZE,
   );
 
-  const { data: totalCount } = useTableCount(
+  const { data: totalCount, isFetching: countFetching } = useTableCount(
     connectionId,
     selectedTable?.schema ?? null,
     selectedTable?.name ?? null,
@@ -108,6 +135,37 @@ export function TableViewer() {
 
   const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 0;
   const isLoading = columnsLoading || dataLoading;
+  const isRefreshing = columnsFetching || dataFetching || countFetching;
+
+  const handleRefresh = () => {
+    if (!connectionId || !selectedTable) return;
+
+    // Invalidate all queries for this table
+    queryClient.invalidateQueries({
+      queryKey: [
+        "columns",
+        connectionId,
+        selectedTable.schema,
+        selectedTable.name,
+      ],
+    });
+    queryClient.invalidateQueries({
+      queryKey: [
+        "tableData",
+        connectionId,
+        selectedTable.schema,
+        selectedTable.name,
+      ],
+    });
+    queryClient.invalidateQueries({
+      queryKey: [
+        "tableCount",
+        connectionId,
+        selectedTable.schema,
+        selectedTable.name,
+      ],
+    });
+  };
 
   const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) return "NULL";
@@ -220,6 +278,17 @@ export function TableViewer() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={cn("mr-1 h-4 w-4", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
           {connection?.db_type !== "redis" && (
             <>
               <Button

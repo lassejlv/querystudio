@@ -32,6 +32,7 @@ import {
   useCanSaveConnection,
 } from "@/lib/hooks";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
+import { useLayoutStore } from "@/lib/layout-store";
 import { useThemeStore } from "@/lib/theme-store";
 import type { SavedConnection } from "@/lib/types";
 import { useUpdateChecker } from "@/hooks/use-update-checker";
@@ -58,7 +59,12 @@ export function CommandPalette({
   const deleteConnection = useDeleteSavedConnection();
   const disconnect = useDisconnect();
   const connection = useConnectionStore((s) => s.connection);
-  const setActiveTab = useAIQueryStore((s) => s.setActiveTab);
+  const connectionId = connection?.id ?? "";
+  const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
+  const setActiveTab = useLayoutStore((s) => s.setActiveTab);
+  const createTab = useLayoutStore((s) => s.createTab);
+  const getActivePane = useLayoutStore((s) => s.getActivePane);
+  const setAiPanelOpen = useAIQueryStore((s) => s.setAiPanelOpen);
   const { getAllThemes, setActiveTheme, activeTheme } = useThemeStore();
   const [search, setSearch] = useState("");
   const [appVersion, setAppVersion] = useState<string | null>(null);
@@ -151,7 +157,23 @@ export function CommandPalette({
               </CommandItem>
               <CommandItem
                 onSelect={() => {
-                  setActiveTab("data");
+                  if (connectionId) {
+                    const leafPanes = getAllLeafPanes(connectionId);
+                    for (const pane of leafPanes) {
+                      const dataTab = pane.tabs.find((t) => t.type === "data");
+                      if (dataTab) {
+                        setActiveTab(connectionId, pane.id, dataTab.id);
+                        onOpenChange(false);
+                        return;
+                      }
+                    }
+                    const activePane = getActivePane(connectionId);
+                    if (activePane) {
+                      createTab(connectionId, activePane.id, "data", {
+                        title: "Data",
+                      });
+                    }
+                  }
                   onOpenChange(false);
                 }}
               >
@@ -161,7 +183,25 @@ export function CommandPalette({
               </CommandItem>
               <CommandItem
                 onSelect={() => {
-                  setActiveTab("query");
+                  if (connectionId) {
+                    const leafPanes = getAllLeafPanes(connectionId);
+                    for (const pane of leafPanes) {
+                      const queryTab = pane.tabs.find(
+                        (t) => t.type === "query",
+                      );
+                      if (queryTab) {
+                        setActiveTab(connectionId, pane.id, queryTab.id);
+                        onOpenChange(false);
+                        return;
+                      }
+                    }
+                    const activePane = getActivePane(connectionId);
+                    if (activePane) {
+                      createTab(connectionId, activePane.id, "query", {
+                        title: "Query",
+                      });
+                    }
+                  }
                   onOpenChange(false);
                 }}
               >
@@ -171,7 +211,7 @@ export function CommandPalette({
               </CommandItem>
               <CommandItem
                 onSelect={() => {
-                  setActiveTab("ai");
+                  setAiPanelOpen(true);
                   onOpenChange(false);
                 }}
               >
