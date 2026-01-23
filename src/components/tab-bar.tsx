@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { useState, useRef, useEffect, memo, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Table2, Terminal, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,7 @@ import {
   type TabType,
   type DropZone,
 } from "@/lib/layout-store";
+import { useShallow } from "zustand/react/shallow";
 
 interface TabBarProps {
   connectionId: string;
@@ -29,19 +30,29 @@ interface TabBarProps {
   paneId: string;
 }
 
-export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
+export const TabBar = memo(function TabBar({
+  connectionId,
+  dbType,
+  paneId,
+}: TabBarProps) {
   const isRedis = dbType === "redis";
 
-  // Subscribe to the panes state so we get updates
-  const allPanes = useLayoutStore((s) => s.panes[connectionId]) || {};
-  const activePaneId = useLayoutStore((s) => s.activePaneId[connectionId]);
+  // Use shallow comparison for better performance - only re-render when relevant data changes
+  const { tabs, activeTabId } = useLayoutStore(
+    useShallow((s) => {
+      const panes = s.panes[connectionId] || {};
+      const pane = panes[paneId];
+      return {
+        tabs: pane?.type === "leaf" ? pane.tabs : [],
+        activeTabId: pane?.type === "leaf" ? pane.activeTabId : null,
+      };
+    }),
+  );
 
-  const pane = allPanes[paneId];
-  const tabs = pane?.type === "leaf" ? pane.tabs : [];
-  const activeTabId = pane?.type === "leaf" ? pane.activeTabId : null;
+  const activePaneId = useLayoutStore((s) => s.activePaneId[connectionId]);
   const isActivePane = activePaneId === paneId;
 
-  // Get actions from the store
+  // Get actions from the store - these are stable references
   const setActiveTab = useLayoutStore((s) => s.setActiveTab);
   const createTab = useLayoutStore((s) => s.createTab);
   const closeTab = useLayoutStore((s) => s.closeTab);
@@ -49,11 +60,14 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
   const reorderTabs = useLayoutStore((s) => s.reorderTabs);
   const splitPane = useLayoutStore((s) => s.splitPane);
   const moveTabToPane = useLayoutStore((s) => s.moveTabToPane);
-  const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
 
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
+  const [dragOverTabId, setDragOverTabId] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<
+    "before" | "after" | null
+  >(null);
   const [dragOverZone, setDragOverZone] = useState<DropZone | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -67,23 +81,29 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
     }
   }, [editingTabId]);
 
-  const handleTabClick = (tabId: string) => {
-    if (editingTabId !== tabId) {
-      setActiveTab(connectionId, paneId, tabId);
-    }
-  };
+  const handleTabClick = useCallback(
+    (tabId: string) => {
+      if (editingTabId !== tabId) {
+        setActiveTab(connectionId, paneId, tabId);
+      }
+    },
+    [editingTabId, setActiveTab, connectionId, paneId],
+  );
 
-  const handleCloseTab = (e: React.MouseEvent, tabId: string) => {
-    e.stopPropagation();
-    closeTab(connectionId, paneId, tabId);
-  };
+  const handleCloseTab = useCallback(
+    (e: React.MouseEvent, tabId: string) => {
+      e.stopPropagation();
+      closeTab(connectionId, paneId, tabId);
+    },
+    [closeTab, connectionId, paneId],
+  );
 
-  const handleDoubleClick = (tab: Tab) => {
+  const handleDoubleClick = useCallback((tab: Tab) => {
     setEditingTabId(tab.id);
     setEditingTitle(tab.title);
-  };
+  }, []);
 
-  const handleTitleSave = () => {
+  const handleTitleSave = useCallback(() => {
     if (editingTabId && editingTitle.trim()) {
       updateTab(connectionId, paneId, editingTabId, {
         title: editingTitle.trim(),
@@ -91,85 +111,173 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
     }
     setEditingTabId(null);
     setEditingTitle("");
-  };
+  }, [editingTabId, editingTitle, updateTab, connectionId, paneId]);
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleTitleSave();
-    } else if (e.key === "Escape") {
-      setEditingTabId(null);
-      setEditingTitle("");
-    }
-  };
-
-  const handleCreateTab = (type: TabType) => {
-    const title =
-      type === "query"
-        ? isRedis
-          ? "Console"
-          : "Query"
-        : isRedis
-          ? "Keys"
-          : "Data";
-    createTab(connectionId, paneId, type, { title });
-  };
-
-  const handleCloseOtherTabs = (tabId: string) => {
-    const tabsToClose = tabs.filter((t) => t.id !== tabId);
-    tabsToClose.forEach((t) => closeTab(connectionId, paneId, t.id));
-  };
-
-  const handleCloseTabsToRight = (tabId: string) => {
-    const tabIndex = tabs.findIndex((t) => t.id === tabId);
-    const tabsToClose = tabs.slice(tabIndex + 1);
-    tabsToClose.forEach((t) => closeTab(connectionId, paneId, t.id));
-  };
-
-  const handleDuplicateTab = (tab: Tab) => {
-    createTab(connectionId, paneId, tab.type, {
-      title: `${tab.title} (copy)`,
-      tableInfo: tab.tableInfo,
-      queryContent: tab.queryContent,
-    });
-  };
-
-  const handleSplitRight = (tabId: string) => {
-    splitPane(connectionId, paneId, "horizontal", tabId);
-  };
-
-  const handleSplitDown = (tabId: string) => {
-    splitPane(connectionId, paneId, "vertical", tabId);
-  };
-
-  const getTabIcon = (type: TabType) => {
-    if (type === "query") {
-      return <Terminal className="h-3.5 w-3.5 shrink-0" />;
-    }
-    return <Table2 className="h-3.5 w-3.5 shrink-0" />;
-  };
-
-  // Handle reorder from framer-motion
-  const handleReorder = (newOrder: Tab[]) => {
-    const newIds = newOrder.map((t) => t.id);
-    const oldIds = tabs.map((t) => t.id);
-
-    for (let i = 0; i < newIds.length; i++) {
-      if (newIds[i] !== oldIds[i]) {
-        const movedTabId = newIds[i];
-        const fromIndex = oldIds.indexOf(movedTabId);
-        const toIndex = i;
-        if (fromIndex !== -1 && fromIndex !== toIndex) {
-          reorderTabs(connectionId, paneId, fromIndex, toIndex);
-        }
-        break;
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        handleTitleSave();
+      } else if (e.key === "Escape") {
+        setEditingTabId(null);
+        setEditingTitle("");
       }
-    }
+    },
+    [handleTitleSave],
+  );
+
+  const handleCreateTab = useCallback(
+    (type: TabType) => {
+      const title =
+        type === "query"
+          ? isRedis
+            ? "Console"
+            : "Query"
+          : isRedis
+            ? "Keys"
+            : "Data";
+      createTab(connectionId, paneId, type, { title });
+    },
+    [isRedis, createTab, connectionId, paneId],
+  );
+
+  const handleCloseOtherTabs = useCallback(
+    (tabId: string) => {
+      const tabsToClose = tabs.filter((t) => t.id !== tabId);
+      tabsToClose.forEach((t) => closeTab(connectionId, paneId, t.id));
+    },
+    [tabs, closeTab, connectionId, paneId],
+  );
+
+  const handleCloseTabsToRight = useCallback(
+    (tabId: string) => {
+      const tabIndex = tabs.findIndex((t) => t.id === tabId);
+      const tabsToClose = tabs.slice(tabIndex + 1);
+      tabsToClose.forEach((t) => closeTab(connectionId, paneId, t.id));
+    },
+    [tabs, closeTab, connectionId, paneId],
+  );
+
+  const handleDuplicateTab = useCallback(
+    (tab: Tab) => {
+      createTab(connectionId, paneId, tab.type, {
+        title: `${tab.title} (copy)`,
+        tableInfo: tab.tableInfo,
+        queryContent: tab.queryContent,
+      });
+    },
+    [createTab, connectionId, paneId],
+  );
+
+  const handleSplitRight = useCallback(
+    (tabId: string) => {
+      splitPane(connectionId, paneId, "horizontal", tabId);
+    },
+    [splitPane, connectionId, paneId],
+  );
+
+  const handleSplitDown = useCallback(
+    (tabId: string) => {
+      splitPane(connectionId, paneId, "vertical", tabId);
+    },
+    [splitPane, connectionId, paneId],
+  );
+
+  const getTabIcon = useMemo(
+    () => (type: TabType) => {
+      if (type === "query") {
+        return <Terminal className="h-3.5 w-3.5 shrink-0" />;
+      }
+      return <Table2 className="h-3.5 w-3.5 shrink-0" />;
+    },
+    [],
+  );
+
+  // Native HTML5 drag and drop handlers
+  const handleTabDragStart = (e: React.DragEvent, tab: Tab) => {
+    setDraggingTabId(tab.id);
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({ tabId: tab.id, fromPaneId: paneId }),
+    );
+    e.dataTransfer.effectAllowed = "move";
+
+    // Create a custom drag image
+    const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
+    dragImage.style.position = "absolute";
+    dragImage.style.top = "-1000px";
+    dragImage.style.opacity = "0.8";
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, 50, 18);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
   };
 
-  // Handle drag and drop for splitting
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleTabDragEnd = () => {
+    setDraggingTabId(null);
+    setDragOverTabId(null);
+    setDragOverPosition(null);
+    setDragOverZone(null);
+  };
+
+  const handleTabDragOver = (e: React.DragEvent, tab: Tab) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const midpoint = rect.width / 2;
+
+    setDragOverTabId(tab.id);
+    setDragOverPosition(x < midpoint ? "before" : "after");
+    setDragOverZone(null);
+  };
+
+  const handleTabDrop = (e: React.DragEvent, targetTab: Tab) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const data = e.dataTransfer.getData("application/json");
+    if (!data) {
+      handleTabDragEnd();
+      return;
+    }
+
+    try {
+      const { tabId, fromPaneId } = JSON.parse(data);
+
+      if (fromPaneId === paneId) {
+        // Reordering within same pane
+        const fromIndex = tabs.findIndex((t) => t.id === tabId);
+        let toIndex = tabs.findIndex((t) => t.id === targetTab.id);
+
+        if (dragOverPosition === "after") {
+          toIndex = toIndex + 1;
+        }
+
+        if (fromIndex !== -1 && fromIndex !== toIndex) {
+          // Adjust toIndex if moving forward
+          if (fromIndex < toIndex) {
+            toIndex = toIndex - 1;
+          }
+          reorderTabs(connectionId, paneId, fromIndex, toIndex);
+        }
+      } else {
+        // Moving from another pane - add to this pane at the target position
+        moveTabToPane(connectionId, fromPaneId, tabId, paneId, "center");
+      }
+    } catch {
+      // Invalid data
+    }
+
+    handleTabDragEnd();
+  };
+
+  // Handle drag over empty area of tab bar (for zone-based splitting)
+  const handleBarDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Don't show zone indicators if over a tab
+    if (dragOverTabId) return;
 
     if (!tabBarRef.current) return;
 
@@ -179,7 +287,6 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
     const width = rect.width;
     const height = rect.height;
 
-    // Determine which zone based on position
     const edgeThreshold = 60;
 
     if (x < edgeThreshold) {
@@ -195,18 +302,23 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
     }
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleBarDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setDragOverZone(null);
+    // Only clear if leaving the tab bar entirely
+    if (!tabBarRef.current?.contains(e.relatedTarget as Node)) {
+      setDragOverZone(null);
+      setDragOverTabId(null);
+      setDragOverPosition(null);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleBarDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     const data = e.dataTransfer.getData("application/json");
     if (!data) {
-      setDragOverZone(null);
+      handleTabDragEnd();
       return;
     }
 
@@ -219,26 +331,8 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
       // Invalid data
     }
 
-    setDragOverZone(null);
+    handleTabDragEnd();
   };
-
-  const handleTabDragStart = (e: React.DragEvent, tab: Tab) => {
-    setDraggingTabId(tab.id);
-    e.dataTransfer.setData(
-      "application/json",
-      JSON.stringify({ tabId: tab.id, fromPaneId: paneId }),
-    );
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleTabDragEnd = () => {
-    setDraggingTabId(null);
-    setDragOverZone(null);
-  };
-
-  // Count other panes for context menu
-  const leafPanes = getAllLeafPanes(connectionId);
-  const hasMultiplePanes = leafPanes.length > 1;
 
   return (
     <div
@@ -247,83 +341,98 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
         "relative flex h-9 items-center border-b border-border bg-background",
         !isActivePane && "opacity-80",
       )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDragOver={handleBarDragOver}
+      onDragLeave={handleBarDragLeave}
+      onDrop={handleBarDrop}
     >
-      {/* Drop zone indicators */}
-      {dragOverZone && (
-        <>
-          {dragOverZone === "left" && (
-            <div className="absolute left-0 top-0 bottom-0 w-1/2 bg-primary/20 border-2 border-primary/50 border-r-0 z-20 pointer-events-none" />
-          )}
-          {dragOverZone === "right" && (
-            <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-primary/20 border-2 border-primary/50 border-l-0 z-20 pointer-events-none" />
-          )}
-          {dragOverZone === "top" && (
-            <div className="absolute left-0 right-0 top-0 h-1/2 bg-primary/20 border-2 border-primary/50 border-b-0 z-20 pointer-events-none" />
-          )}
-          {dragOverZone === "bottom" && (
-            <div className="absolute left-0 right-0 bottom-0 h-1/2 bg-primary/20 border-2 border-primary/50 border-t-0 z-20 pointer-events-none" />
-          )}
-          {dragOverZone === "center" && (
-            <div className="absolute inset-0 bg-primary/10 border-2 border-primary/50 z-20 pointer-events-none" />
-          )}
-        </>
-      )}
+      {/* Drop zone indicators with smooth transitions */}
+      <div
+        className={cn(
+          "absolute left-0 top-0 bottom-0 w-1/2 bg-primary/20 border-2 border-primary/50 border-r-0 z-20 pointer-events-none transition-opacity duration-150",
+          dragOverZone === "left" && !dragOverTabId
+            ? "opacity-100"
+            : "opacity-0",
+        )}
+      />
+      <div
+        className={cn(
+          "absolute right-0 top-0 bottom-0 w-1/2 bg-primary/20 border-2 border-primary/50 border-l-0 z-20 pointer-events-none transition-opacity duration-150",
+          dragOverZone === "right" && !dragOverTabId
+            ? "opacity-100"
+            : "opacity-0",
+        )}
+      />
+      <div
+        className={cn(
+          "absolute left-0 right-0 top-0 h-1/2 bg-primary/20 border-2 border-primary/50 border-b-0 z-20 pointer-events-none transition-opacity duration-150",
+          dragOverZone === "top" && !dragOverTabId
+            ? "opacity-100"
+            : "opacity-0",
+        )}
+      />
+      <div
+        className={cn(
+          "absolute left-0 right-0 bottom-0 h-1/2 bg-primary/20 border-2 border-primary/50 border-t-0 z-20 pointer-events-none transition-opacity duration-150",
+          dragOverZone === "bottom" && !dragOverTabId
+            ? "opacity-100"
+            : "opacity-0",
+        )}
+      />
+      <div
+        className={cn(
+          "absolute inset-0 bg-primary/10 border-2 border-primary/50 z-20 pointer-events-none transition-opacity duration-150",
+          dragOverZone === "center" && !dragOverTabId
+            ? "opacity-100"
+            : "opacity-0",
+        )}
+      />
 
-      {/* Tab list with horizontal scroll and drag-drop */}
+      {/* Tab list with horizontal scroll */}
       <div
         ref={scrollContainerRef}
         className="flex flex-1 items-center overflow-x-auto scrollbar-none"
       >
-        <Reorder.Group
-          axis="x"
-          values={tabs}
-          onReorder={handleReorder}
-          className="flex"
-        >
+        <div className="flex">
           <AnimatePresence mode="popLayout" initial={false}>
             {tabs.map((tab) => (
-              <Reorder.Item
+              <motion.div
                 key={tab.id}
-                value={tab}
-                id={tab.id}
-                onDragStart={() => setDraggingTabId(tab.id)}
-                onDragEnd={() => setDraggingTabId(null)}
                 initial={{ opacity: 0, width: 0 }}
                 animate={{
                   opacity: 1,
                   width: "auto",
-                  scale: draggingTabId === tab.id ? 1.02 : 1,
-                  zIndex: draggingTabId === tab.id ? 10 : 0,
                 }}
                 exit={{ opacity: 0, width: 0 }}
                 transition={{ duration: 0.15 }}
-                whileDrag={{
-                  scale: 1.02,
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                  cursor: "grabbing",
-                }}
-                className={cn("relative", draggingTabId === tab.id && "z-10")}
+                className="relative"
               >
+                {/* Drop indicator before */}
+                <div
+                  className={cn(
+                    "absolute left-0 top-1 bottom-1 w-0.5 bg-primary z-30 transition-opacity duration-100",
+                    dragOverTabId === tab.id && dragOverPosition === "before"
+                      ? "opacity-100"
+                      : "opacity-0",
+                  )}
+                />
+
                 <ContextMenu>
                   <ContextMenuTrigger asChild>
                     <div
+                      data-tab-draggable
                       draggable
                       onDragStart={(e) => handleTabDragStart(e, tab)}
                       onDragEnd={handleTabDragEnd}
+                      onDragOver={(e) => handleTabDragOver(e, tab)}
+                      onDrop={(e) => handleTabDrop(e, tab)}
                       onClick={() => handleTabClick(tab.id)}
                       onDoubleClick={() => handleDoubleClick(tab)}
                       className={cn(
-                        "group relative flex h-9 min-w-[100px] max-w-[200px] items-center gap-2 border-r border-border px-3 text-sm transition-colors select-none cursor-pointer",
+                        "group relative flex h-9 min-w-25 max-w-50 items-center gap-2 border-r border-border px-3 text-sm transition-colors select-none cursor-pointer",
                         activeTabId === tab.id
                           ? "bg-secondary text-foreground"
                           : "bg-background text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-                        draggingTabId === tab.id && "bg-secondary/80 shadow-lg",
-                        draggingTabId &&
-                          draggingTabId !== tab.id &&
-                          "opacity-70",
+                        draggingTabId === tab.id && "opacity-50",
                       )}
                     >
                       {/* Active indicator */}
@@ -348,7 +457,7 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
                           onChange={(e) => setEditingTitle(e.target.value)}
                           onBlur={handleTitleSave}
                           onKeyDown={handleTitleKeyDown}
-                          className="w-full min-w-[60px] bg-transparent text-sm outline-none"
+                          className="w-full min-w-15 bg-transparent text-sm outline-none"
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
@@ -407,10 +516,20 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
                     )}
                   </ContextMenuContent>
                 </ContextMenu>
-              </Reorder.Item>
+
+                {/* Drop indicator after */}
+                <div
+                  className={cn(
+                    "absolute right-0 top-1 bottom-1 w-0.5 bg-primary z-30 transition-opacity duration-100",
+                    dragOverTabId === tab.id && dragOverPosition === "after"
+                      ? "opacity-100"
+                      : "opacity-0",
+                  )}
+                />
+              </motion.div>
             ))}
           </AnimatePresence>
-        </Reorder.Group>
+        </div>
       </div>
 
       {/* New tab dropdown */}
@@ -439,4 +558,4 @@ export function TabBar({ connectionId, dbType, paneId }: TabBarProps) {
       </div>
     </div>
   );
-}
+});

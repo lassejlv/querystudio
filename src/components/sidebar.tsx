@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Table, LogOut, ChevronRight, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   useLicenseStore,
 } from "@/lib/store";
 import { useLayoutStore } from "@/lib/layout-store";
+import { useShallow } from "zustand/react/shallow";
 import { useTables, useDisconnect } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -81,20 +82,29 @@ export function DatabaseIcon({
   );
 }
 
-export function Sidebar() {
-  const connection = useConnectionStore((s) => s.connection);
-  const tables = useConnectionStore((s) => s.tables);
+export const Sidebar = memo(function Sidebar() {
+  // Use shallow comparison to minimize re-renders
+  const { connection, tables, selectedTable } = useConnectionStore(
+    useShallow((s) => ({
+      connection: s.connection,
+      tables: s.tables,
+      selectedTable: s.selectedTable,
+    })),
+  );
   const setTables = useConnectionStore((s) => s.setTables);
-  const selectedTable = useConnectionStore((s) => s.selectedTable);
   const setSelectedTable = useConnectionStore((s) => s.setSelectedTable);
   const { setStatus } = useLicenseStore();
 
   // Layout store for multi-tab support
   const openDataTab = useLayoutStore((s) => s.openDataTab);
 
-  // Sidebar state from store
-  const sidebarWidth = useAIQueryStore((s) => s.sidebarWidth);
-  const sidebarCollapsed = useAIQueryStore((s) => s.sidebarCollapsed);
+  // Sidebar state from store - use shallow comparison
+  const { sidebarWidth, sidebarCollapsed } = useAIQueryStore(
+    useShallow((s) => ({
+      sidebarWidth: s.sidebarWidth,
+      sidebarCollapsed: s.sidebarCollapsed,
+    })),
+  );
   const setSidebarWidth = useAIQueryStore((s) => s.setSidebarWidth);
   const toggleSidebar = useAIQueryStore((s) => s.toggleSidebar);
 
@@ -395,4 +405,4 @@ export function Sidebar() {
       />
     </>
   );
-}
+});

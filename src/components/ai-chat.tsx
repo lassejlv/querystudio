@@ -386,7 +386,7 @@ const MessageBubble = memo(function MessageBubble({
 // Main AI Chat Component
 // ============================================================================
 
-export function AIChat() {
+export const AIChat = memo(function AIChat() {
   const connection = useConnectionStore((s) => s.connection);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -1163,4 +1163,4 @@ export function AIChat() {
       </Dialog>
     </div>
   );
-}
+});

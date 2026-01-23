@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { motion } from "framer-motion";
 import {
   Play,
@@ -34,6 +34,7 @@ import {
   useQueryHistoryStore,
 } from "@/lib/store";
 import { useLayoutStore } from "@/lib/layout-store";
+import { useShallow } from "zustand/react/shallow";
 import { useStatusBarStore } from "@/components/status-bar";
 import { useExecuteQuery, useAllTableColumns } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,10 @@ interface QueryEditorProps {
   paneId: string;
 }
 
-export function QueryEditor({ tabId, paneId }: QueryEditorProps) {
+export const QueryEditor = memo(function QueryEditor({
+  tabId,
+  paneId,
+}: QueryEditorProps) {
   const connection = useConnectionStore((s) => s.connection);
   const connectionId = connection?.id ?? null;
   const tables = useConnectionStore((s) => s.tables);
@@ -60,23 +64,27 @@ export function QueryEditor({ tabId, paneId }: QueryEditorProps) {
   // Fetch columns for all tables (for autocomplete)
   const { data: allColumns } = useAllTableColumns(connectionId, tables);
 
-  // Layout store for per-tab query content
-  const allPanes = useLayoutStore((s) => s.panes[connectionId ?? ""] || {});
+  // Layout store - use shallow comparison to only get the specific tab data we need
+  const tabData = useLayoutStore(
+    useShallow((s) => {
+      const panes = s.panes[connectionId ?? ""] || {};
+      const pane = panes[paneId];
+      if (!pane || pane.type !== "leaf") return null;
+      const tab = pane.tabs.find((t) => t.id === tabId);
+      if (!tab) return null;
+      return {
+        queryContent: tab.queryContent ?? "",
+        queryResults: tab.queryResults,
+      };
+    }),
+  );
   const updateTab = useLayoutStore((s) => s.updateTab);
 
-  // Get initial state from tab
-  const getTabState = () => {
-    if (!connectionId) return { query: "", results: undefined };
-    const pane = allPanes[paneId];
-    if (!pane || pane.type !== "leaf") return { query: "", results: undefined };
-    const currentTab = pane.tabs.find((t) => t.id === tabId);
-    return {
-      query: currentTab?.queryContent ?? "",
-      results: currentTab?.queryResults,
-    };
+  // Get initial state from tab data
+  const initialState = {
+    query: tabData?.queryContent ?? "",
+    results: tabData?.queryResults,
   };
-
-  const initialState = getTabState();
 
   // Query history (still per-connection for history feature)
   const addQueryToHistory = useQueryHistoryStore((s) => s.addQuery);
@@ -126,34 +134,34 @@ export function QueryEditor({ tabId, paneId }: QueryEditorProps) {
   const executeQueryMutation = useExecuteQuery(connectionId);
 
   // Load query content and results from tab when tab changes
-  // Note: allPanes is intentionally NOT in the dependency array to prevent
-  // circular updates that cause backwards typing. This effect should only
-  // run when switching tabs (tabId/paneId change), not on every content change.
+  // Note: tabData is used here but we only want to run this on tab switch,
+  // not on every content change to prevent circular updates.
   useEffect(() => {
-    if (connectionId && paneId) {
-      const pane = allPanes[paneId];
-      if (!pane || pane.type !== "leaf") return;
-      const currentTab = pane.tabs.find((t) => t.id === tabId);
-      const savedQuery = currentTab?.queryContent ?? "";
+    if (connectionId && paneId && tabData) {
+      const savedQuery = tabData.queryContent;
       setQuery(savedQuery);
       if (editorRef.current) {
         editorRef.current.setValue(savedQuery);
       }
       // Restore results from layout store
-      if (currentTab?.queryResults) {
-        setResults(currentTab.queryResults.results ?? []);
-        setError(currentTab.queryResults.error ?? null);
-        setExecutionTime(currentTab.queryResults.executionTime ?? null);
+      if (tabData.queryResults) {
+        setResults(tabData.queryResults.results ?? []);
+        setError(tabData.queryResults.error ?? null);
+        setExecutionTime(tabData.queryResults.executionTime ?? null);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionId, tabId, paneId]);
 
-  // Save query content to tab when it changes (debounced via effect)
+  // Save query content to tab when it changes (debounced to reduce store updates)
   useEffect(() => {
-    if (connectionId && paneId) {
+    if (!connectionId || !paneId) return;
+
+    const timeoutId = setTimeout(() => {
       updateTab(connectionId, paneId, tabId, { queryContent: query });
-    }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
   }, [query, connectionId, paneId, tabId, updateTab]);
 
   // Keyboard shortcut for history (Cmd+Shift+H / Ctrl+Shift+H)
@@ -944,4 +952,4 @@ export function QueryEditor({ tabId, paneId }: QueryEditorProps) {
       </div>
     </div>
   );
-}
+});

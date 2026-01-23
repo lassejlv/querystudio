@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { motion } from "framer-motion";
 import {
   Key,
@@ -63,7 +63,10 @@ interface TableViewerProps {
   };
 }
 
-export function TableViewer({ tabId: _tabId, tableInfo }: TableViewerProps) {
+export const TableViewer = memo(function TableViewer({
+  tabId: _tabId,
+  tableInfo,
+}: TableViewerProps) {
   const connection = useConnectionStore((s) => s.connection);
   const globalSelectedTable = useConnectionStore((s) => s.selectedTable);
 
@@ -499,4 +502,4 @@ export function TableViewer({ tabId: _tabId, tableInfo }: TableViewerProps) {
       )}
     </div>
   );
-}
+});
