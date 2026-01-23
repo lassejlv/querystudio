@@ -1,5 +1,3 @@
-pub mod claude;
-pub mod gemini;
 pub mod openai;
 
 use async_trait::async_trait;
@@ -11,16 +9,12 @@ use std::fmt;
 pub enum AIProviderType {
     #[default]
     OpenAI,
-    Anthropic,
-    Google,
 }
 
 impl fmt::Display for AIProviderType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AIProviderType::OpenAI => write!(f, "OpenAI"),
-            AIProviderType::Anthropic => write!(f, "Anthropic"),
-            AIProviderType::Google => write!(f, "Google"),
         }
     }
 }
@@ -261,14 +255,6 @@ pub fn create_ai_provider(
     match provider_type {
         AIProviderType::OpenAI => {
             let provider = openai::OpenAIProvider::new(api_key);
-            Ok(Box::new(provider))
-        }
-        AIProviderType::Anthropic => {
-            let provider = claude::ClaudeProvider::new(api_key);
-            Ok(Box::new(provider))
-        }
-        AIProviderType::Google => {
-            let provider = gemini::GeminiProvider::new(api_key);
             Ok(Box::new(provider))
         }
     }
