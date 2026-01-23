@@ -55,22 +55,29 @@ import type { ColumnInfo } from "@/lib/types";
 
 const PAGE_SIZE = 100;
 
-interface TableViewerProps {
-  tabId: string;
-  tableInfo?: {
-    schema: string;
-    name: string;
-  };
-}
+import type { TabContentProps } from "@/lib/tab-sdk";
+import { useLayoutStore } from "@/lib/layout-store";
+
+interface TableViewerProps extends TabContentProps {}
 
 export const TableViewer = memo(function TableViewer({
-  tabId: _tabId,
-  tableInfo,
+  tabId,
+  paneId,
+  connectionId: propsConnectionId,
 }: TableViewerProps) {
   const connection = useConnectionStore((s) => s.connection);
   const globalSelectedTable = useConnectionStore((s) => s.selectedTable);
 
-  // Use tableInfo from props if provided (for dedicated table tabs), otherwise use global selection
+  // Use connectionId from props or fall back to connection store
+  const connectionId = propsConnectionId || connection?.id || "";
+
+  // Get tableInfo from the tab's state in the layout store
+  const pane = useLayoutStore((s) => s.panes[connectionId]?.[paneId]);
+  const tab =
+    pane?.type === "leaf" ? pane.tabs.find((t) => t.id === tabId) : null;
+  const tableInfo = tab?.tableInfo;
+
+  // Use tableInfo from tab if provided (for dedicated table tabs), otherwise use global selection
   const selectedTable = tableInfo || globalSelectedTable;
   const [page, setPage] = useState(0);
 
@@ -89,8 +96,6 @@ export const TableViewer = memo(function TableViewer({
     string,
     unknown
   > | null>(null);
-
-  const connectionId = connection?.id ?? null;
   const queryClient = useQueryClient();
 
   const {

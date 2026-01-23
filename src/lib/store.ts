@@ -89,6 +89,8 @@ interface AIQueryState {
   // Experimental features (persisted)
   experimentalTerminal: boolean;
   setExperimentalTerminal: (enabled: boolean) => void;
+  experimentalPlugins: boolean;
+  setExperimentalPlugins: (enabled: boolean) => void;
 
   // Debug settings (persisted)
   debugMode: boolean;
@@ -136,6 +138,10 @@ export const useAIQueryStore = create<AIQueryState>()(
       setExperimentalTerminal: (enabled: boolean) =>
         set({ experimentalTerminal: enabled }),
 
+      experimentalPlugins: false,
+      setExperimentalPlugins: (enabled: boolean) =>
+        set({ experimentalPlugins: enabled }),
+
       debugMode: false,
       setDebugMode: (enabled: boolean) => set({ debugMode: enabled }),
     }),
@@ -149,6 +155,7 @@ export const useAIQueryStore = create<AIQueryState>()(
         statusBarVisible: state.statusBarVisible,
         autoReconnect: state.autoReconnect,
         experimentalTerminal: state.experimentalTerminal,
+        experimentalPlugins: state.experimentalPlugins,
         debugMode: state.debugMode,
       }),
     },

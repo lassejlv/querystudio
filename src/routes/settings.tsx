@@ -11,6 +11,7 @@ import {
   Mail,
   Shield,
   Loader2,
+  Puzzle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import { useAIQueryStore } from "@/lib/store";
 import { ThemeSelector } from "@/components/theme-selector";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { PluginSettings } from "@/components/plugin-settings";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -32,11 +34,13 @@ type SettingsTab =
   | "account"
   | "appearance"
   | "shortcuts"
+  | "plugins"
   | "experimental";
 
 function SettingsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const experimentalPlugins = useAIQueryStore((s) => s.experimentalPlugins);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -98,6 +102,17 @@ function SettingsPage() {
             Shortcuts
           </Button>
 
+          {experimentalPlugins && (
+            <Button
+              variant={activeTab === "plugins" ? "secondary" : "ghost"}
+              className="justify-start gap-2"
+              onClick={() => setActiveTab("plugins")}
+            >
+              <Puzzle className="h-4 w-4" />
+              Plugins
+            </Button>
+          )}
+
           <Button
             variant={activeTab === "experimental" ? "secondary" : "ghost"}
             className="justify-start gap-2"
@@ -114,6 +129,7 @@ function SettingsPage() {
           {activeTab === "account" && <AccountSettings />}
           {activeTab === "appearance" && <AppearanceSettings />}
           {activeTab === "shortcuts" && <ShortcutsSettings />}
+          {activeTab === "plugins" && experimentalPlugins && <PluginSettings />}
           {activeTab === "experimental" && <ExperimentalSettings />}
         </main>
       </div>
@@ -410,6 +426,10 @@ function ExperimentalSettings() {
   const setExperimentalTerminal = useAIQueryStore(
     (s) => s.setExperimentalTerminal,
   );
+  const experimentalPlugins = useAIQueryStore((s) => s.experimentalPlugins);
+  const setExperimentalPlugins = useAIQueryStore(
+    (s) => s.setExperimentalPlugins,
+  );
 
   return (
     <div className="space-y-6">
@@ -435,6 +455,20 @@ function ExperimentalSettings() {
           <Switch
             checked={experimentalTerminal}
             onCheckedChange={setExperimentalTerminal}
+          />
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base">Plugin System</Label>
+            <p className="text-sm text-muted-foreground">
+              Enable the plugin system to install and manage custom tab plugins.
+              Adds a Plugins tab to settings.
+            </p>
+          </div>
+          <Switch
+            checked={experimentalPlugins}
+            onCheckedChange={setExperimentalPlugins}
           />
         </div>
       </div>

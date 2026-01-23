@@ -16,6 +16,7 @@ import {
   type DropZone,
 } from "@/lib/layout-store";
 import { useShallow } from "zustand/react/shallow";
+import { tabRegistry } from "@/lib/tab-sdk";
 
 // Context to track global drag state
 interface DragContextType {
@@ -30,8 +31,6 @@ const DragContext = createContext<DragContextType>({
 
 export const useDragContext = () => useContext(DragContext);
 import { TabBar } from "@/components/tab-bar";
-import { TableViewer } from "@/components/table-viewer";
-import { QueryEditor } from "@/components/query-editor";
 import { cn } from "@/lib/utils";
 
 interface PaneContainerProps {
@@ -246,24 +245,30 @@ const LeafPaneRenderer = memo(function LeafPaneRenderer({
       );
     }
 
-    if (activeTab.type === "data") {
+    // Use Tab SDK to get the component for this tab type
+    const TabComponent = tabRegistry.getComponent(activeTab.type);
+
+    if (TabComponent) {
       return (
-        <TableViewer
+        <TabComponent
           key={activeTab.id}
           tabId={activeTab.id}
-          tableInfo={activeTab.tableInfo}
+          paneId={pane.id}
+          connectionId={connectionId}
         />
       );
     }
 
-    if (activeTab.type === "query") {
-      return (
-        <QueryEditor key={activeTab.id} tabId={activeTab.id} paneId={pane.id} />
-      );
-    }
-
-    return null;
-  }, [activeTab, pane.id]);
+    // Fallback for unknown tab types
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <p className="text-lg">Unknown tab type: {activeTab.type}</p>
+          <p className="text-sm">This tab type is not registered</p>
+        </div>
+      </div>
+    );
+  }, [activeTab, pane.id, connectionId]);
 
   return (
     <div

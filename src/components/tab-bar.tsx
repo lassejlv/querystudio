@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect, memo, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Table2, Terminal, GripVertical } from "lucide-react";
+import { X, Plus, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAIQueryStore } from "@/lib/store";
+import { tabRegistry, type TabPlugin } from "@/lib/tab-sdk";
+import { usePluginStore } from "@/lib/plugin-store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -159,10 +162,13 @@ export const TabBar = memo(function TabBar({
 
   const handleDuplicateTab = useCallback(
     (tab: Tab) => {
+      // For terminal tabs, don't copy terminalId - a new one will be created
       createTab(connectionId, paneId, tab.type, {
         title: `${tab.title} (copy)`,
         tableInfo: tab.tableInfo,
         queryContent: tab.queryContent,
+        // Don't pass terminalId - let the terminal tab create a new terminal
+        metadata: tab.type === "terminal" ? undefined : tab.metadata,
       });
     },
     [createTab, connectionId, paneId],
@@ -182,15 +188,34 @@ export const TabBar = memo(function TabBar({
     [splitPane, connectionId, paneId],
   );
 
-  const getTabIcon = useMemo(
-    () => (type: TabType) => {
-      if (type === "query") {
-        return <Terminal className="h-3.5 w-3.5 shrink-0" />;
-      }
-      return <Table2 className="h-3.5 w-3.5 shrink-0" />;
-    },
-    [],
-  );
+  const experimentalTerminal = useAIQueryStore((s) => s.experimentalTerminal);
+
+  // Get plugin enabled states from plugin store
+  const installedPlugins = usePluginStore((s) => s.plugins);
+
+  // Get creatable plugins from Tab SDK, filtered by enabled state in plugin store
+  const creatablePlugins = useMemo(() => {
+    const allCreatable = tabRegistry.getCreatable(experimentalTerminal);
+
+    // Filter out plugins that are disabled in the plugin store
+    return allCreatable.filter((plugin) => {
+      const installedPlugin = installedPlugins.find(
+        (p) => p.type === plugin.type,
+      );
+      // If not in plugin store, show it (built-in tabs like data, query)
+      // If in plugin store, only show if enabled
+      return !installedPlugin || installedPlugin.enabled;
+    });
+  }, [experimentalTerminal, installedPlugins]);
+
+  const getTabIcon = useCallback((type: TabType) => {
+    const plugin = tabRegistry.get(type);
+    if (plugin) {
+      const Icon = plugin.icon;
+      return <Icon className="h-3.5 w-3.5 shrink-0" />;
+    }
+    return null;
+  }, []);
 
   // Native HTML5 drag and drop handlers
   const handleTabDragStart = (e: React.DragEvent, tab: Tab) => {
@@ -545,14 +570,29 @@ export const TabBar = memo(function TabBar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleCreateTab("data")}>
-              <Table2 className="h-4 w-4" />
-              New {isRedis ? "Keys" : "Data"} Tab
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleCreateTab("query")}>
-              <Terminal className="h-4 w-4" />
-              New {isRedis ? "Console" : "Query"} Tab
-            </DropdownMenuItem>
+            {creatablePlugins.map((plugin: TabPlugin) => {
+              const Icon = plugin.icon;
+              // Custom display names for Redis
+              let displayName = plugin.displayName;
+              if (isRedis) {
+                if (plugin.type === "data") displayName = "Keys";
+                if (plugin.type === "query") displayName = "Console";
+              }
+              return (
+                <DropdownMenuItem
+                  key={plugin.type}
+                  onClick={() => handleCreateTab(plugin.type as TabType)}
+                >
+                  <Icon className="h-4 w-4" />
+                  New {displayName} Tab
+                  {plugin.createShortcut && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {plugin.createShortcut}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

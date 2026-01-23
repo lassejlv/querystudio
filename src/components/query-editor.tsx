@@ -46,14 +46,14 @@ const MAX_EDITOR_HEIGHT = 600;
 const DEFAULT_EDITOR_HEIGHT = 200;
 const EDITOR_HEIGHT_KEY = "querystudio_editor_height";
 
-interface QueryEditorProps {
-  tabId: string;
-  paneId: string;
-}
+import type { TabContentProps } from "@/lib/tab-sdk";
+
+interface QueryEditorProps extends TabContentProps {}
 
 export const QueryEditor = memo(function QueryEditor({
   tabId,
   paneId,
+  connectionId: _connectionId,
 }: QueryEditorProps) {
   const connection = useConnectionStore((s) => s.connection);
   const connectionId = connection?.id ?? null;

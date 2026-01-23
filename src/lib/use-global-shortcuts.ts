@@ -28,8 +28,11 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
 
   const disconnect = useDisconnect();
 
+  // Experimental terminal setting
+  const experimentalTerminal = useAIQueryStore((s) => s.experimentalTerminal);
+
   // Helper to switch to or create a tab of a specific type
-  const switchToTabType = (type: "data" | "query") => {
+  const switchToTabType = (type: "data" | "query" | "terminal") => {
     if (!connectionId) return;
     const leafPanes = getAllLeafPanes(connectionId);
     // Find existing tab of this type in any pane
@@ -44,7 +47,19 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
     const activePane = getActivePane(connectionId);
     if (activePane) {
       createTab(connectionId, activePane.id, type, {
-        title: type === "data" ? "Data" : "Query",
+        title:
+          type === "data" ? "Data" : type === "query" ? "Query" : "Terminal",
+      });
+    }
+  };
+
+  // Helper to create a new terminal tab
+  const createTerminalTab = () => {
+    if (!connectionId || !experimentalTerminal) return;
+    const activePane = getActivePane(connectionId);
+    if (activePane) {
+      createTab(connectionId, activePane.id, "terminal", {
+        makeActive: true,
       });
     }
   };
@@ -163,6 +178,13 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
         return;
       }
 
+      // Cmd+` - New terminal tab (when experimental terminal is enabled)
+      if (isMod && e.key === "`" && experimentalTerminal) {
+        e.preventDefault();
+        createTerminalTab();
+        return;
+      }
+
       // Cmd+N - New connection
       if (isMod && e.key === "n") {
         e.preventDefault();
@@ -182,6 +204,7 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
     createTab,
     getActivePane,
     setAiPanelOpen,
+    experimentalTerminal,
     options.onNewConnection,
   ]);
 

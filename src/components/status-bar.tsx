@@ -11,12 +11,11 @@ import {
   WifiOff,
   TerminalSquare,
 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
+import { useLayoutStore } from "@/lib/layout-store";
 import { cn } from "@/lib/utils";
 import type { DatabaseType } from "@/lib/types";
 import { create } from "zustand";
-import { useTerminalStore, type TerminalInstance } from "@/lib/terminal-store";
 import {
   Tooltip,
   TooltipContent,
@@ -146,11 +145,22 @@ export function StatusBar() {
   const lastQueryStatus = useStatusBarStore((s) => s.lastQueryStatus);
   const cursorPosition = useStatusBarStore((s) => s.cursorPosition);
 
-  const terminals = useTerminalStore((s) => s.terminals);
-  const addTerminal = useTerminalStore((s) => s.addTerminal);
-  const openTerminalPanel = useTerminalStore((s) => s.openTerminalPanel);
-
   const experimentalTerminal = useAIQueryStore((s) => s.experimentalTerminal);
+
+  // Get terminal tabs count and create function from layout store
+  const connectionId = connection?.id ?? "";
+  const getActivePane = useLayoutStore((s) => s.getActivePane);
+  const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
+  const createTab = useLayoutStore((s) => s.createTab);
+
+  // Count terminal tabs across all panes
+  const terminalTabCount = connectionId
+    ? getAllLeafPanes(connectionId).reduce(
+        (count, pane) =>
+          count + pane.tabs.filter((t) => t.type === "terminal").length,
+        0,
+      )
+    : 0;
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -164,32 +174,17 @@ export function StatusBar() {
 
   const isConnected = !!connection;
 
-  const handleCreateTerminal = useCallback(async () => {
-    try {
-      const id = await invoke<string>("terminal_create", {
-        rows: 24,
-        cols: 80,
-      });
-
-      const terminal: TerminalInstance = {
-        id,
-        title: `Terminal ${terminals.length + 1}`,
-        createdAt: new Date(),
-      };
-
-      addTerminal(terminal);
-    } catch (error) {
-      console.error("Failed to create terminal:", error);
-    }
-  }, [terminals.length, addTerminal]);
-
   const handleTerminalClick = useCallback(() => {
-    if (terminals.length === 0) {
-      handleCreateTerminal();
-    } else {
-      openTerminalPanel();
+    if (!connectionId) return;
+
+    // Get the active pane or first leaf pane
+    const activePane = getActivePane(connectionId);
+    if (activePane) {
+      createTab(connectionId, activePane.id, "terminal", {
+        makeActive: true,
+      });
     }
-  }, [terminals.length, handleCreateTerminal, openTerminalPanel]);
+  }, [connectionId, getActivePane, createTab]);
 
   return (
     <div className="flex h-6 items-center justify-between border-t border-border bg-card px-3 text-xs text-muted-foreground">
@@ -320,17 +315,17 @@ export function StatusBar() {
                     onClick={handleTerminalClick}
                     className={cn(
                       "flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-accent hover:text-accent-foreground",
-                      terminals.length > 0 && "text-primary",
+                      terminalTabCount > 0 && "text-primary",
                     )}
                   >
                     <TerminalSquare className="h-3 w-3" />
-                    {terminals.length > 0 && (
-                      <span className="text-[10px]">{terminals.length}</span>
+                    {terminalTabCount > 0 && (
+                      <span className="text-[10px]">{terminalTabCount}</span>
                     )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
-                  {terminals.length === 0 ? "New Terminal" : "Show Terminal"}
+                  New Terminal Tab
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

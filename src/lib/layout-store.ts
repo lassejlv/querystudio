@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { tabRegistry, generateTabTitle } from "./tab-sdk";
 
 // Generate a short unique ID
 const generateId = () => crypto.randomUUID().slice(0, 8);
 
-export type TabType = "data" | "query";
+export type TabType = "data" | "query" | "terminal";
 
 export interface Tab {
   id: string;
@@ -27,6 +28,10 @@ export interface Tab {
     error: string | null;
     executionTime: number | null;
   };
+  // For terminal tabs, store the terminal instance ID
+  terminalId?: string;
+  // Generic metadata for plugin tabs
+  metadata?: Record<string, unknown>;
 }
 
 export type SplitDirection = "horizontal" | "vertical";
@@ -81,6 +86,8 @@ interface LayoutState {
       title?: string;
       tableInfo?: { schema: string; name: string };
       queryContent?: string;
+      terminalId?: string;
+      metadata?: Record<string, unknown>;
       makeActive?: boolean;
     },
   ) => string;
@@ -224,10 +231,15 @@ export const useLayoutStore = create<LayoutState>()(
           if (!pane || pane.type !== "leaf") return state;
 
           const sameTypeTabs = pane.tabs.filter((t) => t.type === type);
-          const defaultTitle =
-            type === "query"
-              ? `Query ${sameTypeTabs.length + 1}`
-              : `Data ${sameTypeTabs.length + 1}`;
+
+          // Use Tab SDK to generate default title
+          const defaultTitle = generateTabTitle(
+            type,
+            sameTypeTabs.length,
+            options.tableInfo
+              ? { name: options.tableInfo.name }
+              : options.metadata,
+          );
 
           const newTab: Tab = {
             id: tabId,
@@ -236,7 +248,15 @@ export const useLayoutStore = create<LayoutState>()(
             tableInfo: options.tableInfo,
             queryContent:
               options.queryContent ?? (type === "query" ? "" : undefined),
+            terminalId: options.terminalId,
+            metadata: options.metadata,
           };
+
+          // Call lifecycle hook if available
+          const plugin = tabRegistry.get(type);
+          if (plugin?.lifecycle?.onCreate) {
+            plugin.lifecycle.onCreate(tabId, options.metadata || {});
+          }
 
           const newPane: LeafPane = {
             ...pane,
@@ -271,6 +291,17 @@ export const useLayoutStore = create<LayoutState>()(
         const panes = state.panes[connectionId] || {};
         const pane = panes[paneId];
         if (!pane || pane.type !== "leaf") return;
+
+        // Find the tab being closed for lifecycle hook
+        const closingTab = pane.tabs.find((t) => t.id === tabId);
+
+        // Call lifecycle hook if available
+        if (closingTab) {
+          const plugin = tabRegistry.get(closingTab.type);
+          if (plugin?.lifecycle?.onClose) {
+            plugin.lifecycle.onClose(tabId, closingTab.metadata || {});
+          }
+        }
 
         const newTabs = pane.tabs.filter((t) => t.id !== tabId);
 
@@ -829,6 +860,54 @@ export const useLayoutStore = create<LayoutState>()(
         panes: state.panes,
         activePaneId: state.activePaneId,
       }),
+      // Migration: clean up terminal tabs on load since they require backend processes
+      migrate: (persistedState: unknown, _version: number) => {
+        const state = persistedState as {
+          rootPaneId: Record<string, string>;
+          panes: Record<string, Record<string, Pane>>;
+          activePaneId: Record<string, string>;
+        };
+
+        // Clean up terminal tabs from all panes
+        const cleanedPanes: Record<string, Record<string, Pane>> = {};
+
+        for (const [connectionId, connectionPanes] of Object.entries(
+          state.panes || {},
+        )) {
+          cleanedPanes[connectionId] = {};
+
+          for (const [paneId, pane] of Object.entries(connectionPanes)) {
+            if (pane.type === "leaf") {
+              // Filter out terminal tabs
+              const filteredTabs = pane.tabs.filter(
+                (tab) => tab.type !== "terminal",
+              );
+              // Update activeTabId if the active tab was a terminal
+              const activeTabId =
+                pane.activeTabId &&
+                filteredTabs.some((t) => t.id === pane.activeTabId)
+                  ? pane.activeTabId
+                  : filteredTabs.length > 0
+                    ? filteredTabs[0].id
+                    : null;
+
+              cleanedPanes[connectionId][paneId] = {
+                ...pane,
+                tabs: filteredTabs,
+                activeTabId,
+              };
+            } else {
+              cleanedPanes[connectionId][paneId] = pane;
+            }
+          }
+        }
+
+        return {
+          ...state,
+          panes: cleanedPanes,
+        };
+      },
+      version: 1,
     },
   ),
 );
