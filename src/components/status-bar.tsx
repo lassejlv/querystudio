@@ -235,7 +235,7 @@ export function StatusBar() {
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1.5">
               <Table className="h-3 w-3" />
-              <span className="max-w-[200px] truncate">
+              <span className="max-w-50 truncate">
                 {selectedTable.schema !== "public"
                   ? `${selectedTable.schema}.${selectedTable.name}`
                   : selectedTable.name}

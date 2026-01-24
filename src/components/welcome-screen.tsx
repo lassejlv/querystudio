@@ -97,7 +97,7 @@ export function WelcomeScreen({
       />
 
       <div className="flex flex-1 items-center justify-center p-4">
-        <Card className="w-full max-w-[420px] shadow-sm">
+        <Card className="w-full max-w-105 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <div className="flex flex-col gap-1">
               <CardTitle className="text-xl">QueryStudio</CardTitle>
@@ -124,7 +124,7 @@ export function WelcomeScreen({
           <Separator />
           <CardContent className="p-0">
             {!isLoading && savedConnections && savedConnections.length > 0 ? (
-              <ScrollArea className="h-[300px] w-full p-4">
+              <ScrollArea className="h-75 w-full p-4">
                 <div className="flex flex-col gap-1">
                   {savedConnections.map((connection) => (
                     <div
@@ -158,7 +158,7 @@ export function WelcomeScreen({
                 </div>
               </ScrollArea>
             ) : (
-              <div className="flex h-[200px] items-center justify-center p-4 text-center text-sm text-muted-foreground">
+              <div className="flex h-50 items-center justify-center p-4 text-center text-sm text-muted-foreground">
                 No connections saved yet.
                 <br />
                 Create one to get started.

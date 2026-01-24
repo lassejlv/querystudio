@@ -332,7 +332,7 @@ export function EditRowSheet({
                           placeholder={
                             isNull ? "NULL" : `Enter ${col.data_type}`
                           }
-                          className="min-h-[80px] font-mono text-sm pr-8"
+                          className="min-h-20 font-mono text-sm pr-8"
                         />
                         <button
                           type="button"
@@ -381,7 +381,7 @@ export function EditRowSheet({
             </div>
           </div>
 
-          <SheetFooter className="flex-shrink-0">
+          <SheetFooter className="shrink-0">
             <Button
               type="button"
               variant="outline"

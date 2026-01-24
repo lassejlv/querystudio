@@ -218,7 +218,7 @@ function App() {
 
         {/* Left side controls - aligned with traffic lights */}
         <div
-          className="absolute left-[70px] top-0 bottom-0 flex items-center"
+          className="absolute left-17.5 top-0 bottom-0 flex items-center"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           {/* Sidebar Toggle Button */}
