@@ -177,32 +177,6 @@ impl ConnectionParams {
             }
         }
     }
-
-    pub fn to_mongodb_url(&self) -> String {
-        match self {
-            ConnectionParams::ConnectionString { connection_string } => connection_string.clone(),
-            ConnectionParams::Parameters {
-                host,
-                port,
-                database,
-                username,
-                password,
-            } => {
-                // MongoDB URL format: mongodb://[username:password@]host[:port][/database]
-                let auth = if !username.is_empty() && !password.is_empty() {
-                    format!("{}:{}@", username, password)
-                } else {
-                    String::new()
-                };
-                let db = if !database.is_empty() {
-                    format!("/{}", database)
-                } else {
-                    String::new()
-                };
-                format!("mongodb://{}{}:{}{}", auth, host, port, db)
-            }
-        }
-    }
 }
 
 #[async_trait]
