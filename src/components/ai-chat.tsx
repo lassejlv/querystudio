@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import { useLayoutStore } from "@/lib/layout-store";
 import {
   Send,
@@ -85,25 +85,23 @@ function getApiKeyForModel(
 // Memoized Code Block Component
 // ============================================================================
 
+// Props interface for CodeBlock to receive callbacks from parent
+interface CodeBlockProps {
+  children: React.ReactNode;
+  className?: string;
+  onAppendToRunner: (code: string) => void;
+}
+
 const CodeBlock = memo(function CodeBlock({
   children,
   className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+  onAppendToRunner,
+}: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const language = className?.replace("language-", "") || "";
   const isSql =
     language === "sql" || language === "pgsql" || language === "postgresql";
   const code = String(children).replace(/\n$/, "");
-
-  const appendSql = useAIQueryStore((s) => s.appendSql);
-  const connection = useConnectionStore((s) => s.connection);
-  const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
-  const setActiveTab = useLayoutStore((s) => s.setActiveTab);
-  const createTab = useLayoutStore((s) => s.createTab);
-  const getActivePane = useLayoutStore((s) => s.getActivePane);
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(code);
@@ -112,33 +110,8 @@ const CodeBlock = memo(function CodeBlock({
   }, [code]);
 
   const handleAppendToRunner = useCallback(() => {
-    appendSql(code);
-    // Switch to an existing query tab or create a new one
-    if (connection?.id) {
-      const leafPanes = getAllLeafPanes(connection.id);
-      // Find any query tab in any pane
-      for (const pane of leafPanes) {
-        const queryTab = pane.tabs.find((t) => t.type === "query");
-        if (queryTab) {
-          setActiveTab(connection.id, pane.id, queryTab.id);
-          return;
-        }
-      }
-      // No query tab found, create one in the active pane
-      const activePane = getActivePane(connection.id);
-      if (activePane) {
-        createTab(connection.id, activePane.id, "query", { title: "Query" });
-      }
-    }
-  }, [
-    code,
-    appendSql,
-    connection,
-    getAllLeafPanes,
-    setActiveTab,
-    createTab,
-    getActivePane,
-  ]);
+    onAppendToRunner(code);
+  }, [code, onAppendToRunner]);
 
   return (
     <div className="relative group my-1.5 rounded-md overflow-hidden border border-border/40">
@@ -213,12 +186,68 @@ const InlineCode = memo(function InlineCode({
 
 interface MessageBubbleProps {
   message: Message;
+  onAppendToRunner: (code: string) => void;
 }
 
 const MessageBubble = memo(function MessageBubble({
   message,
+  onAppendToRunner,
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
+
+  // Memoize the markdown components to ensure stable references
+  // This prevents React from seeing different component trees during streaming
+  const markdownComponents = useMemo(
+    () => ({
+      code({
+        className,
+        children,
+        ...props
+      }: {
+        className?: string;
+        children?: React.ReactNode;
+      }) {
+        const isBlock =
+          className?.includes("language-") || String(children).includes("\n");
+        if (isBlock) {
+          return (
+            <CodeBlock
+              className={className}
+              onAppendToRunner={onAppendToRunner}
+            >
+              {children}
+            </CodeBlock>
+          );
+        }
+        return <InlineCode {...props}>{children}</InlineCode>;
+      },
+      pre({ children }: { children?: React.ReactNode }) {
+        return <>{children}</>;
+      },
+      table({ children }: { children?: React.ReactNode }) {
+        return (
+          <div className="overflow-x-auto my-1.5 rounded-md border border-border/50">
+            <table className="min-w-full text-xs">{children}</table>
+          </div>
+        );
+      },
+      th({ children }: { children?: React.ReactNode }) {
+        return (
+          <th className="bg-muted/40 px-2 py-1 text-left font-medium text-foreground border-b border-border/50 text-xs">
+            {children}
+          </th>
+        );
+      },
+      td({ children }: { children?: React.ReactNode }) {
+        return (
+          <td className="px-2 py-1 border-b border-border/30 text-xs">
+            {children}
+          </td>
+        );
+      },
+    }),
+    [onAppendToRunner],
+  );
 
   return (
     <div className={cn("flex gap-2", isUser && "justify-end")}>
@@ -266,43 +295,7 @@ const MessageBubble = memo(function MessageBubble({
             <div className="prose prose-sm prose-invert max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0 prose-table:my-1.5 prose-headings:my-1 prose-hr:hidden">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                components={{
-                  code({ className, children, ...props }) {
-                    const isBlock =
-                      className?.includes("language-") ||
-                      String(children).includes("\n");
-                    if (isBlock) {
-                      return (
-                        <CodeBlock className={className}>{children}</CodeBlock>
-                      );
-                    }
-                    return <InlineCode {...props}>{children}</InlineCode>;
-                  },
-                  pre({ children }) {
-                    return <>{children}</>;
-                  },
-                  table({ children }) {
-                    return (
-                      <div className="overflow-x-auto my-1.5 rounded-md border border-border/50">
-                        <table className="min-w-full text-xs">{children}</table>
-                      </div>
-                    );
-                  },
-                  th({ children }) {
-                    return (
-                      <th className="bg-muted/40 px-2 py-1 text-left font-medium text-foreground border-b border-border/50 text-xs">
-                        {children}
-                      </th>
-                    );
-                  },
-                  td({ children }) {
-                    return (
-                      <td className="px-2 py-1 border-b border-border/30 text-xs">
-                        {children}
-                      </td>
-                    );
-                  },
-                }}
+                components={markdownComponents}
               >
                 {message.content}
               </ReactMarkdown>
@@ -329,47 +322,7 @@ const MessageBubble = memo(function MessageBubble({
               <div className="prose prose-sm prose-invert max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0 prose-table:my-1.5 prose-headings:my-1 prose-hr:hidden">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  components={{
-                    code({ className, children, ...props }) {
-                      const isBlock =
-                        className?.includes("language-") ||
-                        String(children).includes("\n");
-                      if (isBlock) {
-                        return (
-                          <CodeBlock className={className}>
-                            {children}
-                          </CodeBlock>
-                        );
-                      }
-                      return <InlineCode {...props}>{children}</InlineCode>;
-                    },
-                    pre({ children }) {
-                      return <>{children}</>;
-                    },
-                    table({ children }) {
-                      return (
-                        <div className="overflow-x-auto my-1.5 rounded-md border border-border/50">
-                          <table className="min-w-full text-xs">
-                            {children}
-                          </table>
-                        </div>
-                      );
-                    },
-                    th({ children }) {
-                      return (
-                        <th className="bg-muted/40 px-2 py-1 text-left font-medium text-foreground border-b border-border/50 text-xs">
-                          {children}
-                        </th>
-                      );
-                    },
-                    td({ children }) {
-                      return (
-                        <td className="px-2 py-1 border-b border-border/30 text-xs">
-                          {children}
-                        </td>
-                      );
-                    },
-                  }}
+                  components={markdownComponents}
                 >
                   {message.content}
                 </ReactMarkdown>
@@ -430,6 +383,13 @@ export const AIChat = memo(function AIChat() {
   // Debug request from query editor
   const debugRequest = useAIQueryStore((s) => s.debugRequest);
   const clearDebugRequest = useAIQueryStore((s) => s.clearDebugRequest);
+  const appendSql = useAIQueryStore((s) => s.appendSql);
+
+  // Layout store for code block actions
+  const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
+  const setActiveTab = useLayoutStore((s) => s.setActiveTab);
+  const createTab = useLayoutStore((s) => s.createTab);
+  const getActivePane = useLayoutStore((s) => s.getActivePane);
 
   // Last chat session persistence
   const setLastSession = useLastChatStore((s) => s.setLastSession);
@@ -624,6 +584,38 @@ export const AIChat = memo(function AIChat() {
     setSessions(newSessions);
     saveChatHistory(newSessions);
   };
+
+  // Handler for appending code to the query runner
+  const handleAppendToRunner = useCallback(
+    (code: string) => {
+      appendSql(code);
+      // Switch to an existing query tab or create a new one
+      if (connection?.id) {
+        const leafPanes = getAllLeafPanes(connection.id);
+        // Find any query tab in any pane
+        for (const pane of leafPanes) {
+          const queryTab = pane.tabs.find((t) => t.type === "query");
+          if (queryTab) {
+            setActiveTab(connection.id, pane.id, queryTab.id);
+            return;
+          }
+        }
+        // No query tab found, create one in the active pane
+        const activePane = getActivePane(connection.id);
+        if (activePane) {
+          createTab(connection.id, activePane.id, "query", { title: "Query" });
+        }
+      }
+    },
+    [
+      connection,
+      getAllLeafPanes,
+      setActiveTab,
+      createTab,
+      getActivePane,
+      appendSql,
+    ],
+  );
 
   const handleCancel = useCallback(() => {
     // First cancel the agent to stop listening for events and interrupt the generator
@@ -1038,7 +1030,11 @@ export const AIChat = memo(function AIChat() {
         ) : (
           <div className="space-y-3">
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble
+                key={message.id}
+                message={message}
+                onAppendToRunner={handleAppendToRunner}
+              />
             ))}
           </div>
         )}
