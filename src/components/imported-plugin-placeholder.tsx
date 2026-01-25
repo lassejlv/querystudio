@@ -8,10 +8,11 @@
 //
 // ============================================================================
 
-import { FileCode, Copy, Check } from "lucide-react";
+import { FileCode, Copy, Check, Database, Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { TabContentProps } from "@/lib/tab-sdk";
 import { usePluginStore, getPluginIcon } from "@/lib/plugin-store";
+import { usePluginSDK } from "@/lib/plugin-sdk";
 import { Button } from "@/components/ui/button";
 
 interface ImportedPluginPlaceholderProps extends TabContentProps {
@@ -28,6 +29,9 @@ export function ImportedPluginPlaceholder({
   const plugin = usePluginStore((s) =>
     s.plugins.find((p) => p.type === pluginType),
   );
+
+  // Plugin SDK is available for imported plugins too!
+  const sdk = usePluginSDK(connectionId, tabId, paneId);
 
   if (!plugin) {
     return (
@@ -98,6 +102,61 @@ export function ImportedPluginPlaceholder({
                   <span className="text-xs">{plugin.source}</span>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Connection Status */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+              <Database className="h-4 w-4 text-primary" />
+              Connection Status (via Plugin SDK)
+            </h2>
+            <div className="grid gap-2 text-sm">
+              <div className="flex justify-between rounded bg-muted/50 px-3 py-2">
+                <span className="text-muted-foreground">Status</span>
+                <span
+                  className={`font-medium ${
+                    sdk.connection.isConnected
+                      ? "text-green-500"
+                      : "text-red-500"
+                  }`}
+                >
+                  {sdk.connection.isConnected ? "Connected" : "Disconnected"}
+                </span>
+              </div>
+              {sdk.connection.isConnected && (
+                <>
+                  <div className="flex justify-between rounded bg-muted/50 px-3 py-2">
+                    <span className="text-muted-foreground">Database</span>
+                    <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+                      {sdk.connection.databaseType || "Unknown"}
+                    </code>
+                  </div>
+                  <div className="flex justify-between rounded bg-muted/50 px-3 py-2">
+                    <span className="text-muted-foreground">Tables</span>
+                    <span>{sdk.connection.tables.length}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Plugin SDK Info */}
+          <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+            <div className="flex items-start gap-3">
+              <Sparkles className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+              <div className="text-sm text-green-600 dark:text-green-400">
+                <p className="font-medium mb-1">Plugin SDK Available</p>
+                <p>
+                  This plugin has access to the Plugin SDK with connection data,
+                  API functions, and utilities. When properly bundled, your
+                  component can use{" "}
+                  <code className="bg-green-500/20 px-1 rounded">
+                    usePluginSDK()
+                  </code>{" "}
+                  to access these features.
+                </p>
+              </div>
             </div>
           </div>
 

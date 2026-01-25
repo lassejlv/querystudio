@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { storage } from "./storage";
 import type {
   ConnectionConfig,
   SavedConnection,
@@ -52,14 +53,13 @@ export const api = {
   getTableCount: (connectionId: string, schema: string, table: string) =>
     invoke<number>("get_table_count", { connectionId, schema, table }),
 
-  getSavedConnections: () =>
-    invoke<{ connections: SavedConnection[] }>("get_saved_connections"),
+  // Storage operations - now using SQLite via storage module
+  getSavedConnections: () => storage.getSavedConnections(),
 
   saveConnection: (connection: SavedConnection) =>
-    invoke<void>("save_connection", { connection }),
+    storage.saveConnection(connection),
 
-  deleteSavedConnection: (id: string) =>
-    invoke<void>("delete_saved_connection", { id }),
+  deleteSavedConnection: (id: string) => storage.deleteSavedConnection(id),
 
   // AI API
   aiGetModels: () => invoke<AIModelInfo[]>("ai_get_models"),
@@ -98,5 +98,5 @@ export const api = {
 
   getConnectionCount: () => invoke<number>("get_connection_count"),
 
-  getSavedConnectionCount: () => invoke<number>("get_saved_connection_count"),
+  getSavedConnectionCount: () => storage.getSavedConnectionCount(),
 };

@@ -837,32 +837,6 @@ export const AIChat = memo(function AIChat() {
                     For GPT models
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="anthropicKey">Anthropic API Key</Label>
-                  <Input
-                    id="anthropicKey"
-                    type="password"
-                    placeholder="sk-ant-..."
-                    value={tempAnthropicKey}
-                    onChange={(e) => setTempAnthropicKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    For Claude models
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="googleKey">Google API Key</Label>
-                  <Input
-                    id="googleKey"
-                    type="password"
-                    placeholder="AIza..."
-                    value={tempGoogleKey}
-                    onChange={(e) => setTempGoogleKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    For Gemini models
-                  </p>
-                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
@@ -898,7 +872,6 @@ export const AIChat = memo(function AIChat() {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
-          <Bot className="h-4 w-4 text-primary" />
           <span className="font-medium text-sm">Querybuddy</span>
         </div>
         <div className="flex items-center gap-0.5">
@@ -1137,28 +1110,6 @@ export const AIChat = memo(function AIChat() {
                 onChange={(e) => setTempOpenaiKey(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">For GPT models</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="anthropicKey2">Anthropic API Key</Label>
-              <Input
-                id="anthropicKey2"
-                type="password"
-                placeholder="sk-ant-..."
-                value={tempAnthropicKey}
-                onChange={(e) => setTempAnthropicKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">For Claude models</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="googleKey2">Google API Key</Label>
-              <Input
-                id="googleKey2"
-                type="password"
-                placeholder="AIza..."
-                value={tempGoogleKey}
-                onChange={(e) => setTempGoogleKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">For Gemini models</p>
             </div>
           </div>
           <div className="flex justify-end gap-2">

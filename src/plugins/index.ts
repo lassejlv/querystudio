@@ -18,23 +18,8 @@ import testTabPlugin from "./test-tab";
 // ============================================================================
 // All Local Plugins
 // ============================================================================
-//
-// Add your plugins to this array to register them with the Tab SDK.
-// Plugins are registered in the order they appear here.
-//
-// ============================================================================
 
-export const localPlugins: LocalPluginModule[] = [
-  // Test tab - demonstration plugin
-  testTabPlugin,
+export const localPlugins: LocalPluginModule[] = [testTabPlugin];
 
-  // Add your plugins here:
-  // myCustomPlugin,
-  // anotherPlugin,
-];
-
-// Re-export for convenience
 export { testTabPlugin };
-
-// Export count for debugging
 export const pluginCount = localPlugins.length;

@@ -54,6 +54,7 @@ redis = { version = "0.27", features = [
   "tokio-native-tls-comp",
 ] }
 mongodb = "3"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

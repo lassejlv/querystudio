@@ -13,6 +13,7 @@
     "process:default",
     "deep-link:default",
     "http:default",
-    "os:default"
+    "os:default",
+    "sql:default"
   ]
 }

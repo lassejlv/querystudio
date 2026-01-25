@@ -3,21 +3,33 @@
 // ============================================================================
 //
 // This is a sample local plugin that demonstrates how to create a custom
-// tab type using the Tab SDK. It serves as a template for developing
-// your own tab plugins.
+// tab type using the Tab SDK and Plugin SDK. It serves as a template for
+// developing your own tab plugins.
 //
-// To create your own plugin:
-// 1. Copy this file as a starting point
-// 2. Change the plugin type, displayName, and icon
-// 3. Implement your own Component with the desired functionality
-// 4. Import and register in src/plugins/index.ts
+// Features demonstrated:
+// - Using the Plugin SDK to access connection data
+// - Executing queries through the API
+// - Using utility functions (toast, clipboard, formatting)
+// - Layout operations (creating tabs, updating title)
 //
 // ============================================================================
 
 import { useState, useCallback } from "react";
-import { FlaskConical, Plus, Minus, RotateCcw, Sparkles } from "lucide-react";
+import {
+  FlaskConical,
+  Database,
+  Table2,
+  Play,
+  Copy,
+  RefreshCw,
+  Sparkles,
+  Terminal,
+  Clock,
+  Rows3,
+} from "lucide-react";
 import type { TabPluginRegistration, TabContentProps } from "@/lib/tab-sdk";
 import type { LocalPluginModule } from "@/lib/local-plugins";
+import { usePluginSDK } from "@/lib/plugin-sdk";
 
 // ============================================================================
 // Plugin Definition
@@ -30,8 +42,8 @@ export const plugin: TabPluginRegistration = {
   getDefaultTitle: (index) => `Test Tab ${index}`,
   canCreate: true,
   allowMultiple: true,
-  priority: 50, // Lower than built-in tabs
-  experimental: false, // Set to true if you want it hidden behind experimental flag
+  priority: 50,
+  experimental: false,
   lifecycle: {
     onCreate: (tabId, metadata) => {
       console.log(`[TestTab] Created: ${tabId}`, metadata);
@@ -53,27 +65,92 @@ export const plugin: TabPluginRegistration = {
 // ============================================================================
 
 export function Component({ tabId, paneId, connectionId }: TabContentProps) {
-  const [count, setCount] = useState(0);
-  const [clicks, setClicks] = useState<{ time: Date; action: string }[]>([]);
+  // Get the Plugin SDK - this gives us access to everything!
+  const sdk = usePluginSDK(connectionId, tabId, paneId);
 
-  const logAction = useCallback((action: string) => {
-    setClicks((prev) => [{ time: new Date(), action }, ...prev].slice(0, 10));
-  }, []);
+  // Local state for query results
+  const [queryResult, setQueryResult] = useState<{
+    columns: string[];
+    rows: unknown[][];
+    rowCount: number;
+    executionTime: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [customQuery, setCustomQuery] = useState("SELECT 1 + 1 AS result");
 
-  const increment = useCallback(() => {
-    setCount((c) => c + 1);
-    logAction("Increment");
-  }, [logAction]);
+  // Execute a sample query
+  const executeQuery = useCallback(async () => {
+    if (!sdk.connection.isConnected) {
+      sdk.utils.toast.error("Not connected to a database");
+      return;
+    }
 
-  const decrement = useCallback(() => {
-    setCount((c) => c - 1);
-    logAction("Decrement");
-  }, [logAction]);
+    setIsLoading(true);
+    const startTime = Date.now();
 
-  const reset = useCallback(() => {
-    setCount(0);
-    logAction("Reset");
-  }, [logAction]);
+    try {
+      const result = await sdk.api.executeQuery(customQuery);
+      const executionTime = Date.now() - startTime;
+
+      if (result) {
+        setQueryResult({
+          columns: result.columns,
+          rows: result.rows,
+          rowCount: result.row_count,
+          executionTime,
+        });
+        sdk.utils.toast.success(
+          `Query executed in ${sdk.utils.format.duration(executionTime)}`,
+        );
+      }
+    } catch (error) {
+      sdk.utils.toast.error(`Query failed: ${error}`);
+      setQueryResult(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sdk, customQuery]);
+
+  // Copy connection info to clipboard
+  const copyConnectionInfo = useCallback(async () => {
+    const info = {
+      connectionId: sdk.connectionId,
+      databaseType: sdk.connection.databaseType,
+      tableCount: sdk.connection.tables.length,
+      selectedTable: sdk.connection.selectedTable,
+    };
+    const success = await sdk.utils.clipboard.copy(
+      JSON.stringify(info, null, 2),
+    );
+    if (success) {
+      sdk.utils.toast.success("Connection info copied to clipboard");
+    } else {
+      sdk.utils.toast.error("Failed to copy to clipboard");
+    }
+  }, [sdk]);
+
+  // Create a new query tab
+  const openQueryTab = useCallback(() => {
+    sdk.layout.createTab("query", {
+      title: "New Query from Plugin",
+    });
+    sdk.utils.toast.info("Created new query tab");
+  }, [sdk]);
+
+  // Refresh tables list
+  const refreshTables = useCallback(async () => {
+    if (!sdk.connection.isConnected) {
+      sdk.utils.toast.error("Not connected to a database");
+      return;
+    }
+
+    try {
+      const tables = await sdk.api.listTables();
+      sdk.utils.toast.success(`Found ${tables.length} tables`);
+    } catch (error) {
+      sdk.utils.toast.error(`Failed to refresh tables: ${error}`);
+    }
+  }, [sdk]);
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -85,10 +162,10 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">
-              Test Tab Plugin
+              Plugin SDK Demo
             </h1>
             <p className="text-sm text-muted-foreground">
-              A demonstration of the Tab SDK plugin system
+              Demonstrating Plugin SDK features and capabilities
             </p>
           </div>
         </div>
@@ -96,110 +173,220 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="mx-auto max-w-2xl space-y-6">
-          {/* Tab Info Card */}
+        <div className="mx-auto max-w-3xl space-y-6">
+          {/* Connection Status Card */}
           <div className="rounded-lg border border-border bg-card p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Tab Information
+              <Database className="h-4 w-4 text-primary" />
+              Connection Status
             </h2>
-            <div className="grid gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tab ID:</span>
-                <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                  {tabId}
-                </code>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Pane ID:</span>
-                <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                  {paneId}
-                </code>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Connection ID:</span>
-                <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                  {connectionId}
-                </code>
-              </div>
-            </div>
-          </div>
-
-          {/* Counter Demo */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h2 className="mb-4 text-sm font-medium text-foreground">
-              Interactive Counter Demo
-            </h2>
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-6xl font-bold tabular-nums text-foreground">
-                {count}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={decrement}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background transition-colors hover:bg-muted"
+            <div className="grid gap-3">
+              <div className="flex items-center justify-between rounded bg-muted/50 px-3 py-2">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <span
+                  className={`text-sm font-medium ${
+                    sdk.connection.isConnected
+                      ? "text-green-500"
+                      : "text-red-500"
+                  }`}
                 >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={reset}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background transition-colors hover:bg-muted"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={increment}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background transition-colors hover:bg-muted"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+                  {sdk.connection.isConnected ? "Connected" : "Disconnected"}
+                </span>
               </div>
-            </div>
-          </div>
-
-          {/* Action Log */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h2 className="mb-3 text-sm font-medium text-foreground">
-              Action Log
-            </h2>
-            {clicks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No actions yet. Try clicking the buttons above!
-              </p>
-            ) : (
-              <div className="space-y-1">
-                {clicks.map((click, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between rounded bg-muted/50 px-3 py-1.5 text-sm"
-                  >
-                    <span className="text-foreground">{click.action}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {click.time.toLocaleTimeString()}
+              {sdk.connection.isConnected && (
+                <>
+                  <div className="flex items-center justify-between rounded bg-muted/50 px-3 py-2">
+                    <span className="text-sm text-muted-foreground">
+                      Database Type
+                    </span>
+                    <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+                      {sdk.connection.databaseType || "Unknown"}
+                    </code>
+                  </div>
+                  <div className="flex items-center justify-between rounded bg-muted/50 px-3 py-2">
+                    <span className="text-sm text-muted-foreground">
+                      Tables
+                    </span>
+                    <span className="text-sm font-medium">
+                      {sdk.utils.format.number(sdk.connection.tables.length)}
                     </span>
                   </div>
-                ))}
+                  {sdk.connection.selectedTable && (
+                    <div className="flex items-center justify-between rounded bg-muted/50 px-3 py-2">
+                      <span className="text-sm text-muted-foreground">
+                        Selected Table
+                      </span>
+                      <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+                        {sdk.connection.selectedTable.schema}.
+                        {sdk.connection.selectedTable.name}
+                      </code>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={copyConnectionInfo}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy Info
+              </button>
+              <button
+                onClick={refreshTables}
+                disabled={!sdk.connection.isConnected}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh Tables
+              </button>
+            </div>
+          </div>
+
+          {/* Tables List */}
+          {sdk.connection.isConnected && sdk.connection.tables.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+                <Table2 className="h-4 w-4 text-primary" />
+                Available Tables ({sdk.connection.tables.length})
+              </h2>
+              <div className="max-h-40 overflow-auto">
+                <div className="grid grid-cols-2 gap-1">
+                  {sdk.connection.tables.slice(0, 20).map((table) => (
+                    <button
+                      key={`${table.schema}.${table.name}`}
+                      onClick={() =>
+                        sdk.connection.selectTable(table.schema, table.name)
+                      }
+                      className={`rounded px-2 py-1 text-left text-xs font-mono transition-colors ${
+                        sdk.connection.selectedTable?.schema === table.schema &&
+                        sdk.connection.selectedTable?.name === table.name
+                          ? "bg-primary/20 text-primary"
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      {table.schema}.{table.name}
+                    </button>
+                  ))}
+                </div>
+                {sdk.connection.tables.length > 20 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    ...and {sdk.connection.tables.length - 20} more
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Query Execution */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+              <Terminal className="h-4 w-4 text-primary" />
+              Execute Query (via Plugin SDK)
+            </h2>
+            <div className="space-y-3">
+              <textarea
+                value={customQuery}
+                onChange={(e) => setCustomQuery(e.target.value)}
+                className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                rows={3}
+                placeholder="Enter SQL query..."
+              />
+              <button
+                onClick={executeQuery}
+                disabled={isLoading || !sdk.connection.isConnected}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+                Execute Query
+              </button>
+            </div>
+
+            {/* Query Results */}
+            {queryResult && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Rows3 className="h-3.5 w-3.5" />
+                    {sdk.utils.format.number(queryResult.rowCount)} rows
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {sdk.utils.format.duration(queryResult.executionTime)}
+                  </span>
+                </div>
+                <div className="max-h-48 overflow-auto rounded border border-border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        {queryResult.columns.map((col) => (
+                          <th
+                            key={col}
+                            className="px-2 py-1.5 text-left font-medium"
+                          >
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {queryResult.rows.slice(0, 10).map((row, i) => (
+                        <tr key={i} className="border-t border-border">
+                          {row.map((cell, j) => (
+                            <td key={j} className="px-2 py-1.5 font-mono">
+                              {String(cell ?? "NULL")}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
 
-          {/* How to Create Plugins */}
+          {/* Layout Operations */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Layout Operations
+            </h2>
+            <div className="flex gap-2">
+              <button
+                onClick={openQueryTab}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+              >
+                Create Query Tab
+              </button>
+              <button
+                onClick={() => {
+                  const newTitle = `Test Tab (${new Date().toLocaleTimeString()})`;
+                  sdk.layout.updateTitle(newTitle);
+                  sdk.utils.toast.success(`Title updated to: ${newTitle}`);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+              >
+                Update Tab Title
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Context Info */}
           <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
             <h2 className="mb-2 text-sm font-medium text-foreground">
-              Creating Your Own Plugin
+              Tab Context (from TabContentProps)
             </h2>
-            <ol className="list-inside list-decimal space-y-1 text-sm text-muted-foreground">
-              <li>
-                Copy this file to <code>src/plugins/your-plugin.tsx</code>
-              </li>
-              <li>Modify the plugin definition with your type and settings</li>
-              <li>Implement your Component with desired functionality</li>
-              <li>
-                Import and add to the plugins array in{" "}
-                <code>src/plugins/index.ts</code>
-              </li>
-              <li>Restart the application to see your new tab type!</li>
-            </ol>
+            <div className="space-y-1 font-mono text-xs text-muted-foreground">
+              <div>tabId: {tabId}</div>
+              <div>paneId: {paneId}</div>
+              <div>connectionId: {connectionId}</div>
+            </div>
           </div>
         </div>
       </div>

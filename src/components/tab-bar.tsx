@@ -202,8 +202,6 @@ export const TabBar = memo(function TabBar({
       const installedPlugin = installedPlugins.find(
         (p) => p.type === plugin.type,
       );
-      // If not in plugin store, show it (built-in tabs like data, query)
-      // If in plugin store, only show if enabled
       return !installedPlugin || installedPlugin.enabled;
     });
   }, [experimentalTerminal, installedPlugins]);

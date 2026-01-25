@@ -202,12 +202,97 @@ When adding a user plugin through Settings, you can choose from these icons:
 | `layout` | For layout/UI plugins |
 | `box` | Generic container |
 
+## Plugin SDK
+
+The Plugin SDK provides plugins with access to QueryStudio's core functionality. Use the `usePluginSDK` hook in your plugin component:
+
+```tsx
+import { usePluginSDK } from "@/lib/plugin-sdk";
+
+export function Component({ tabId, paneId, connectionId }: TabContentProps) {
+  const sdk = usePluginSDK(connectionId, tabId, paneId);
+  
+  // Now you have access to:
+  // - sdk.connection - Connection info and operations
+  // - sdk.api - Database API functions
+  // - sdk.utils - Utility functions
+  // - sdk.layout - Tab/layout operations
+}
+```
+
+### sdk.connection
+
+Access to current database connection:
+
+| Property/Method | Description |
+|----------------|-------------|
+| `isConnected` | Whether there's an active connection |
+| `connection` | The connection object (or null) |
+| `databaseType` | Database type (postgres, mysql, sqlite, etc.) |
+| `tables` | Array of tables in the database |
+| `selectedTable` | Currently selected table `{ schema, name }` |
+| `selectTable(schema, name)` | Select a table |
+| `clearSelection()` | Clear table selection |
+
+### sdk.api
+
+Database operations:
+
+| Method | Description |
+|--------|-------------|
+| `executeQuery(sql)` | Execute a SQL query and return results |
+| `listTables()` | Get list of all tables |
+| `getTableColumns(schema, table)` | Get columns for a table |
+| `getTableData(schema, table, limit?, offset?)` | Get table data with pagination |
+| `getTableCount(schema, table)` | Get row count for a table |
+
+### sdk.utils
+
+Utility functions:
+
+| Category | Methods |
+|----------|---------|
+| `toast` | `success()`, `error()`, `info()`, `warning()`, `loading()`, `dismiss()` |
+| `clipboard` | `copy(text)`, `read()` |
+| `format` | `number()`, `date()`, `bytes()`, `duration()` |
+| `sql` | `escapeString()`, `escapeIdentifier()`, `format()` |
+
+### sdk.layout
+
+Tab operations:
+
+| Method | Description |
+|--------|-------------|
+| `createTab(type, options?)` | Create a new tab |
+| `closeCurrentTab()` | Close the current tab |
+| `updateTitle(title)` | Update the current tab's title |
+| `getTabs()` | Get all tabs in the current pane |
+
+### Example: Query and Display Results
+
+```tsx
+const runQuery = async () => {
+  if (!sdk.connection.isConnected) {
+    sdk.utils.toast.error("Not connected");
+    return;
+  }
+  
+  try {
+    const result = await sdk.api.executeQuery("SELECT * FROM users LIMIT 10");
+    sdk.utils.toast.success(`Found ${result.results[0].row_count} rows`);
+  } catch (error) {
+    sdk.utils.toast.error(`Query failed: ${error}`);
+  }
+};
+```
+
 ## Examples
 
 See `test-tab.tsx` for a complete example with:
-- Interactive UI components
-- State management with React hooks
-- Displaying tab information (tabId, paneId, connectionId)
+- Using the Plugin SDK to access connection data
+- Executing queries through the API
+- Using utility functions (toast, clipboard, formatting)
+- Layout operations (creating tabs, updating title)
 - Styling with Tailwind CSS
 - Lifecycle hooks
 

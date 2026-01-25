@@ -16,10 +16,11 @@ use license::{
 };
 use providers::{ColumnInfo, QueryResult, TableInfo};
 use std::sync::Arc;
-use storage::{SavedConnection, SavedConnections};
+use storage::CONNECTIONS_DB;
+use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
-    AppHandle, Emitter, Manager, State,
+    Emitter, Manager, State,
 };
 use terminal::{
     terminal_close, terminal_create, terminal_resize, terminal_write, TerminalManager,
@@ -124,50 +125,8 @@ async fn get_table_count(
 }
 
 #[tauri::command]
-async fn get_saved_connections(app_handle: AppHandle) -> Result<SavedConnections, String> {
-    storage::load_connections(&app_handle)
-}
-
-#[tauri::command]
-async fn save_connection(
-    app_handle: AppHandle,
-    license_state: State<'_, LicenseState_>,
-    connection: SavedConnection,
-) -> Result<(), String> {
-    // Check if this is a new connection or an update to existing
-    let saved = storage::load_connections(&app_handle)?;
-    let is_update = saved.connections.iter().any(|c| c.id == connection.id);
-
-    // If it's a new connection, check the license limit
-    if !is_update {
-        let max_saved = license_state.get_max_connections();
-        let current_saved = saved.connections.len();
-
-        if current_saved >= max_saved {
-            return Err(format!(
-                "Saved connection limit reached. Free tier allows {} saved connections. Upgrade to Pro for unlimited.",
-                max_saved
-            ));
-        }
-    }
-
-    storage::add_connection(&app_handle, connection)
-}
-
-#[tauri::command]
-async fn delete_saved_connection(app_handle: AppHandle, id: String) -> Result<(), String> {
-    storage::remove_connection(&app_handle, &id)
-}
-
-#[tauri::command]
 fn get_connection_count(state: State<'_, DbState>) -> usize {
     state.connection_count()
-}
-
-#[tauri::command]
-async fn get_saved_connection_count(app_handle: AppHandle) -> Result<usize, String> {
-    let saved = storage::load_connections(&app_handle)?;
-    Ok(saved.connections.len())
 }
 
 #[tauri::command]
@@ -181,7 +140,34 @@ pub fn run() {
     let terminal_state: TerminalState = Arc::new(TerminalManager::new());
     let debug_state = Arc::new(DebugState::new());
 
+    // Define SQLite migrations for connections storage
+    let migrations = vec![
+        Migration {
+            version: 1,
+            description: "create_connections_table",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS connections (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    name TEXT NOT NULL,
+                    db_type TEXT NOT NULL DEFAULT 'postgres',
+                    config_type TEXT NOT NULL,
+                    connection_string TEXT,
+                    host TEXT,
+                    port INTEGER,
+                    database TEXT,
+                    username TEXT
+                );
+            "#,
+            kind: MigrationKind::Up,
+        },
+    ];
+
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_sql::Builder::default()
+                .add_migrations(CONNECTIONS_DB, migrations)
+                .build(),
+        )
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_deep_link::init())
@@ -360,11 +346,6 @@ pub fn run() {
             execute_query,
             get_table_count,
             get_connection_count,
-            get_saved_connection_count,
-            // Storage commands
-            get_saved_connections,
-            save_connection,
-            delete_saved_connection,
             // AI commands
             ai_get_models,
             ai_validate_key,
