@@ -10,7 +10,6 @@ const sidebarItems = [
   { label: 'Security', href: '/dashboard/security' },
   { label: 'Billing', href: '/dashboard/billing' },
   { label: 'Devices', href: '/dashboard/devices' },
-  { label: 'Admin', href: '/dashboard/admin' },
 ]
 
 function DashboardLayout() {

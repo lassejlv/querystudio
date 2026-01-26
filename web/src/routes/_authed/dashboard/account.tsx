@@ -4,7 +4,6 @@ import { getRequest } from '@tanstack/react-start/server'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { auth } from '@/lib/auth'
-import { realtime } from '@/lib/realtime'
 import { db } from 'drizzle'
 import { user as userTable } from 'drizzle/schema/auth'
 import { eq } from 'drizzle-orm'
@@ -22,9 +21,6 @@ const updateNameFn = createServerFn()
     const { user } = session
 
     await db.update(userTable).set({ name: data.name }).where(eq(userTable.id, user.id))
-
-    const channel = realtime.channel(`backend-user-${user.id}`)
-    channel.emit('userBackend.changesSaved', { message: 'Your name has been updated!' })
 
     return { success: true }
   })

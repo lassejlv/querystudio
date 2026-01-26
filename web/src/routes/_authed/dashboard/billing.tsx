@@ -51,7 +51,7 @@ function BillingPage() {
         <div className='flex items-baseline justify-between pb-4 border-b'>
           <div>
             <span className='font-medium'>{user.isPro ? 'Pro' : 'Free'}</span>
-            <span className='ml-2 text-sm text-muted-foreground'>{user.isPro ? 'Lifetime access' : 'Basic features'}</span>
+            <span className='ml-2 text-sm text-muted-foreground'>{user.isPro && 'Lifetime access'}</span>
           </div>
           {user.isPro && (
             <button onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending} className='text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1'>
@@ -66,6 +66,7 @@ function BillingPage() {
             <h2 className='text-sm font-medium'>What's included</h2>
             <ul className='mt-3 space-y-2 text-sm text-muted-foreground'>
               <li>Unlimited connections</li>
+              <p>Commercial use allowed</p>
               <li>Priority support</li>
               <li>2 devices</li>
               <li>Lifetime updates</li>
@@ -86,6 +87,8 @@ function BillingPage() {
               </div>
               <ul className='mt-3 space-y-1 text-sm text-muted-foreground'>
                 <li>Unlimited connections</li>
+                <p>Commercial use allowed</p>
+
                 <li>Priority support</li>
                 <li>2 devices</li>
                 <li>Lifetime updates</li>
@@ -103,8 +106,8 @@ function BillingPage() {
         <h2 className='text-sm font-medium'>Need help?</h2>
         <p className='mt-1 text-sm text-muted-foreground'>
           Contact support at{' '}
-          <a href='mailto:support@querystudio.dev' className='text-foreground hover:underline'>
-            support@querystudio.dev
+          <a href='mailto:querystudio@lasse.email' className='text-foreground hover:underline'>
+            querystudio@lasse.email
           </a>
         </p>
       </div>
