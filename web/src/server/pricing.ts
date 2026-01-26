@@ -16,8 +16,8 @@ const pricing = {
     },
     pro: {
       name: 'Pro',
-      price: 29.99,
-      earlyBirdPrice: 14.99,
+      price: 39.99,
+      earlyBirdPrice: 19.99,
       licenseType: 'one-time',
       features: {
         maxConnections: Infinity,
