@@ -30,12 +30,6 @@ function LandingPage() {
                   Download
                 </Link>
               </Button>
-              <Button variant='ghost' size='lg' asChild>
-                <Link to='/pricing'>
-                  View pricing
-                  <ArrowRight className='h-4 w-4 ml-2' />
-                </Link>
-              </Button>
             </div>
           </div>
         </section>
