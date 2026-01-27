@@ -10,6 +10,9 @@ import { render } from '@react-email/render'
 import VerifyEmail from '@/emails/verify-email'
 import WaitlistJoined from '@/emails/waitlist-joined'
 import WaitlistStatus from '@/emails/waitlist-status'
+import { polar } from './polar'
+import { user } from 'drizzle/schema/auth'
+import { eq } from 'drizzle-orm'
 
 const ADMIN_EMAILS = ['vestergaardlasse2@gmail.com']
 
@@ -34,6 +37,21 @@ export const auth = betterAuth({
       cancelAtPeriodEnd: {
         type: 'boolean',
         required: false,
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async ({ email, name }) => {
+          try {
+            const newCustomer = await polar.customers.create({ email: email, name: name })
+            await db.update(user).set({ polarCustomerId: newCustomer.id }).where(eq(user.email, email))
+            console.log(`Create new polar customer for user ${name} with email ${email}`)
+          } catch (error) {
+            console.error(error)
+          }
+        },
       },
     },
   },
