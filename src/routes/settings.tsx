@@ -12,6 +12,7 @@ import {
   Shield,
   Loader2,
   Puzzle,
+  Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -22,7 +23,7 @@ import { useAIQueryStore } from "@/lib/store";
 import { ThemeSelector } from "@/components/theme-selector";
 import { toast } from "sonner";
 import { PluginSettings } from "@/components/plugin-settings";
-import { authClient } from "@/lib/auth-client";
+import { authClient, signInWithGithub } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -137,7 +138,20 @@ function SettingsPage() {
 }
 
 function AccountSettings() {
-  const { data: session, isPending, refetch } = authClient.useSession();
+  const { data: session, isPending } = authClient.useSession();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleSignInWithGithub = async () => {
+    try {
+      setIsSigningIn(true);
+      await signInWithGithub();
+      // The session will be refreshed via deep-link callback
+    } catch (error) {
+      console.error("GitHub sign in error:", error);
+      toast.error("Failed to sign in with GitHub");
+      setIsSigningIn(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -212,7 +226,14 @@ function AccountSettings() {
             <p className="text-sm text-muted-foreground mt-2 mb-6">
               Sign in to sync your preferences and access premium features.
             </p>
-            <Button onClick={() => {}}>Login with Github</Button>
+            <Button onClick={handleSignInWithGithub} disabled={isSigningIn}>
+              {isSigningIn ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Github className="mr-2 h-4 w-4" />
+              )}
+              {isSigningIn ? "Signing in..." : "Login with GitHub"}
+            </Button>
           </div>
         </div>
       )}

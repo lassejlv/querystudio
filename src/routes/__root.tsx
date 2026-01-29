@@ -2,7 +2,7 @@ import { Outlet, createRootRoute } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { useUpdateChecker } from "@/hooks/use-update-checker";
-import { authClient } from "@/lib/auth-client";
+import { useAuthDeepLink } from "@/hooks/use-auth-deep-link";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,12 +22,18 @@ function UpdateChecker() {
   return null;
 }
 
+function AuthDeepLinkHandler() {
+  useAuthDeepLink();
+  return null;
+}
+
 function RootComponent() {
   return (
     <>
       <QueryClientProvider client={queryClient}>
         <Toaster />
         <UpdateChecker />
+        <AuthDeepLinkHandler />
         <Outlet />
       </QueryClientProvider>
     </>
