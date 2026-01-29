@@ -5,7 +5,6 @@
     "": {
       "name": "querystudio",
       "dependencies": {
-        "@daveyplate/better-auth-tauri": "^0.1.6",
         "@faker-js/faker": "^10.2.0",
         "@hookform/resolvers": "^5.2.2",
         "@monaco-editor/react": "^4.7.0",
@@ -41,9 +40,9 @@
         "@tanstack/react-router": "^1.156.0",
         "@tanstack/react-router-devtools": "^1.156.0",
         "@tauri-apps/api": "^2.9.1",
-        "@tauri-apps/plugin-deep-link": "~2.4.6",
+        "@tauri-apps/plugin-deep-link": "~2",
         "@tauri-apps/plugin-http": "~2.5.6",
-        "@tauri-apps/plugin-opener": "^2.5.3",
+        "@tauri-apps/plugin-opener": "~2",
         "@tauri-apps/plugin-os": "~2.3.2",
         "@tauri-apps/plugin-process": "~2.3.1",
         "@tauri-apps/plugin-sql": "~2",
@@ -149,8 +148,6 @@
     "@better-fetch/fetch": ["@better-fetch/fetch@1.1.21", "", {}, "sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A=="],
 
     "@date-fns/tz": ["@date-fns/tz@1.4.1", "", {}, "sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA=="],
-
-    "@daveyplate/better-auth-tauri": ["@daveyplate/better-auth-tauri@0.1.6", "", { "peerDependencies": { "@tauri-apps/api": ">=2.5.0", "@tauri-apps/plugin-deep-link": ">=2.2.1", "@tauri-apps/plugin-http": ">=2.4.3", "@tauri-apps/plugin-opener": ">=2.2.6", "@tauri-apps/plugin-os": ">=2.2.1", "better-auth": ">=1.2.7", "react": ">=18.0.0", "react-dom": ">=18.0.0" } }, "sha512-/R+LxD5ROg4ZfhJH4h8yr13whvb60lobFhN6JU/9Z/VSOdmwQoGYsVRwlxyjwNvPZTxcF9NOwcD/oFL+EOuZww=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.2", "", { "os": "aix", "cpu": "ppc64" }, "sha512-GZMB+a0mOMZs4MpDbj8RJp4cw+w1WV5NYD6xzgvzUJ5Ek2jerwfO2eADyI6ExDSUED+1X8aMbegahsJi+8mgpw=="],
 

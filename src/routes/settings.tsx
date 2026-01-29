@@ -14,16 +14,15 @@ import {
   Puzzle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAIQueryStore } from "@/lib/store";
 import { ThemeSelector } from "@/components/theme-selector";
-import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { PluginSettings } from "@/components/plugin-settings";
+import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -213,52 +212,7 @@ function AccountSettings() {
             <p className="text-sm text-muted-foreground mt-2 mb-6">
               Sign in to sync your preferences and access premium features.
             </p>
-            <form
-              className="flex flex-col gap-4 max-w-xs mx-auto"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const email = formData.get("email") as string;
-                const password = formData.get("password") as string;
-
-                const resp = await authClient.signIn.email({
-                  email,
-                  password,
-                });
-
-                console.log("Sign-in response:", resp);
-
-                if (resp.error) return toast.error(resp.error.message);
-
-                // Force session refresh using getSession
-                const sessionResult = await authClient.getSession();
-                console.log("Session result:", sessionResult);
-              }}
-            >
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Sign In
-              </Button>
-            </form>
+            <Button onClick={() => {}}>Login with Github</Button>
           </div>
         </div>
       )}

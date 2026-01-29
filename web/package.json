@@ -3,7 +3,6 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@daveyplate/better-auth-tauri": "^0.1.6",
     "@hono/zod-validator": "^0.7.6",
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/serverless": "^1.0.2",

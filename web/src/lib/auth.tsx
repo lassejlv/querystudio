@@ -13,7 +13,6 @@ import WaitlistStatus from '@/emails/waitlist-status'
 import { polar } from './polar'
 import { user } from 'drizzle/schema/auth'
 import { eq } from 'drizzle-orm'
-import { tauri } from '@daveyplate/better-auth-tauri/plugin'
 
 const ADMIN_EMAILS = ['vestergaardlasse2@gmail.com']
 
@@ -83,14 +82,6 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    // Visit: https://www.npmjs.com/package/@daveyplate/better-auth-tauri for docs
-    tauri({
-      scheme: 'querystudio',
-      callbackURL: '/',
-      successText: 'Authentication successful! You can close this window.',
-      successURL: '/auth/success',
-      debugLogs: false,
-    }),
     captcha({
       provider: 'cloudflare-turnstile',
       secretKey: env.TURNSTILE_SECRET_KEY,

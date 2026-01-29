@@ -28,6 +28,7 @@ localPlugins.forEach((plugin) => trackBundledPlugin(plugin));
 // Register user-imported plugins from the plugin store
 registerImportedPlugins();
 
+// Create a new router instance
 const router = createRouter({ routeTree });
 
 // Register the router instance for type safety
