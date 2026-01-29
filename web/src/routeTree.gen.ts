@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthDesktopRouteImport } from './routes/auth/desktop'
 import { Route as ApiTestRouteImport } from './routes/api/test'
 import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
 import { Route as ApiLicenseRouteImport } from './routes/api.license'
@@ -63,6 +64,11 @@ const AuthedRoute = AuthedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDesktopRoute = AuthDesktopRouteImport.update({
+  id: '/auth/desktop',
+  path: '/auth/desktop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTestRoute = ApiTestRouteImport.update({
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/api/license': typeof ApiLicenseRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/api/test': typeof ApiTestRoute
+  '/auth/desktop': typeof AuthDesktopRoute
   '/dashboard/account': typeof AuthedDashboardAccountRoute
   '/dashboard/admin': typeof AuthedDashboardAdminRoute
   '/dashboard/billing': typeof AuthedDashboardBillingRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/api/license': typeof ApiLicenseRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/api/test': typeof ApiTestRoute
+  '/auth/desktop': typeof AuthDesktopRoute
   '/dashboard/account': typeof AuthedDashboardAccountRoute
   '/dashboard/admin': typeof AuthedDashboardAdminRoute
   '/dashboard/billing': typeof AuthedDashboardBillingRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/api/license': typeof ApiLicenseRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/api/test': typeof ApiTestRoute
+  '/auth/desktop': typeof AuthDesktopRoute
   '/_authed/dashboard/account': typeof AuthedDashboardAccountRoute
   '/_authed/dashboard/admin': typeof AuthedDashboardAdminRoute
   '/_authed/dashboard/billing': typeof AuthedDashboardBillingRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/api/license'
     | '/api/realtime'
     | '/api/test'
+    | '/auth/desktop'
     | '/dashboard/account'
     | '/dashboard/admin'
     | '/dashboard/billing'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/api/license'
     | '/api/realtime'
     | '/api/test'
+    | '/auth/desktop'
     | '/dashboard/account'
     | '/dashboard/admin'
     | '/dashboard/billing'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/api/license'
     | '/api/realtime'
     | '/api/test'
+    | '/auth/desktop'
     | '/_authed/dashboard/account'
     | '/_authed/dashboard/admin'
     | '/_authed/dashboard/billing'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   ApiLicenseRoute: typeof ApiLicenseRouteWithChildren
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   ApiTestRoute: typeof ApiTestRoute
+  AuthDesktopRoute: typeof AuthDesktopRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDownloadsSplatRoute: typeof ApiDownloadsSplatRoute
   ApiPolarWebhooksRoute: typeof ApiPolarWebhooksRoute
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/desktop': {
+      id: '/auth/desktop'
+      path: '/auth/desktop'
+      fullPath: '/auth/desktop'
+      preLoaderRoute: typeof AuthDesktopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/test': {
@@ -496,6 +516,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLicenseRoute: ApiLicenseRouteWithChildren,
   ApiRealtimeRoute: ApiRealtimeRoute,
   ApiTestRoute: ApiTestRoute,
+  AuthDesktopRoute: AuthDesktopRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDownloadsSplatRoute: ApiDownloadsSplatRoute,
   ApiPolarWebhooksRoute: ApiPolarWebhooksRoute,
