@@ -196,10 +196,6 @@ function AccountSettings() {
                 <Mail className="h-4 w-4" />
                 {session.user.email}
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                User ID: {session.user.id}
-              </div>
             </div>
           </div>
 
@@ -227,12 +223,8 @@ function AccountSettings() {
               Sign in to sync your preferences and access premium features.
             </p>
             <Button onClick={handleSignInWithGithub} disabled={isSigningIn}>
-              {isSigningIn ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Github className="mr-2 h-4 w-4" />
-              )}
-              {isSigningIn ? "Signing in..." : "Login with GitHub"}
+              {isSigningIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSigningIn ? "Signing in..." : "Login with your account"}
             </Button>
           </div>
         </div>
