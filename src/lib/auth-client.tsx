@@ -18,7 +18,6 @@ async function tauriFetchWithOrigin(
 ): Promise<Response> {
   const headers = new Headers(init?.headers);
 
-  // Set Origin header if not already present
   if (!headers.has("Origin")) {
     headers.set("Origin", "tauri://localhost");
   }

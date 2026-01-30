@@ -23,25 +23,12 @@ import { useThemeImport } from "@/lib/use-theme-import";
 import { Upload, Trash2 } from "lucide-react";
 
 export function ThemeSelector() {
-  const {
-    getAllThemes,
-    getActiveTheme,
-    setActiveTheme,
-    removeCustomTheme,
-    addCustomTheme,
-  } = useThemeStore();
+  const { getAllThemes, getActiveTheme, setActiveTheme, removeCustomTheme } = useThemeStore();
 
   const { importThemeFromJson, importAndApplyTheme } = useThemeImport();
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [_createDialogOpen, setCreateDialogOpen] = useState(false);
   const [importJson, setImportJson] = useState("");
-  const [newTheme, setNewTheme] = useState({
-    id: "",
-    name: "",
-    displayName: "",
-    description: "",
-  });
 
   const themes = getAllThemes();
   const activeTheme = getActiveTheme();
@@ -58,24 +45,6 @@ export function ThemeSelector() {
       setImportJson("");
       setImportDialogOpen(false);
     }
-  };
-
-  const handleCreateTheme = () => {
-    if (!newTheme.id || !newTheme.name) {
-      return;
-    }
-
-    const theme = {
-      ...newTheme,
-      colors: activeTheme.colors,
-      isDark: activeTheme.isDark,
-      isBuiltIn: false,
-    };
-
-    addCustomTheme(theme);
-    setActiveTheme(newTheme.id);
-    setNewTheme({ id: "", name: "", displayName: "", description: "" });
-    setCreateDialogOpen(false);
   };
 
   const handleRemoveTheme = (themeId: string) => {
@@ -96,9 +65,7 @@ export function ThemeSelector() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <div className="px-2 py-1.5 text-sm font-semibold">
-              Built-in Themes
-            </div>
+            <div className="px-2 py-1.5 text-sm font-semibold">Built-in Themes</div>
             {builtInThemes.map((theme) => (
               <SelectItem key={theme.id} value={theme.id}>
                 {theme.displayName || theme.name}
@@ -106,9 +73,7 @@ export function ThemeSelector() {
             ))}
             {customThemes.length > 0 && (
               <>
-                <div className="px-2 py-1.5 text-sm font-semibold mt-1">
-                  Custom Themes
-                </div>
+                <div className="px-2 py-1.5 text-sm font-semibold mt-1">Custom Themes</div>
                 {customThemes.map((theme) => (
                   <SelectItem key={theme.id} value={theme.id}>
                     {theme.displayName || theme.name}
@@ -151,9 +116,7 @@ export function ThemeSelector() {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or
-                  </span>
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
                 </div>
               </div>
               <div>
@@ -167,10 +130,7 @@ export function ThemeSelector() {
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setImportDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button onClick={handleJsonImport} disabled={!importJson}>
@@ -187,25 +147,14 @@ export function ThemeSelector() {
           <Label>Custom Themes:</Label>
           <div className="space-y-1">
             {customThemes.map((theme) => (
-              <div
-                key={theme.id}
-                className="flex items-center justify-between p-2 rounded border"
-              >
+              <div key={theme.id} className="flex items-center justify-between p-2 rounded border">
                 <div>
-                  <div className="font-medium">
-                    {theme.displayName || theme.name}
-                  </div>
+                  <div className="font-medium">{theme.displayName || theme.name}</div>
                   {theme.description && (
-                    <div className="text-sm text-muted-foreground">
-                      {theme.description}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{theme.description}</div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveTheme(theme.id)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => handleRemoveTheme(theme.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

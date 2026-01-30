@@ -8,11 +8,8 @@ import {
   FlaskConical,
   User,
   LogOut,
-  Mail,
-  Shield,
   Loader2,
   Puzzle,
-  Github,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

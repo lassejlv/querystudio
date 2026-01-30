@@ -1,13 +1,6 @@
 import { memo, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
-import {
-  Database,
-  Table2,
-  Keyboard,
-  MousePointerClick,
-  Code,
-  Terminal,
-} from "lucide-react";
+import { Table2, Keyboard, MousePointerClick, Code, Terminal } from "lucide-react";
 import { useLayoutStore, type TabType } from "@/lib/layout-store";
 import { useConnectionStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -46,7 +39,6 @@ export const PaneWelcomeScreen = memo(function PaneWelcomeScreen({
   dbType,
 }: PaneWelcomeScreenProps) {
   const createTab = useLayoutStore((s) => s.createTab);
-  const connection = useConnectionStore((s) => s.connection);
   const tables = useConnectionStore((s) => s.tables);
 
   const isRedis = dbType === "redis";
@@ -85,9 +77,7 @@ export const PaneWelcomeScreen = memo(function PaneWelcomeScreen({
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-foreground mb-2">
-            Welcome
-          </h1>
+          <h1 className="text-2xl font-semibold text-foreground mb-2">Welcome</h1>
           <p className="text-muted-foreground">
             {isRedis
               ? "Connected to Redis. Open a console to run commands."
@@ -119,13 +109,9 @@ export const PaneWelcomeScreen = memo(function PaneWelcomeScreen({
                   <Icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
                 <div className="text-center">
-                  <p className="font-medium text-foreground">
-                    {plugin.displayName}
-                  </p>
+                  <p className="font-medium text-foreground">{plugin.displayName}</p>
                   {plugin.createShortcut && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {plugin.createShortcut}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{plugin.createShortcut}</p>
                   )}
                 </div>
               </motion.button>
@@ -183,13 +169,8 @@ export const PaneWelcomeScreen = memo(function PaneWelcomeScreen({
           </div>
           <div className="grid grid-cols-2 gap-3">
             {shortcuts.map((shortcut, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between gap-4 text-sm"
-              >
-                <span className="text-muted-foreground">
-                  {shortcut.description}
-                </span>
+              <div key={i} className="flex items-center justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">{shortcut.description}</span>
                 <div className="flex items-center gap-1">
                   {shortcut.keys.map((key, j) => (
                     <kbd

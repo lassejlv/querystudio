@@ -16,7 +16,6 @@ import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import type { SavedConnection } from "@/lib/types";
 import { FpsCounter } from "@/components/fps-counter";
 import {
-  Bot,
   PanelRightClose,
   PanelRight,
   PanelLeftClose,
@@ -216,12 +215,10 @@ function App() {
           style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
         />
 
-        {/* Left side controls - aligned with traffic lights */}
         <div
           className="absolute left-17.5 top-0 bottom-0 flex items-center"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          {/* Sidebar Toggle Button */}
           <Button
             variant="ghost"
             size="icon"
@@ -237,12 +234,10 @@ function App() {
           </Button>
         </div>
 
-        {/* Right side controls */}
         <div
           className="absolute right-2 top-0 bottom-0 flex items-center gap-1"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          {/* Settings Button */}
           <Button
             variant="ghost"
             size="icon"
@@ -253,7 +248,6 @@ function App() {
             <Settings className="h-4 w-4" />
           </Button>
 
-          {/* AI Panel Toggle Button */}
           <Button
             variant="ghost"
             size="icon"
@@ -273,11 +267,8 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
 
-        {/* Main content area */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Main content area with split panes */}
           <main className="flex flex-1 flex-col overflow-hidden">
-            {/* Split pane container */}
             <div className="flex-1 overflow-hidden h-full">
               <PaneContainer
                 connectionId={connectionId}
@@ -286,7 +277,6 @@ function App() {
             </div>
           </main>
 
-          {/* AI Panel - Right Side - Always mounted to preserve state */}
           <div
             className="relative shrink-0 overflow-hidden"
             style={{
@@ -298,7 +288,6 @@ function App() {
               className="absolute inset-y-0 right-0 flex flex-col border-l border-border bg-background"
               style={{ width: aiPanelWidth }}
             >
-              {/* Resize Handle */}
               <div
                 onMouseDown={handleResizeStart}
                 className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/30 active:bg-primary/40 z-10 -ml-1"
@@ -312,10 +301,8 @@ function App() {
         </div>
       </div>
 
-      {/* Terminal Panel - above status bar, only when experimental terminal is enabled */}
       {experimentalTerminal && <TerminalPanel />}
 
-      {/* Status Bar */}
       {statusBarVisible && <StatusBar />}
 
       <ConnectionDialog

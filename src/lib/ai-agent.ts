@@ -7,19 +7,13 @@ import type {
   ChatSession,
   AIModelId,
   AIModelInfo,
+  AIProviderType,
   DatabaseType,
   Message,
   ToolCall,
 } from "./types";
 
-export type {
-  AgentMessage,
-  AgentToolCall,
-  ChatSession,
-  AIModelId,
-  Message,
-  ToolCall,
-};
+export type { AgentMessage, AgentToolCall, ChatSession, AIModelId, Message, ToolCall };
 
 export const AI_MODELS: AIModelInfo[] = [
   { id: "gpt-5", name: "GPT-5", provider: "openai" },
@@ -28,10 +22,9 @@ export const AI_MODELS: AIModelInfo[] = [
 
 export type ModelId = AIModelId;
 
-export function getModelProvider(
-  modelId: ModelId,
-): "openai" | "anthropic" | "google" {
-  return "openai";
+export function getModelProvider(modelId: ModelId): AIProviderType {
+  const model = AI_MODELS.find((m) => m.id === modelId);
+  return model?.provider ?? "openai";
 }
 
 const CHAT_HISTORY_KEY = "querystudio_chat_history";
@@ -80,9 +73,7 @@ export function generateSessionTitle(messages: Message[]): string {
   const truncated = content.substring(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
 
-  return lastSpace > 20
-    ? truncated.substring(0, lastSpace) + "..."
-    : truncated + "...";
+  return lastSpace > 20 ? truncated.substring(0, lastSpace) + "..." : truncated + "...";
 }
 
 // ============================================================================
@@ -129,9 +120,7 @@ export class AIAgent {
   private messageHistory: Message[];
   private unlistenFn: UnlistenFn | null = null;
   private isCancelled: boolean = false;
-  private pendingResolve:
-    | ((value: { done: boolean; value?: string }) => void)
-    | null = null;
+  private pendingResolve: ((value: { done: boolean; value?: string }) => void) | null = null;
 
   constructor(
     apiKey: string,
@@ -177,9 +166,7 @@ export class AIAgent {
     this.pendingResolve = null;
 
     // Prepare history for the backend
-    const history: AgentMessage[] = this.messageHistory.map(
-      messageToAgentMessage,
-    );
+    const history: AgentMessage[] = this.messageHistory.map(messageToAgentMessage);
 
     // Set up event listener for streaming
     const eventName = `ai-stream-${sessionId}`;
@@ -325,9 +312,7 @@ export class AIAgent {
    * Send a message and get a complete response (non-streaming)
    */
   async chat(userMessage: string): Promise<string> {
-    const history: AgentMessage[] = this.messageHistory.map(
-      messageToAgentMessage,
-    );
+    const history: AgentMessage[] = this.messageHistory.map(messageToAgentMessage);
 
     const response = await api.aiChat({
       connection_id: this.connectionId,
@@ -396,10 +381,7 @@ export async function getAvailableModels(): Promise<AIModelInfo[]> {
 /**
  * Validate an API key
  */
-export async function validateApiKey(
-  apiKey: string,
-  model: ModelId = "gpt-5",
-): Promise<boolean> {
+export async function validateApiKey(apiKey: string, model: ModelId = "gpt-5"): Promise<boolean> {
   try {
     return await api.aiValidateKey(apiKey, model);
   } catch {

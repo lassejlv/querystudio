@@ -1,13 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Key,
-  Check,
-  X,
-  Loader2,
-  Monitor,
-  Trash2,
-  RefreshCw,
-} from "lucide-react";
+import { Loader2, Monitor, Trash2, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -137,9 +129,7 @@ export function LicenseSettings({ open, onOpenChange }: LicenseSettingsProps) {
         setSuccessMessage("License verified successfully");
         await loadLicenseStatus();
       } else {
-        setError(
-          result.error || result.message || "License verification failed",
-        );
+        setError(result.error || result.message || "License verification failed");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
@@ -154,9 +144,7 @@ export function LicenseSettings({ open, onOpenChange }: LicenseSettingsProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            License Settings
-          </DialogTitle>
+          <DialogTitle className="flex items-center gap-2">License Settings</DialogTitle>
           <DialogDescription>Manage your QueryStudio license</DialogDescription>
         </DialogHeader>
 
@@ -226,12 +214,7 @@ export function LicenseSettings({ open, onOpenChange }: LicenseSettingsProps) {
                     onClick={loadDevices}
                     disabled={isLoadingDevices}
                   >
-                    <RefreshCw
-                      className={cn(
-                        "h-3 w-3",
-                        isLoadingDevices && "animate-spin",
-                      )}
-                    />
+                    <RefreshCw className={cn("h-3 w-3", isLoadingDevices && "animate-spin")} />
                   </Button>
                 </div>
                 <div className="rounded-lg border border-border divide-y divide-border">
@@ -241,10 +224,7 @@ export function LicenseSettings({ open, onOpenChange }: LicenseSettingsProps) {
                     </div>
                   ) : devices.length > 0 ? (
                     devices.map((device) => (
-                      <div
-                        key={device.id}
-                        className="flex items-center justify-between p-3"
-                      >
+                      <div key={device.id} className="flex items-center justify-between p-3">
                         <div className="flex items-center gap-2">
                           <Monitor className="h-4 w-4 text-muted-foreground" />
                           <div>
@@ -256,9 +236,7 @@ export function LicenseSettings({ open, onOpenChange }: LicenseSettingsProps) {
                             </p>
                           </div>
                         </div>
-                        <Badge
-                          variant={device.active ? "default" : "secondary"}
-                        >
+                        <Badge variant={device.active ? "default" : "secondary"}>
                           {device.active ? "Active" : "Inactive"}
                         </Badge>
                       </div>
