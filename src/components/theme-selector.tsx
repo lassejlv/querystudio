@@ -154,7 +154,15 @@ export function ThemeSelector() {
                     <div className="text-sm text-muted-foreground">{theme.description}</div>
                   )}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleRemoveTheme(theme.id)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveTheme(theme.id);
+                  }}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

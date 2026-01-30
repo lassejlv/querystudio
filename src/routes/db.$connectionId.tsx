@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar";
-import { ConnectionDialog } from "@/components/connection-dialog";
+
 import { EditConnectionDialog } from "@/components/edit-connection-dialog";
 import { AIChat } from "@/components/ai-chat";
 import { CommandPalette } from "@/components/command-palette";
@@ -15,7 +15,14 @@ import { useSavedConnections, useConnect } from "@/lib/hooks";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import type { SavedConnection } from "@/lib/types";
 import { FpsCounter } from "@/components/fps-counter";
-import { PanelRightClose, PanelRight, PanelLeftClose, PanelLeft, Settings, Loader2 } from "lucide-react";
+import {
+  PanelRightClose,
+  PanelRight,
+  PanelLeftClose,
+  PanelLeft,
+  Settings,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/db/$connectionId")({
@@ -25,7 +32,7 @@ export const Route = createFileRoute("/db/$connectionId")({
 function DatabaseStudio() {
   const navigate = useNavigate();
   const { connectionId } = useParams({ from: "/db/$connectionId" });
-  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
+
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false);
   const [connectionToEdit, setConnectionToEdit] = useState<SavedConnection | null>(null);
@@ -140,9 +147,13 @@ function DatabaseStudio() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [aiPanelOpen, toggleAiPanel, setAiPanelOpen, toggleSidebar]);
 
+  const handleNewConnection = () => {
+    navigate({ to: "/new-connection" });
+  };
+
   // Global keyboard shortcuts and menu event handling
   const { refreshAll } = useGlobalShortcuts({
-    onNewConnection: () => setConnectionDialogOpen(true),
+    onNewConnection: handleNewConnection,
     onOpenCommandPalette: () => setCommandPaletteOpen(true),
     onOpenSettings: () => {
       navigate({ to: "/settings" });
@@ -250,7 +261,6 @@ function DatabaseStudio() {
             </div>
           </div>
         </div>
-        <ConnectionDialog open={connectionDialogOpen} onOpenChange={setConnectionDialogOpen} />
         <EditConnectionDialog
           connection={connectionToEdit}
           open={editConnectionDialogOpen}
@@ -261,7 +271,7 @@ function DatabaseStudio() {
           onOpenChange={setCommandPaletteOpen}
           onSelectConnection={handleSelectSavedConnection}
           onEditConnection={handleEditConnection}
-          onNewConnection={() => setConnectionDialogOpen(true)}
+          onNewConnection={handleNewConnection}
           onRefresh={refreshAll}
         />
         <PasswordPromptDialog
@@ -277,12 +287,12 @@ function DatabaseStudio() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Titlebar with drag region and controls */}
       <div
-        className="relative h-8 w-full shrink-0 bg-background flex items-center justify-between"
+        className="h-8 w-full shrink-0 flex items-center justify-between"
         data-tauri-drag-region
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       >
         <div
-          className="flex items-center h-full pl-2"
+          className="flex items-center h-full pl-[70px]"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           <Button
@@ -368,7 +378,6 @@ function DatabaseStudio() {
 
       {statusBarVisible && <StatusBar />}
 
-      <ConnectionDialog open={connectionDialogOpen} onOpenChange={setConnectionDialogOpen} />
       <EditConnectionDialog
         connection={connectionToEdit}
         open={editConnectionDialogOpen}
@@ -379,7 +388,7 @@ function DatabaseStudio() {
         onOpenChange={setCommandPaletteOpen}
         onSelectConnection={handleSelectSavedConnection}
         onEditConnection={handleEditConnection}
-        onNewConnection={() => setConnectionDialogOpen(true)}
+        onNewConnection={handleNewConnection}
         onRefresh={refreshAll}
       />
       <PasswordPromptDialog

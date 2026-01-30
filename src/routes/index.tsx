@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { ConnectionDialog } from "@/components/connection-dialog";
 import { EditConnectionDialog } from "@/components/edit-connection-dialog";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { CommandPalette } from "@/components/command-palette";
@@ -15,7 +14,6 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const navigate = useNavigate();
-  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false);
   const [connectionToEdit, setConnectionToEdit] = useState<SavedConnection | null>(null);
@@ -31,9 +29,13 @@ function Home() {
     }
   }, [connection, navigate]);
 
+  const handleNewConnection = () => {
+    navigate({ to: "/new-connection" });
+  };
+
   // Global keyboard shortcuts and menu event handling
   const { refreshAll } = useGlobalShortcuts({
-    onNewConnection: () => setConnectionDialogOpen(true),
+    onNewConnection: handleNewConnection,
     onOpenCommandPalette: () => setCommandPaletteOpen(true),
     onOpenSettings: () => {
       navigate({ to: "/settings" });
@@ -58,11 +60,10 @@ function Home() {
   return (
     <>
       <WelcomeScreen
-        onNewConnection={() => setConnectionDialogOpen(true)}
+        onNewConnection={handleNewConnection}
         onSelectConnection={handleSelectSavedConnection}
         onEditConnection={handleEditConnection}
       />
-      <ConnectionDialog open={connectionDialogOpen} onOpenChange={setConnectionDialogOpen} />
       <EditConnectionDialog
         connection={connectionToEdit}
         open={editConnectionDialogOpen}
@@ -73,7 +74,7 @@ function Home() {
         onOpenChange={setCommandPaletteOpen}
         onSelectConnection={handleSelectSavedConnection}
         onEditConnection={handleEditConnection}
-        onNewConnection={() => setConnectionDialogOpen(true)}
+        onNewConnection={handleNewConnection}
         onRefresh={refreshAll}
       />
       <PasswordPromptDialog

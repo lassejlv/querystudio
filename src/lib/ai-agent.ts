@@ -2,7 +2,6 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { api } from "./api";
 import type {
   AgentMessage,
-  AgentToolCall,
   AgentEventType,
   ChatSession,
   AIModelId,
@@ -13,19 +12,28 @@ import type {
   ToolCall,
 } from "./types";
 
-export type { AgentMessage, AgentToolCall, ChatSession, AIModelId, Message, ToolCall };
+// Re-export types for convenience
+export type {
+  AgentMessage,
+  AgentToolCall,
+  ChatSession,
+  AIModelId,
+  Message,
+  ToolCall,
+} from "./types";
+
+export type ModelId = AIModelId;
 
 export const AI_MODELS: AIModelInfo[] = [
   { id: "gpt-5", name: "GPT-5", provider: "openai" },
   { id: "gpt-5-mini", name: "GPT-5 Mini", provider: "openai" },
 ];
 
-export type ModelId = AIModelId;
-
 export function getModelProvider(modelId: ModelId): AIProviderType {
-  const model = AI_MODELS.find((m) => m.id === modelId);
-  return model?.provider ?? "openai";
+  return AI_MODELS.find((m) => m.id === modelId)?.provider ?? "openai";
 }
+
+// --- Chat History Management ---
 
 const CHAT_HISTORY_KEY = "querystudio_chat_history";
 const MAX_SESSIONS = 50;
@@ -73,12 +81,10 @@ export function generateSessionTitle(messages: Message[]): string {
   const truncated = content.substring(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
 
-  return lastSpace > 20 ? truncated.substring(0, lastSpace) + "..." : truncated + "...";
+  return lastSpace > 20 ? `${truncated.substring(0, lastSpace)}...` : `${truncated}...`;
 }
 
-// ============================================================================
-// Convert between frontend Message and backend AgentMessage
-// ============================================================================
+// --- Data Conversion ---
 
 export function messageToAgentMessage(msg: Message): AgentMessage {
   return {
@@ -108,38 +114,25 @@ export function agentMessageToMessage(msg: AgentMessage): Message {
   };
 }
 
-// ============================================================================
-// AI Agent Class (Backend-based)
-// ============================================================================
+// --- AI Agent ---
 
 export class AIAgent {
-  private connectionId: string;
-  private model: ModelId;
-  private apiKey: string;
-  private dbType: DatabaseType;
-  private messageHistory: Message[];
+  private messageHistory: Message[] = [];
   private unlistenFn: UnlistenFn | null = null;
   private isCancelled: boolean = false;
-  private pendingResolve: ((value: { done: boolean; value?: string }) => void) | null = null;
+  private signalNext: (() => void) | null = null;
 
   constructor(
-    apiKey: string,
-    connectionId: string,
-    dbType: DatabaseType,
-    model: ModelId = "gpt-5",
-  ) {
-    this.apiKey = apiKey;
-    this.connectionId = connectionId;
-    this.dbType = dbType;
-    this.model = model;
-    this.messageHistory = [];
-  }
+    private apiKey: string,
+    private connectionId: string,
+    private dbType: DatabaseType,
+    private model: ModelId = "gpt-5",
+  ) {}
 
-  setModel(model: ModelId): void {
+  setModel(model: ModelId) {
     this.model = model;
   }
-
-  getModel(): ModelId {
+  getModel() {
     return this.model;
   }
 
@@ -152,167 +145,14 @@ export class AIAgent {
     this.messageHistory = [];
   }
 
-  /**
-   * Stream a chat response from the backend
-   */
-  async *chatStream(
-    userMessage: string,
-    onToolCall?: (toolName: string, args: string) => void,
-  ): AsyncGenerator<string, void, unknown> {
-    const sessionId = crypto.randomUUID();
-
-    // Reset cancelled state for new stream
-    this.isCancelled = false;
-    this.pendingResolve = null;
-
-    // Prepare history for the backend
-    const history: AgentMessage[] = this.messageHistory.map(messageToAgentMessage);
-
-    // Set up event listener for streaming
-    const eventName = `ai-stream-${sessionId}`;
-    const chunks: string[] = [];
-    let isDone = false;
-    let error: string | null = null;
-    let finalContent = "";
-    const toolCalls: ToolCall[] = [];
-    const pendingToolCalls: Map<string, ToolCall> = new Map();
-
-    this.unlistenFn = await listen<AgentEventType>(eventName, (event) => {
-      // Ignore events if cancelled
-      if (this.isCancelled) return;
-
-      const payload = event.payload;
-
-      switch (payload.type) {
-        case "Content":
-          chunks.push(payload.data);
-          if (this.pendingResolve) {
-            this.pendingResolve({ done: false, value: payload.data });
-            this.pendingResolve = null;
-          }
-          break;
-
-        case "ToolCallStart": {
-          const tc: ToolCall = {
-            id: payload.data.id,
-            name: payload.data.name,
-            arguments: "",
-          };
-          pendingToolCalls.set(payload.data.id, tc);
-          onToolCall?.(payload.data.name, "");
-          break;
-        }
-
-        case "ToolCallDelta": {
-          const tc = pendingToolCalls.get(payload.data.id);
-          if (tc) {
-            tc.arguments += payload.data.arguments;
-          }
-          break;
-        }
-
-        case "ToolResult": {
-          const tc = pendingToolCalls.get(payload.data.id);
-          if (tc) {
-            tc.result = payload.data.result;
-            toolCalls.push(tc);
-            pendingToolCalls.delete(payload.data.id);
-          }
-          onToolCall?.(payload.data.name, payload.data.result);
-          break;
-        }
-
-        case "Done":
-          finalContent = payload.data.content;
-          isDone = true;
-          if (this.pendingResolve) {
-            this.pendingResolve({ done: true });
-            this.pendingResolve = null;
-          }
-          break;
-
-        case "Error":
-          error = payload.data;
-          isDone = true;
-          if (this.pendingResolve) {
-            this.pendingResolve({ done: true });
-            this.pendingResolve = null;
-          }
-          break;
-      }
-    });
-
-    // Start the stream
-    try {
-      await api.aiChatStream({
-        connection_id: this.connectionId,
-        session_id: sessionId,
-        message: userMessage,
-        model: this.model,
-        api_key: this.apiKey,
-        db_type: this.dbType,
-        history,
-      });
-    } catch (e) {
-      this.cleanup();
-      throw e;
-    }
-
-    // Yield chunks as they come in
-    while (!isDone && !this.isCancelled) {
-      if (chunks.length > 0) {
-        yield chunks.shift()!;
-      } else {
-        // Wait for the next chunk
-        await new Promise<{ done: boolean; value?: string }>((resolve) => {
-          this.pendingResolve = resolve;
-        });
-        // Check if cancelled while waiting
-        if (this.isCancelled) {
-          break;
-        }
-        if (chunks.length > 0) {
-          yield chunks.shift()!;
-        }
-      }
-    }
-
-    // Yield any remaining chunks (unless cancelled)
-    while (chunks.length > 0 && !this.isCancelled) {
-      yield chunks.shift()!;
-    }
-
+  cancel(): void {
+    this.isCancelled = true;
+    this.notifyStream();
     this.cleanup();
-
-    // If cancelled, throw a specific error
-    if (this.isCancelled) {
-      throw new Error("Request cancelled");
-    }
-
-    if (error) {
-      throw new Error(error);
-    }
-
-    // Update message history
-    this.messageHistory.push({
-      id: crypto.randomUUID(),
-      role: "user",
-      content: userMessage,
-    });
-
-    this.messageHistory.push({
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: finalContent,
-      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-    });
   }
 
-  /**
-   * Send a message and get a complete response (non-streaming)
-   */
   async chat(userMessage: string): Promise<string> {
-    const history: AgentMessage[] = this.messageHistory.map(messageToAgentMessage);
+    const history = this.messageHistory.map(messageToAgentMessage);
 
     const response = await api.aiChat({
       connection_id: this.connectionId,
@@ -324,20 +164,130 @@ export class AIAgent {
       history,
     });
 
-    // Update message history
-    this.messageHistory.push({
-      id: crypto.randomUUID(),
-      role: "user",
-      content: userMessage,
-    });
-
-    this.messageHistory.push({
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: response.content,
-    });
+    this.addToHistory("user", userMessage);
+    this.addToHistory("assistant", response.content);
 
     return response.content;
+  }
+
+  async *chatStream(
+    userMessage: string,
+    onToolCall?: (toolName: string, args: string) => void,
+  ): AsyncGenerator<string, void, unknown> {
+    const sessionId = crypto.randomUUID();
+    this.isCancelled = false;
+    this.signalNext = null;
+
+    const history = this.messageHistory.map(messageToAgentMessage);
+    const eventName = `ai-stream-${sessionId}`;
+
+    // Stream state
+    const chunkQueue: string[] = [];
+    const pendingToolCalls = new Map<string, ToolCall>();
+    const completedToolCalls: ToolCall[] = [];
+    let finalContent = "";
+    let error: string | null = null;
+    let isDone = false;
+
+    // Listen for backend events
+    this.unlistenFn = await listen<AgentEventType>(eventName, (event) => {
+      if (this.isCancelled) return;
+
+      const { type, data } = event.payload;
+
+      switch (type) {
+        case "Content":
+          chunkQueue.push(data);
+          this.notifyStream();
+          break;
+
+        case "ToolCallStart":
+          pendingToolCalls.set(data.id, { id: data.id, name: data.name, arguments: "" });
+          onToolCall?.(data.name, "");
+          break;
+
+        case "ToolCallDelta":
+          const deltaTc = pendingToolCalls.get(data.id);
+          if (deltaTc) deltaTc.arguments += data.arguments;
+          break;
+
+        case "ToolResult":
+          const resultTc = pendingToolCalls.get(data.id);
+          if (resultTc) {
+            resultTc.result = data.result;
+            completedToolCalls.push(resultTc);
+            pendingToolCalls.delete(data.id);
+            onToolCall?.(data.name, data.result);
+          }
+          break;
+
+        case "Done":
+          finalContent = data.content;
+          isDone = true;
+          this.notifyStream();
+          break;
+
+        case "Error":
+          error = data;
+          isDone = true;
+          this.notifyStream();
+          break;
+      }
+    });
+
+    try {
+      await api.aiChatStream({
+        connection_id: this.connectionId,
+        session_id: sessionId,
+        message: userMessage,
+        model: this.model,
+        api_key: this.apiKey,
+        db_type: this.dbType,
+        history,
+      });
+
+      // Stream Generator Loop
+      while (!isDone && !this.isCancelled) {
+        if (chunkQueue.length > 0) {
+          yield chunkQueue.shift()!;
+        } else {
+          // Wait for next event signal
+          await new Promise<void>((resolve) => {
+            this.signalNext = resolve;
+          });
+        }
+      }
+
+      // Flush remaining chunks
+      while (chunkQueue.length > 0 && !this.isCancelled) {
+        yield chunkQueue.shift()!;
+      }
+
+      if (this.isCancelled) throw new Error("Request cancelled");
+      if (error) throw new Error(error);
+
+      // Save complete interaction to history
+      this.addToHistory("user", userMessage);
+      this.addToHistory("assistant", finalContent, completedToolCalls);
+    } finally {
+      this.cleanup();
+    }
+  }
+
+  private notifyStream() {
+    if (this.signalNext) {
+      this.signalNext();
+      this.signalNext = null;
+    }
+  }
+
+  private addToHistory(role: "user" | "assistant", content: string, toolCalls?: ToolCall[]) {
+    this.messageHistory.push({
+      id: crypto.randomUUID(),
+      role,
+      content,
+      toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+    });
   }
 
   private cleanup(): void {
@@ -345,42 +295,20 @@ export class AIAgent {
       this.unlistenFn();
       this.unlistenFn = null;
     }
-    this.pendingResolve = null;
-  }
-
-  /**
-   * Cancel the current stream
-   */
-  cancel(): void {
-    this.isCancelled = true;
-    // Resolve any pending promise to unblock the generator
-    if (this.pendingResolve) {
-      this.pendingResolve({ done: true });
-      this.pendingResolve = null;
-    }
-    this.cleanup();
+    this.signalNext = null;
   }
 }
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
+// --- Helpers ---
 
-/**
- * Get available AI models from the backend
- */
 export async function getAvailableModels(): Promise<AIModelInfo[]> {
   try {
     return await api.aiGetModels();
   } catch {
-    // Fall back to hardcoded models if backend is unavailable
     return AI_MODELS;
   }
 }
 
-/**
- * Validate an API key
- */
 export async function validateApiKey(apiKey: string, model: ModelId = "gpt-5"): Promise<boolean> {
   try {
     return await api.aiValidateKey(apiKey, model);

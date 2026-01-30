@@ -1,15 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  Settings,
-  Palette,
-  Keyboard,
   ArrowLeft,
-  FlaskConical,
-  User,
   LogOut,
   Loader2,
-  Puzzle,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,109 +14,75 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAIQueryStore } from "@/lib/store";
 import { ThemeSelector } from "@/components/theme-selector";
 import { toast } from "sonner";
-import { PluginSettings } from "@/components/plugin-settings";
 import { authClient, signInWithGithub } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-type SettingsTab = "general" | "account" | "appearance" | "shortcuts" | "plugins" | "experimental";
+type SettingsTab = "general" | "account" | "appearance" | "experimental";
 
 function SettingsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const experimentalPlugins = useAIQueryStore((s) => s.experimentalPlugins);
 
+  const tabs: { id: SettingsTab; label: string }[] = [
+    { id: "general", label: "General" },
+    { id: "account", label: "Account" },
+    { id: "appearance", label: "Appearance" },
+    ...(experimentalPlugins ? [{ id: "experimental" as SettingsTab, label: "Experimental" }] : []),
+  ];
+
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Titlebar drag region */}
       <div
         data-tauri-drag-region
-        className="h-7 w-full shrink-0 bg-background"
+        className="h-7 w-full shrink-0"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
-        <aside className="w-64 border-r border-border bg-muted/30 flex flex-col p-4 gap-2">
-          <div className="flex items-center gap-2 px-2 mb-4">
+        <aside className="w-56 border-r border-border flex flex-col">
+          <div className="p-4 border-b border-border">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7 -ml-2"
+              size="sm"
+              className="w-full justify-start gap-2"
               onClick={() => navigate({ to: "/" })}
             >
               <ArrowLeft className="h-4 w-4" />
+              Back
             </Button>
-            <div className="font-semibold text-lg">Settings</div>
           </div>
 
-          <Button
-            variant={activeTab === "general" ? "secondary" : "ghost"}
-            className="justify-start gap-2"
-            onClick={() => setActiveTab("general")}
-          >
-            <Settings className="h-4 w-4" />
-            General
-          </Button>
-
-          <Button
-            variant={activeTab === "account" ? "secondary" : "ghost"}
-            className="justify-start gap-2"
-            onClick={() => setActiveTab("account")}
-          >
-            <User className="h-4 w-4" />
-            Account
-          </Button>
-
-          <Button
-            variant={activeTab === "appearance" ? "secondary" : "ghost"}
-            className="justify-start gap-2"
-            onClick={() => setActiveTab("appearance")}
-          >
-            <Palette className="h-4 w-4" />
-            Appearance
-          </Button>
-
-          <Button
-            variant={activeTab === "shortcuts" ? "secondary" : "ghost"}
-            className="justify-start gap-2"
-            onClick={() => setActiveTab("shortcuts")}
-          >
-            <Keyboard className="h-4 w-4" />
-            Shortcuts
-          </Button>
-
-          {experimentalPlugins && (
-            <Button
-              variant={activeTab === "plugins" ? "secondary" : "ghost"}
-              className="justify-start gap-2"
-              onClick={() => setActiveTab("plugins")}
-            >
-              <Puzzle className="h-4 w-4" />
-              Plugins
-            </Button>
-          )}
-
-          <Button
-            variant={activeTab === "experimental" ? "secondary" : "ghost"}
-            className="justify-start gap-2"
-            onClick={() => setActiveTab("experimental")}
-          >
-            <FlaskConical className="h-4 w-4" />
-            Experimental
-          </Button>
+          <nav className="flex-1 p-2 space-y-0.5">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-secondary text-secondary-foreground"
+                    : "hover:bg-muted text-muted-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </aside>
 
         {/* Settings Content */}
-        <main className="flex-1 overflow-auto p-8 max-w-3xl">
-          {activeTab === "general" && <GeneralSettings />}
-          {activeTab === "account" && <AccountSettings />}
-          {activeTab === "appearance" && <AppearanceSettings />}
-          {activeTab === "shortcuts" && <ShortcutsSettings />}
-          {activeTab === "plugins" && experimentalPlugins && <PluginSettings />}
-          {activeTab === "experimental" && <ExperimentalSettings />}
+        <main className="flex-1 overflow-auto p-8 flex justify-center">
+          <div className="max-w-xl w-full">
+            {activeTab === "general" && <GeneralSettings />}
+            {activeTab === "account" && <AccountSettings />}
+            {activeTab === "appearance" && <AppearanceSettings />}
+            {activeTab === "experimental" && <ExperimentalSettings />}
+          </div>
         </main>
       </div>
     </div>
@@ -318,53 +278,7 @@ function AppearanceSettings() {
   );
 }
 
-function ShortcutsSettings() {
-  const shortcuts = [
-    { name: "Toggle Sidebar", keys: ["⌘", "B"] },
-    { name: "Toggle Querybuddy", keys: ["⌥", "⌘", "B"] },
-    { name: "Run Query", keys: ["⌘", "Enter"] },
-    { name: "Command Palette", keys: ["⌘", "K"] },
-    { name: "New Connection", keys: ["⌘", "N"] },
-    { name: "Refresh Data", keys: ["⌘", "R"] },
-    { name: "Go to Data Tab", keys: ["⌘", "1"] },
-    { name: "Go to Query Tab", keys: ["⌘", "2"] },
-    { name: "Go to Querybuddy Tab", keys: ["⌘", "3"] },
-    { name: "Toggle Terminal", keys: ["⌃", "`"] },
-  ];
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Keyboard Shortcuts</h2>
-        <p className="text-muted-foreground">
-          View keyboard shortcuts for quick navigation and actions.
-        </p>
-      </div>
-      <Separator />
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {shortcuts.map((shortcut) => (
-          <div
-            key={shortcut.name}
-            className="flex items-center justify-between rounded-lg border p-3"
-          >
-            <span className="text-sm font-medium">{shortcut.name}</span>
-            <div className="flex gap-1">
-              {shortcut.keys.map((key) => (
-                <kbd
-                  key={key}
-                  className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground"
-                >
-                  {key}
-                </kbd>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function ExperimentalSettings() {
   const experimentalTerminal = useAIQueryStore((s) => s.experimentalTerminal);
