@@ -13,6 +13,7 @@ import {
   Loader2,
   Puzzle,
   Github,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -192,10 +193,12 @@ function AccountSettings() {
             </Avatar>
             <div className="flex-1 space-y-1">
               <h3 className="font-semibold text-lg">{session.user.name}</h3>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                {session.user.email}
-              </div>
+
+              <Button variant="link" asChild>
+                <a href="https://querystudio.dev/dashboard">
+                  Manage Account <ExternalLink />
+                </a>
+              </Button>
             </div>
           </div>
 
