@@ -4,13 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useConnectionStore, useAIQueryStore, useLicenseStore } from "@/lib/store";
+import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import { useLayoutStore } from "@/lib/layout-store";
 import { useShallow } from "zustand/react/shallow";
 import { useTables, useDisconnect } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
-import { LicenseSettings } from "@/components/license-settings";
 import type { DatabaseType } from "@/lib/types";
 
 const MIN_SIDEBAR_WIDTH = 180;
@@ -79,7 +77,6 @@ export const Sidebar = memo(function Sidebar() {
   );
   const setTables = useConnectionStore((s) => s.setTables);
   const setSelectedTable = useConnectionStore((s) => s.setSelectedTable);
-  const { setStatus } = useLicenseStore();
 
   // Layout store for multi-tab support
   const openDataTab = useLayoutStore((s) => s.openDataTab);
@@ -95,23 +92,9 @@ export const Sidebar = memo(function Sidebar() {
   const toggleSidebar = useAIQueryStore((s) => s.toggleSidebar);
 
   const [isResizing, setIsResizing] = useState(false);
-  const [licenseSettingsOpen, setLicenseSettingsOpen] = useState(false);
 
   const { data: fetchedTables } = useTables(connection?.id ?? null);
   const disconnect = useDisconnect();
-
-  // Load license status on mount
-  useEffect(() => {
-    const loadLicenseStatus = async () => {
-      try {
-        const licenseStatus = await api.licenseGetStatus();
-        setStatus(licenseStatus);
-      } catch (err) {
-        console.error("Failed to load license status:", err);
-      }
-    };
-    loadLicenseStatus();
-  }, [setStatus]);
 
   if (fetchedTables && fetchedTables !== tables) {
     setTables(fetchedTables);
@@ -375,8 +358,6 @@ export const Sidebar = memo(function Sidebar() {
           </div>
         </ScrollArea>
       </motion.div>
-
-      <LicenseSettings open={licenseSettingsOpen} onOpenChange={setLicenseSettingsOpen} />
     </>
   );
 });

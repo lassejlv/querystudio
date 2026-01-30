@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Key, Trash2 } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSavedConnections, useCanSaveConnection, useDeleteSavedConnection } from "@/lib/hooks";
-import { getLastConnectionId, useLicenseStore, useAIQueryStore } from "@/lib/store";
+import { getLastConnectionId, useAIQueryStore } from "@/lib/store";
 import type { SavedConnection } from "@/lib/types";
-import { LicenseSettings } from "@/components/license-settings";
-import { api } from "@/lib/api";
 import { DatabaseIcon } from "./sidebar";
 
 interface WelcomeScreenProps {
@@ -21,8 +19,6 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
   const { data: savedConnections, isLoading } = useSavedConnections();
   const autoConnectAttempted = useRef(false);
-  const [licenseSettingsOpen, setLicenseSettingsOpen] = useState(false);
-  const { setStatus } = useLicenseStore();
   const { canSave, currentSaved, maxSaved, isPro } = useCanSaveConnection();
   const autoReconnect = useAIQueryStore((s) => s.autoReconnect);
   const deleteConnection = useDeleteSavedConnection();
@@ -31,19 +27,6 @@ export function WelcomeScreen({
     e.stopPropagation();
     deleteConnection.mutate(id);
   };
-
-  // Load license status on mount
-  useEffect(() => {
-    const loadLicenseStatus = async () => {
-      try {
-        const licenseStatus = await api.licenseGetStatus();
-        setStatus(licenseStatus);
-      } catch (err) {
-        console.error("Failed to load license status:", err);
-      }
-    };
-    loadLicenseStatus();
-  }, [setStatus]);
 
   useEffect(() => {
     if (isLoading || autoConnectAttempted.current || !autoReconnect) return;
@@ -89,20 +72,9 @@ export function WelcomeScreen({
         <div className="w-full max-w-sm">
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-lg font-medium">Connections</h1>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {isPro ? "Pro" : `${currentSaved}/${maxSaved}`}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setLicenseSettingsOpen(true)}
-                title="License Settings"
-                className="h-7 w-7"
-              >
-                <Key className="h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
-            </div>
+            <span className="text-xs text-muted-foreground">
+              {isPro ? "Pro" : `${currentSaved}/${maxSaved}`}
+            </span>
           </div>
 
           <div className="mb-4">
@@ -166,8 +138,6 @@ export function WelcomeScreen({
           </p>
         </div>
       </div>
-
-      <LicenseSettings open={licenseSettingsOpen} onOpenChange={setLicenseSettingsOpen} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, CheckCircle2, AlertTriangle, Key, FolderOpen } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useConnect, useTestConnection, useCanSaveConnection } from "@/lib/hooks";
 import { toast } from "sonner";
 import type { ConnectionConfig, DatabaseType } from "@/lib/types";
-import { LicenseSettings } from "@/components/license-settings";
+import { useNavigate } from "@tanstack/react-router";
 
 interface ConnectionDialogProps {
   open: boolean;
@@ -81,7 +81,7 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
   const [mode, setMode] = useState<ConnectionMode>("params");
   const [dbType, setDbType] = useState<DatabaseType>("postgres");
   const [tested, setTested] = useState(false);
-  const [licenseSettingsOpen, setLicenseSettingsOpen] = useState(false);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     host: "localhost",
@@ -281,16 +281,18 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
                 Connection limit reached
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Free tier allows {maxSaved} saved connections.
+                Free tier allows {maxSaved} saved connections. Upgrade to Pro for unlimited.
               </p>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setLicenseSettingsOpen(true)}
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate({ to: "/settings" });
+                }}
                 className="mt-2"
               >
-                <Key className="mr-1.5 h-3 w-3" />
-                Enter License Key
+                Go to Account Settings
               </Button>
             </div>
           )}
@@ -516,8 +518,6 @@ export function ConnectionDialog({ open, onOpenChange }: ConnectionDialogProps) 
           </form>
         </DialogContent>
       </Dialog>
-
-      <LicenseSettings open={licenseSettingsOpen} onOpenChange={setLicenseSettingsOpen} />
     </>
   );
 }

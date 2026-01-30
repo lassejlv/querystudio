@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useConnect, useCanConnect } from "@/lib/hooks";
 import { toast } from "sonner";
 import type { SavedConnection } from "@/lib/types";
-import { LicenseSettings } from "@/components/license-settings";
+import { useNavigate } from "@tanstack/react-router";
 
 interface PasswordPromptDialogProps {
   connection: SavedConnection | null;
@@ -27,7 +27,7 @@ export function PasswordPromptDialog({
   onOpenChange,
 }: PasswordPromptDialogProps) {
   const [password, setPassword] = useState("");
-  const [licenseSettingsOpen, setLicenseSettingsOpen] = useState(false);
+  const navigate = useNavigate();
   const connect = useConnect();
   const connectingRef = useRef(false);
   const { canConnect, maxConnections } = useCanConnect();
@@ -128,74 +128,71 @@ export function PasswordPromptDialog({
   }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
-              Enter Password
-            </DialogTitle>
-            <DialogDescription>
-              {connection?.name && (
-                <>
-                  Connecting to{" "}
-                  <span className="font-medium text-foreground">{connection.name}</span>
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            Enter Password
+          </DialogTitle>
+          <DialogDescription>
+            {connection?.name && (
+              <>
+                Connecting to <span className="font-medium text-foreground">{connection.name}</span>
+              </>
+            )}
+          </DialogDescription>
+        </DialogHeader>
 
-          {/* Connection Limit Warning */}
-          {!canConnect && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
-              <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-amber-500">Connection limit reached</p>
-                <p className="text-xs text-muted-foreground">
-                  Free tier allows {maxConnections} simultaneous connections. Disconnect an existing
-                  connection or upgrade to Pro.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLicenseSettingsOpen(true)}
-                  className="gap-1.5"
-                >
-                  <Key className="h-3.5 w-3.5" />
-                  Enter License Key
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoFocus
-                disabled={!canConnect}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={connect.isPending || !canConnect}>
-                {connect.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Connect
+        {/* Connection Limit Warning */}
+        {!canConnect && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-medium text-amber-500">Connection limit reached</p>
+              <p className="text-xs text-muted-foreground">
+                Free tier allows {maxConnections} simultaneous connections. Disconnect an existing
+                connection or upgrade to Pro.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate({ to: "/settings" });
+                }}
+                className="gap-1.5"
+              >
+                Go to Account Settings
               </Button>
             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </div>
+        )}
 
-      <LicenseSettings open={licenseSettingsOpen} onOpenChange={setLicenseSettingsOpen} />
-    </>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+              disabled={!canConnect}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={connect.isPending || !canConnect}>
+              {connect.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Connect
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

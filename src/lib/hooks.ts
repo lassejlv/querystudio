@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { api } from "./api";
-import { useConnectionStore, useLicenseStore } from "./store";
+import { useConnectionStore } from "./store";
+import { authClient, type ExtendedUser } from "./auth-client";
 import type { ConnectionConfig, DatabaseType, SavedConnection } from "./types";
 
 export function useTables(connectionId: string | null) {
@@ -330,22 +332,25 @@ export function useTestConnection() {
   });
 }
 
-// License hooks
-export function useLicenseStatus() {
-  const { setStatus } = useLicenseStore();
+// User status hooks - using auth session as source of truth
+const MAX_FREE_CONNECTIONS = 2;
 
-  return useQuery({
-    queryKey: ["licenseStatus"],
-    queryFn: async () => {
-      // Use refresh to verify with remote API and update local state
-      const status = await api.licenseRefresh();
-      setStatus(status);
-      return status;
-    },
-    staleTime: 60 * 1000, // Cache for 1 minute
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes to catch revoked licenses
-    refetchOnWindowFocus: true, // Refresh when user returns to the app
-  });
+/**
+ * Hook to sync auth session's isPro status to the Tauri backend
+ * Should be used at the app root level
+ */
+export function useSyncProStatus() {
+  const { data: session } = authClient.useSession();
+  // Cast user to ExtendedUser to access custom fields from the server
+  const user = session?.user as ExtendedUser | undefined;
+
+  useEffect(() => {
+    const isPro = user?.isPro ?? false;
+    // Sync to backend
+    api.setUserProStatus(isPro).catch((err) => {
+      console.error("Failed to sync pro status to backend:", err);
+    });
+  }, [user?.isPro]);
 }
 
 export function useConnectionCount() {
@@ -363,14 +368,20 @@ export function useSavedConnectionCount() {
   });
 }
 
+/**
+ * Hook to check if user can create a new connection
+ * Uses auth session's isPro status
+ */
 export function useCanConnect() {
-  const { data: licenseStatus } = useLicenseStatus();
+  const { data: session } = authClient.useSession();
   const { data: connectionCount } = useConnectionCount();
+  // Cast user to ExtendedUser to access custom fields from the server
+  const user = session?.user as ExtendedUser | undefined;
 
-  const maxConnections = licenseStatus?.max_connections ?? 2;
+  const isPro = user?.isPro ?? false;
+  const maxConnections = isPro ? Infinity : MAX_FREE_CONNECTIONS;
   const currentConnections = connectionCount ?? 0;
   const canConnect = currentConnections < maxConnections;
-  const isPro = licenseStatus?.is_pro && licenseStatus?.is_activated;
 
   return {
     canConnect,
@@ -381,14 +392,20 @@ export function useCanConnect() {
   };
 }
 
+/**
+ * Hook to check if user can save a new connection
+ * Uses auth session's isPro status
+ */
 export function useCanSaveConnection() {
-  const { data: licenseStatus } = useLicenseStatus();
+  const { data: session } = authClient.useSession();
   const { data: savedConnectionCount } = useSavedConnectionCount();
+  // Cast user to ExtendedUser to access custom fields from the server
+  const user = session?.user as ExtendedUser | undefined;
 
-  const maxSaved = licenseStatus?.max_connections ?? 2;
+  const isPro = user?.isPro ?? false;
+  const maxSaved = isPro ? Infinity : MAX_FREE_CONNECTIONS;
   const currentSaved = savedConnectionCount ?? 0;
   const canSave = currentSaved < maxSaved;
-  const isPro = licenseStatus?.is_pro && licenseStatus?.is_activated;
 
   return {
     canSave,
@@ -397,54 +414,4 @@ export function useCanSaveConnection() {
     isPro,
     remainingSaved: Math.max(0, maxSaved - currentSaved),
   };
-}
-
-export function useLicenseActivate() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ licenseKey, deviceName }: { licenseKey: string; deviceName?: string }) =>
-      api.licenseActivate(licenseKey, deviceName),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
-    },
-  });
-}
-
-export function useLicenseDeactivate() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => api.licenseDeactivate(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
-    },
-  });
-}
-
-export function useLicenseVerify() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => api.licenseVerify(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
-    },
-  });
-}
-
-export function useLicenseRefresh() {
-  const queryClient = useQueryClient();
-  const { setStatus } = useLicenseStore();
-
-  return useMutation({
-    mutationFn: async () => {
-      const status = await api.licenseRefresh();
-      setStatus(status);
-      return status;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["licenseStatus"] });
-    },
-  });
 }

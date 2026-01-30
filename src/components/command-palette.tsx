@@ -15,6 +15,7 @@ import {
   Palette,
   Check,
   ArrowLeft,
+  ClipboardPaste,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -37,7 +38,9 @@ import { useLayoutStore } from "@/lib/layout-store";
 import { useThemeStore } from "@/lib/theme-store";
 import type { SavedConnection } from "@/lib/types";
 import { useUpdateChecker } from "@/hooks/use-update-checker";
+import { useAuthDeepLink } from "@/hooks/use-auth-deep-link";
 import { getVersion } from "@tauri-apps/api/app";
+import { toast } from "sonner";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -72,6 +75,31 @@ export function CommandPalette({
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const { canSave, maxSaved } = useCanSaveConnection();
   const { checking, checkForUpdates } = useUpdateChecker();
+  const { handleAuthCallback } = useAuthDeepLink();
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+
+  const handlePasteAuthUrl = useCallback(async () => {
+    try {
+      setIsProcessingAuth(true);
+      // Use browser clipboard API (works in Tauri webview)
+      const clipboardText = await navigator.clipboard.readText();
+      if (!clipboardText) {
+        toast.error("Clipboard is empty");
+        return;
+      }
+      // Check if it looks like an auth URL (has token parameter)
+      if (clipboardText.includes("token=")) {
+        await handleAuthCallback(clipboardText);
+      } else {
+        toast.error("Clipboard doesn't contain a valid auth URL (no token found)");
+      }
+    } catch (error) {
+      console.error("Failed to read clipboard:", error);
+      toast.error("Failed to read clipboard");
+    } finally {
+      setIsProcessingAuth(false);
+    }
+  }, [handleAuthCallback]);
 
   const fetchAppVersion = useCallback(async () => {
     try {
@@ -350,6 +378,16 @@ export function CommandPalette({
               >
                 <Download className="h-4 w-4" />
                 <span>{checking ? "Checking..." : "Check for Updates"}</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={async () => {
+                  await handlePasteAuthUrl();
+                  onOpenChange(false);
+                }}
+                disabled={isProcessingAuth}
+              >
+                <ClipboardPaste className="h-4 w-4" />
+                <span>{isProcessingAuth ? "Processing..." : "Paste Auth URL (Dev)"}</span>
               </CommandItem>
               {appVersion && (
                 <CommandItem disabled className="opacity-70">

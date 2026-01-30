@@ -1,19 +1,14 @@
 mod ai;
 mod database;
 mod debug;
-mod license;
 mod providers;
 mod storage;
 mod terminal;
+mod user_state;
 
 use ai::{ai_chat, ai_chat_stream, ai_get_models, ai_validate_key};
 use database::{test_connection, ConnectionConfig, ConnectionManager};
 use debug::{get_process_stats, DebugState};
-use license::{
-    create_license_manager, license_activate, license_check, license_clear, license_deactivate,
-    license_get_max_connections, license_get_status, license_is_pro, license_list_devices,
-    license_refresh, license_verify, LicenseState_,
-};
 use providers::{ColumnInfo, QueryResult, TableInfo};
 use std::sync::Arc;
 use storage::CONNECTIONS_DB;
@@ -26,18 +21,22 @@ use terminal::{
     terminal_close, terminal_create, terminal_resize, terminal_write, TerminalManager,
     TerminalState,
 };
+use user_state::{
+    create_user_state_manager, get_max_connections, get_user_status, is_user_pro,
+    set_user_pro_status, UserState_,
+};
 
 type DbState = Arc<ConnectionManager>;
 
 #[tauri::command]
 async fn connect(
     state: State<'_, DbState>,
-    license_state: State<'_, LicenseState_>,
+    user_state: State<'_, UserState_>,
     id: String,
     config: ConnectionConfig,
 ) -> Result<(), String> {
-    // Verify license with remote API before allowing connection
-    let (is_pro, max_connections) = license_state.verify_for_connection().await;
+    let is_pro = user_state.is_pro().await;
+    let max_connections = user_state.get_max_connections().await;
 
     let current_connections = state.connection_count();
 
@@ -213,10 +212,10 @@ pub fn run() {
         .manage(terminal_state)
         .manage(debug_state)
         .setup(|app| {
-            // Initialize license manager
-            let license_manager = create_license_manager(&app.handle())?;
-            let license_state: LicenseState_ = Arc::new(license_manager);
-            app.manage(license_state);
+            // Initialize user state manager
+            let user_state_manager = create_user_state_manager();
+            let user_state: UserState_ = Arc::new(user_state_manager);
+            app.manage(user_state);
 
             // Create the menu
             let app_menu = Submenu::with_items(
@@ -390,17 +389,11 @@ pub fn run() {
             ai_validate_key,
             ai_chat,
             ai_chat_stream,
-            // License commands
-            license_activate,
-            license_verify,
-            license_check,
-            license_deactivate,
-            license_list_devices,
-            license_get_status,
-            license_get_max_connections,
-            license_is_pro,
-            license_clear,
-            license_refresh,
+            // User state commands
+            set_user_pro_status,
+            get_user_status,
+            get_max_connections,
+            is_user_pro,
             // Terminal commands
             terminal_create,
             terminal_write,

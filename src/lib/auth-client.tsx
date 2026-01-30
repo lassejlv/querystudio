@@ -47,6 +47,23 @@ export const authClient = createAuthClient({
   },
 });
 
+// Extended user type that includes custom fields from the server
+// The server adds these via additionalFields in the auth config
+export interface ExtendedUser {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+  name: string;
+  image?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  // Custom fields added by the server
+  polarCustomerId?: string | null;
+  isPro?: boolean | null;
+  licenseKey?: string | null;
+  cancelAtPeriodEnd?: boolean | null;
+}
+
 /**
  * Sign in with GitHub using OAuth flow.
  * For Tauri desktop apps, this opens the web-based auth page in the system browser.

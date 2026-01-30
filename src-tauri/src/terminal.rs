@@ -103,7 +103,6 @@ impl TerminalManager {
             loop {
                 match reader.read(&mut buffer) {
                     Ok(0) => {
-                        // EOF - terminal closed
                         let _ = app.emit(&format!("terminal-closed-{}", terminal_id), ());
                         break;
                     }

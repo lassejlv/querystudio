@@ -9,12 +9,7 @@ import type {
   AIModelInfo,
   ChatRequest,
   ChatResponse,
-  LicenseStatus,
-  DeviceInfo,
-  ActivateResponse,
-  VerifyResponse,
-  CheckResponse,
-  DeactivateResponse,
+  UserStatus,
 } from "./types";
 
 export const api = {
@@ -82,27 +77,14 @@ export const api = {
 
   aiChatStream: (request: ChatRequest) => invoke<void>("ai_chat_stream", { request }),
 
-  // License API
-  licenseActivate: (licenseKey: string, deviceName?: string) =>
-    invoke<ActivateResponse>("license_activate", { licenseKey, deviceName }),
+  // User status API (synced from auth session)
+  setUserProStatus: (isPro: boolean) => invoke<void>("set_user_pro_status", { isPro }),
 
-  licenseVerify: () => invoke<VerifyResponse>("license_verify"),
+  getUserStatus: () => invoke<UserStatus>("get_user_status"),
 
-  licenseCheck: (licenseKey: string) => invoke<CheckResponse>("license_check", { licenseKey }),
+  getMaxConnections: () => invoke<number>("get_max_connections"),
 
-  licenseDeactivate: () => invoke<DeactivateResponse>("license_deactivate"),
-
-  licenseListDevices: () => invoke<DeviceInfo[]>("license_list_devices"),
-
-  licenseGetStatus: () => invoke<LicenseStatus>("license_get_status"),
-
-  licenseGetMaxConnections: () => invoke<number>("license_get_max_connections"),
-
-  licenseIsPro: () => invoke<boolean>("license_is_pro"),
-
-  licenseClear: () => invoke<void>("license_clear"),
-
-  licenseRefresh: () => invoke<LicenseStatus>("license_refresh"),
+  isUserPro: () => invoke<boolean>("is_user_pro"),
 
   getConnectionCount: () => invoke<number>("get_connection_count"),
 
