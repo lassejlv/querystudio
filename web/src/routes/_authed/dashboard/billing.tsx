@@ -98,12 +98,39 @@ function BillingPage() {
           <div className="mt-6">
             <h2 className="text-sm font-medium">Upgrade to Pro</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              One-time payment for unlimited access.
+              Choose the plan that works for you.
             </p>
 
+            {/* Monthly Plan */}
             <div className="mt-4 py-4 border-b">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm">Pro license</span>
+                <span className="text-sm font-medium">Pro Monthly</span>
+                <div>
+                  <span className="font-medium">${pricing.tiers.proMonthly.price}</span>
+                  <span className="text-sm text-muted-foreground">/month</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">3 days free trial</p>
+              <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+                <li>Unlimited connections</li>
+                <li>Commercial use allowed</li>
+                <li>Priority support</li>
+                <li>Continuous updates</li>
+              </ul>
+              <Button
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => createCheckoutMutation.mutate('monthly')}
+                disabled={createCheckoutMutation.isPending}
+              >
+                {createCheckoutMutation.isPending ? "Loading..." : "Get Monthly"}
+              </Button>
+            </div>
+
+            {/* One-time Plan */}
+            <div className="mt-4 py-4 border-b">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-medium">Pro One-time</span>
                 <div>
                   <span className="font-medium">${pricing.tiers.pro.earlyBirdPrice}</span>
                   <span className="ml-2 text-sm text-muted-foreground line-through">
@@ -111,22 +138,23 @@ function BillingPage() {
                   </span>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Early bird pricing</p>
               <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
                 <li>Unlimited connections</li>
-                <p>Commercial use allowed</p>
+                <li>Commercial use allowed</li>
                 <li>Priority support</li>
                 <li>Lifetime updates</li>
               </ul>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 w-full"
+                onClick={() => createCheckoutMutation.mutate('onetime')}
+                disabled={createCheckoutMutation.isPending}
+              >
+                {createCheckoutMutation.isPending ? "Loading..." : "Get One-time"}
+              </Button>
             </div>
-
-            <Button
-              size="sm"
-              className="mt-4"
-              onClick={() => createCheckoutMutation.mutate('onetime')}
-              disabled={createCheckoutMutation.isPending}
-            >
-              {createCheckoutMutation.isPending ? "Loading..." : "Upgrade"}
-            </Button>
           </div>
         )}
       </div>

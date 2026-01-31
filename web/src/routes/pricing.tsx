@@ -89,10 +89,11 @@ function PricingPage() {
               <CardDescription>For professionals and commercial use</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
-              <div className="flex items-baseline gap-2 mb-6">
+              <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-3xl font-bold">${pricing.tiers.proMonthly.price}</span>
                 <span className="text-muted-foreground text-sm">/month</span>
               </div>
+              <p className="text-sm text-muted-foreground mb-4">3 days free trial</p>
               <ul className="space-y-3 text-sm">
                 <li className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-primary" />
@@ -191,7 +192,7 @@ function PricingPage() {
             <div>
               <h3 className="font-medium mb-2">What's the difference between monthly and one-time?</h3>
               <p className="text-sm text-muted-foreground">
-                Monthly is a subscription at $3.99/month with continuous updates. One-time is a single payment of $19.99 (early bird) for lifetime access and updates. Both have the same features.
+                Monthly is a subscription at $3.99/month with 3 days free trial and continuous updates. One-time is a single payment of $19.99 (early bird) for lifetime access and updates. Both have the same features.
               </p>
             </div>
             <div>
