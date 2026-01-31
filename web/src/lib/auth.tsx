@@ -14,7 +14,7 @@ import { polar } from "./polar";
 import { user } from "drizzle/schema/auth";
 import { eq } from "drizzle-orm";
 
-const ADMIN_EMAILS = ["vestergaardlasse2@gmail.com"];
+const ADMIN_EMAILS = [];
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
