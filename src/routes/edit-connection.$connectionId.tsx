@@ -1,21 +1,21 @@
-import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { Loader2, CheckCircle2, AlertTriangle, FolderOpen, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { useConnect, useTestConnection, useCanSaveConnection } from "@/lib/hooks";
+import { useSavedConnections, useSaveConnection, useTestConnection } from "@/lib/hooks";
 import { toast } from "sonner";
 import type { ConnectionConfig, DatabaseType, SavedConnection } from "@/lib/types";
 import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 
-export const Route = createFileRoute("/new-connection")({
-  component: NewConnectionPage,
+export const Route = createFileRoute("/edit-connection/$connectionId")({
+  component: EditConnectionPage,
 });
 
 interface DatabaseOption {
@@ -79,8 +79,9 @@ const DATABASE_OPTIONS: DatabaseOption[] = [
 
 type ConnectionMode = "params" | "string" | "file";
 
-function NewConnectionPage() {
+function EditConnectionPage() {
   const navigate = useNavigate();
+  const { connectionId } = useParams({ from: "/edit-connection/$connectionId" });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(
     null,
@@ -88,6 +89,7 @@ function NewConnectionPage() {
   const [mode, setMode] = useState<ConnectionMode>("params");
   const [dbType, setDbType] = useState<DatabaseType>("postgres");
   const [tested, setTested] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     host: "localhost",
@@ -99,21 +101,59 @@ function NewConnectionPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const connect = useConnect();
+  const { data: savedConnections, isLoading } = useSavedConnections();
+  const saveConnection = useSaveConnection();
   const testConnection = useTestConnection();
-  const { canSave, currentSaved, maxSaved, isPro } = useCanSaveConnection();
+
+  // Find the connection to edit
+  const connection = savedConnections?.find((c) => c.id === connectionId);
 
   // Global keyboard shortcuts
   useGlobalShortcuts({
     onNewConnection: () => {
-      // Already on new connection page, just refresh
-      window.location.reload();
+      navigate({ to: "/new-connection" });
     },
     onOpenCommandPalette: () => setCommandPaletteOpen(true),
     onOpenSettings: () => {
       navigate({ to: "/settings" });
     },
   });
+
+  // Populate form when connection is loaded
+  useEffect(() => {
+    if (connection && !initialized) {
+      setDbType(connection.db_type || "postgres");
+      if ("connection_string" in connection.config) {
+        // SQLite uses file mode, others use string mode
+        setMode(connection.db_type === "sqlite" ? "file" : "string");
+        const defaults =
+          DATABASE_OPTIONS.find((d) => d.id === (connection.db_type || "postgres"))?.defaults ||
+          DATABASE_OPTIONS[0].defaults;
+        setFormData({
+          name: connection.name,
+          host: defaults.host,
+          port: defaults.port,
+          database: defaults.database,
+          username: defaults.username,
+          password: "",
+          connectionString: connection.config.connection_string,
+        });
+      } else {
+        setMode("params");
+        setFormData({
+          name: connection.name,
+          host: connection.config.host,
+          port: String(connection.config.port),
+          database: connection.config.database,
+          username: connection.config.username,
+          password: "",
+          connectionString: "",
+        });
+      }
+      setErrors({});
+      setInitialized(true);
+    }
+  }, [connection, initialized]);
 
   const selectedDb = DATABASE_OPTIONS.find((db) => db.id === dbType)!;
 
@@ -137,16 +177,11 @@ function NewConnectionPage() {
   };
 
   const handleSelectSavedConnection = (savedConnection: SavedConnection) => {
-    // If it's a connection string, it has the password embedded, so connect directly
-    if ("connection_string" in savedConnection.config) {
-      setPasswordPromptConnection(savedConnection);
-    } else {
-      // Need password for params-based connections
-      setPasswordPromptConnection(savedConnection);
-    }
+    setPasswordPromptConnection(savedConnection);
   };
 
   const handleEditConnection = (savedConnection: SavedConnection) => {
+    // Navigate to edit that connection instead
     navigate({
       to: "/edit-connection/$connectionId",
       params: { connectionId: savedConnection.id },
@@ -182,8 +217,20 @@ function NewConnectionPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const getConfig = (): ConnectionConfig => {
-    if (mode === "string") {
+  const getSavedConfig = () => {
+    if (mode === "string" || mode === "file") {
+      return { connection_string: formData.connectionString };
+    }
+    return {
+      host: formData.host,
+      port: parseInt(formData.port, 10),
+      database: formData.database,
+      username: formData.username,
+    };
+  };
+
+  const getTestConfig = (): ConnectionConfig => {
+    if (mode === "string" || mode === "file") {
       return { db_type: dbType, connection_string: formData.connectionString };
     }
     return {
@@ -199,38 +246,32 @@ function NewConnectionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!canSave) {
-      toast.error(`Saved connection limit reached. Free tier allows ${maxSaved} connections.`);
-      return;
-    }
+    if (!validate() || !connection) return;
 
-    if (!validate()) return;
-
-    const id = crypto.randomUUID();
-    const config = getConfig();
+    const savedConfig = getSavedConfig();
 
     try {
-      const tId = toast.loading("Connecting to database...");
-      await connect.mutateAsync({
-        id,
+      const tId = toast.loading("Saving connection...");
+      await saveConnection.mutateAsync({
+        id: connection.id,
         name: formData.name,
         db_type: dbType,
-        config,
+        config: savedConfig,
       });
-      toast.success("Connected successfully", { id: tId });
-      navigate({ to: "/db/$connectionId", params: { connectionId: id } });
+      toast.success("Connection updated successfully", { id: tId });
+      navigate({ to: "/" });
     } catch (error) {
-      toast.error(`Connection failed: ${error}`);
+      toast.error(`Failed to update connection: ${error}`);
     }
   };
 
   const handleTest = async () => {
     if (!validate()) return;
 
-    const config = getConfig();
+    const config = getTestConfig();
 
     try {
-      const tId = toast.loading("Connecting to database...");
+      const tId = toast.loading("Testing connection...");
       await testConnection.mutateAsync(config);
       setTested(true);
       toast.success("Connection successful!", { id: tId });
@@ -268,6 +309,44 @@ function NewConnectionPage() {
     return "postgresql://user:password@localhost:5432/database";
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-screen flex-col bg-background text-foreground">
+        <div
+          data-tauri-drag-region
+          className="h-7 w-full shrink-0"
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+        />
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!connection) {
+    return (
+      <div className="flex h-screen flex-col bg-background text-foreground">
+        <div
+          data-tauri-drag-region
+          className="h-7 w-full shrink-0"
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+        />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <AlertTriangle className="h-12 w-12 text-amber-500" />
+          <h2 className="text-xl font-semibold">Connection not found</h2>
+          <p className="text-muted-foreground">
+            The connection you're trying to edit doesn't exist.
+          </p>
+          <Button onClick={() => navigate({ to: "/" })}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Titlebar drag region */}
@@ -282,40 +361,16 @@ function NewConnectionPage() {
         <main className="flex-1 overflow-auto p-8 flex justify-center">
           <div className="max-w-xl w-full">
             <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  Add Connection
-                  {!isPro && (
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      ({currentSaved}/{maxSaved})
-                    </span>
-                  )}
-                </h2>
-                <p className="text-muted-foreground">
-                  Connect to a new database by providing connection details.
-                </p>
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/" })}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight">Edit Connection</h2>
+                  <p className="text-muted-foreground">Update your database connection settings.</p>
+                </div>
               </div>
               <Separator />
-
-              {!canSave && (
-                <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-4">
-                  <div className="flex items-center gap-2 font-medium text-amber-600">
-                    <AlertTriangle className="h-4 w-4" />
-                    Connection limit reached
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Free tier allows {maxSaved} saved connections. Upgrade to Pro for unlimited.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate({ to: "/settings" })}
-                    className="mt-3"
-                  >
-                    Go to Account Settings
-                  </Button>
-                </div>
-              )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
@@ -326,7 +381,6 @@ function NewConnectionPage() {
                     value={formData.name}
                     onChange={(e) => updateField("name", e.target.value)}
                     className={cn(errors.name && "border-destructive")}
-                    disabled={!canSave}
                   />
                   {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
                 </div>
@@ -338,7 +392,6 @@ function NewConnectionPage() {
                       id="dbType"
                       value={dbType}
                       onChange={(e) => handleDbSelect(e.target.value as DatabaseType)}
-                      disabled={!canSave}
                       className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {DATABASE_OPTIONS.map((db) => (
@@ -356,7 +409,6 @@ function NewConnectionPage() {
                         id="mode"
                         value={mode}
                         onChange={(e) => setMode(e.target.value as ConnectionMode)}
-                        disabled={!canSave}
                         className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <option value="params">Parameters</option>
@@ -377,7 +429,6 @@ function NewConnectionPage() {
                           value={formData.host}
                           onChange={(e) => updateField("host", e.target.value)}
                           className={cn(errors.host && "border-destructive")}
-                          disabled={!canSave}
                         />
                         {errors.host && <p className="text-xs text-destructive">{errors.host}</p>}
                       </div>
@@ -390,7 +441,6 @@ function NewConnectionPage() {
                           value={formData.port}
                           onChange={(e) => updateField("port", e.target.value)}
                           className={cn(errors.port && "border-destructive")}
-                          disabled={!canSave}
                         />
                         {errors.port && <p className="text-xs text-destructive">{errors.port}</p>}
                       </div>
@@ -406,7 +456,6 @@ function NewConnectionPage() {
                         value={formData.database}
                         onChange={(e) => updateField("database", e.target.value)}
                         className={cn(errors.database && "border-destructive")}
-                        disabled={!canSave}
                       />
                       {dbType === "redis" && (
                         <p className="text-xs text-muted-foreground">
@@ -429,8 +478,10 @@ function NewConnectionPage() {
                           placeholder="••••••••"
                           value={formData.password}
                           onChange={(e) => updateField("password", e.target.value)}
-                          disabled={!canSave}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Enter password to test connection (not saved)
+                        </p>
                       </div>
                     ) : dbType !== "sqlite" ? (
                       <div className="grid grid-cols-2 gap-4">
@@ -442,7 +493,6 @@ function NewConnectionPage() {
                             value={formData.username}
                             onChange={(e) => updateField("username", e.target.value)}
                             className={cn(errors.username && "border-destructive")}
-                            disabled={!canSave}
                           />
                           {errors.username && (
                             <p className="text-xs text-destructive">{errors.username}</p>
@@ -456,8 +506,10 @@ function NewConnectionPage() {
                             placeholder="••••••••"
                             value={formData.password}
                             onChange={(e) => updateField("password", e.target.value)}
-                            disabled={!canSave}
                           />
+                          <p className="text-xs text-muted-foreground">
+                            Required for testing (not saved)
+                          </p>
                         </div>
                       </div>
                     ) : null}
@@ -475,7 +527,6 @@ function NewConnectionPage() {
                           "font-mono text-sm flex-1",
                           errors.connectionString && "border-destructive",
                         )}
-                        disabled={!canSave}
                       />
                       <input
                         type="file"
@@ -490,14 +541,12 @@ function NewConnectionPage() {
                           }
                           e.target.value = "";
                         }}
-                        disabled={!canSave}
                       />
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
                         onClick={() => document.getElementById("sqlite-file-input")?.click()}
-                        disabled={!canSave}
                       >
                         <FolderOpen className="h-4 w-4" />
                       </Button>
@@ -521,7 +570,6 @@ function NewConnectionPage() {
                         "min-h-[80px] font-mono text-sm",
                         errors.connectionString && "border-destructive",
                       )}
-                      disabled={!canSave}
                     />
                     {errors.connectionString && (
                       <p className="text-xs text-destructive">{errors.connectionString}</p>
@@ -537,7 +585,7 @@ function NewConnectionPage() {
                     type="button"
                     variant="outline"
                     onClick={handleTest}
-                    disabled={testConnection.isPending || !canSave}
+                    disabled={testConnection.isPending}
                   >
                     {testConnection.isPending ? (
                       <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -546,9 +594,11 @@ function NewConnectionPage() {
                     ) : null}
                     Test Connection
                   </Button>
-                  <Button type="submit" disabled={connect.isPending || !canSave}>
-                    {connect.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                    Connect
+                  <Button type="submit" disabled={saveConnection.isPending}>
+                    {saveConnection.isPending && (
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    )}
+                    Save Changes
                   </Button>
                 </div>
               </form>
@@ -561,7 +611,7 @@ function NewConnectionPage() {
         onOpenChange={setCommandPaletteOpen}
         onSelectConnection={handleSelectSavedConnection}
         onEditConnection={handleEditConnection}
-        onNewConnection={() => window.location.reload()}
+        onNewConnection={() => navigate({ to: "/new-connection" })}
       />
       <PasswordPromptDialog
         connection={passwordPromptConnection}

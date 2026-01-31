@@ -1,11 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  ArrowLeft,
-  LogOut,
-  Loader2,
-  ExternalLink,
-} from "lucide-react";
+import { ArrowLeft, LogOut, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -16,7 +11,6 @@ import { ThemeSelector } from "@/components/theme-selector";
 import { toast } from "sonner";
 import { authClient, signInWithGithub } from "@/lib/auth-client";
 import { CommandPalette } from "@/components/command-palette";
-import { EditConnectionDialog } from "@/components/edit-connection-dialog";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import type { SavedConnection } from "@/lib/types";
@@ -30,9 +24,9 @@ type SettingsTab = "general" | "account" | "appearance" | "experimental";
 function SettingsPage() {
   const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false);
-  const [connectionToEdit, setConnectionToEdit] = useState<SavedConnection | null>(null);
-  const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(null);
+  const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const experimentalPlugins = useAIQueryStore((s) => s.experimentalPlugins);
 
@@ -58,8 +52,10 @@ function SettingsPage() {
   };
 
   const handleEditConnection = (savedConnection: SavedConnection) => {
-    setConnectionToEdit(savedConnection);
-    setEditConnectionDialogOpen(true);
+    navigate({
+      to: "/edit-connection/$connectionId",
+      params: { connectionId: savedConnection.id },
+    });
   };
 
   const tabs: { id: SettingsTab; label: string }[] = [
@@ -120,11 +116,6 @@ function SettingsPage() {
           </div>
         </main>
       </div>
-      <EditConnectionDialog
-        connection={connectionToEdit}
-        open={editConnectionDialogOpen}
-        onOpenChange={setEditConnectionDialogOpen}
-      />
       <CommandPalette
         open={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
@@ -329,8 +320,6 @@ function AppearanceSettings() {
     </div>
   );
 }
-
-
 
 function ExperimentalSettings() {
   const experimentalTerminal = useAIQueryStore((s) => s.experimentalTerminal);

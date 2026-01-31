@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo } from "react";
-import { Table, LogOut, ChevronRight, ChevronLeft } from "lucide-react";
+import { Table, LogOut, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -159,15 +159,6 @@ export const Sidebar = memo(function Sidebar() {
         {/* Collapsed header */}
         <div className="flex flex-col items-center border-b border-border p-2 gap-2">
           <DatabaseIcon type={connection.db_type || "postgres"} />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={toggleSidebar}
-            title="Expand sidebar (⌘B)"
-          >
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Button>
         </div>
 
         {/* Collapsed table list - just icons */}
@@ -251,15 +242,6 @@ export const Sidebar = memo(function Sidebar() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={toggleSidebar}
-              title="Collapse sidebar (⌘B)"
-            >
-              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-            </Button>
             <Button
               variant="ghost"
               size="icon"

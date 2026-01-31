@@ -51,7 +51,9 @@ export function WelcomeScreen({
             ? "PostgreSQL"
             : connection.db_type === "sqlite"
               ? "SQLite"
-              : "Unknown";
+              : connection.db_type === "mongodb"
+                ? "MongoDB"
+                : "Unknown";
 
     if ("connection_string" in connection.config) {
       return `${dbLabel} · Connection string`;

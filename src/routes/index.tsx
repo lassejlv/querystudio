@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { EditConnectionDialog } from "@/components/edit-connection-dialog";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
@@ -15,8 +14,6 @@ export const Route = createFileRoute("/")({
 function Home() {
   const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false);
-  const [connectionToEdit, setConnectionToEdit] = useState<SavedConnection | null>(null);
   const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(
     null,
   );
@@ -43,18 +40,18 @@ function Home() {
   });
 
   const handleSelectSavedConnection = (savedConnection: SavedConnection) => {
-    // If it's a connection string, it has the password embedded, so connect directly
     if ("connection_string" in savedConnection.config) {
       setPasswordPromptConnection(savedConnection);
     } else {
-      // Need password for params-based connections
       setPasswordPromptConnection(savedConnection);
     }
   };
 
   const handleEditConnection = (savedConnection: SavedConnection) => {
-    setConnectionToEdit(savedConnection);
-    setEditConnectionDialogOpen(true);
+    navigate({
+      to: "/edit-connection/$connectionId",
+      params: { connectionId: savedConnection.id },
+    });
   };
 
   return (
@@ -63,11 +60,6 @@ function Home() {
         onNewConnection={handleNewConnection}
         onSelectConnection={handleSelectSavedConnection}
         onEditConnection={handleEditConnection}
-      />
-      <EditConnectionDialog
-        connection={connectionToEdit}
-        open={editConnectionDialogOpen}
-        onOpenChange={setEditConnectionDialogOpen}
       />
       <CommandPalette
         open={commandPaletteOpen}

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as NewConnectionRouteImport } from './routes/new-connection'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EditConnectionConnectionIdRouteImport } from './routes/edit-connection.$connectionId'
 import { Route as DbConnectionIdRouteImport } from './routes/db.$connectionId'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -29,6 +30,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EditConnectionConnectionIdRoute =
+  EditConnectionConnectionIdRouteImport.update({
+    id: '/edit-connection/$connectionId',
+    path: '/edit-connection/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DbConnectionIdRoute = DbConnectionIdRouteImport.update({
   id: '/db/$connectionId',
   path: '/db/$connectionId',
@@ -40,12 +47,14 @@ export interface FileRoutesByFullPath {
   '/new-connection': typeof NewConnectionRoute
   '/settings': typeof SettingsRoute
   '/db/$connectionId': typeof DbConnectionIdRoute
+  '/edit-connection/$connectionId': typeof EditConnectionConnectionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/new-connection': typeof NewConnectionRoute
   '/settings': typeof SettingsRoute
   '/db/$connectionId': typeof DbConnectionIdRoute
+  '/edit-connection/$connectionId': typeof EditConnectionConnectionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +62,30 @@ export interface FileRoutesById {
   '/new-connection': typeof NewConnectionRoute
   '/settings': typeof SettingsRoute
   '/db/$connectionId': typeof DbConnectionIdRoute
+  '/edit-connection/$connectionId': typeof EditConnectionConnectionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/new-connection' | '/settings' | '/db/$connectionId'
+  fullPaths:
+    | '/'
+    | '/new-connection'
+    | '/settings'
+    | '/db/$connectionId'
+    | '/edit-connection/$connectionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/new-connection' | '/settings' | '/db/$connectionId'
-  id: '__root__' | '/' | '/new-connection' | '/settings' | '/db/$connectionId'
+  to:
+    | '/'
+    | '/new-connection'
+    | '/settings'
+    | '/db/$connectionId'
+    | '/edit-connection/$connectionId'
+  id:
+    | '__root__'
+    | '/'
+    | '/new-connection'
+    | '/settings'
+    | '/db/$connectionId'
+    | '/edit-connection/$connectionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +93,7 @@ export interface RootRouteChildren {
   NewConnectionRoute: typeof NewConnectionRoute
   SettingsRoute: typeof SettingsRoute
   DbConnectionIdRoute: typeof DbConnectionIdRoute
+  EditConnectionConnectionIdRoute: typeof EditConnectionConnectionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,6 +119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/edit-connection/$connectionId': {
+      id: '/edit-connection/$connectionId'
+      path: '/edit-connection/$connectionId'
+      fullPath: '/edit-connection/$connectionId'
+      preLoaderRoute: typeof EditConnectionConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/db/$connectionId': {
       id: '/db/$connectionId'
       path: '/db/$connectionId'
@@ -107,6 +141,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewConnectionRoute: NewConnectionRoute,
   SettingsRoute: SettingsRoute,
   DbConnectionIdRoute: DbConnectionIdRoute,
+  EditConnectionConnectionIdRoute: EditConnectionConnectionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

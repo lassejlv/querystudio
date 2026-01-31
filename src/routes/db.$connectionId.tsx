@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar";
 
-import { EditConnectionDialog } from "@/components/edit-connection-dialog";
 import { AIChat } from "@/components/ai-chat";
 import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
@@ -34,8 +33,7 @@ function DatabaseStudio() {
   const { connectionId } = useParams({ from: "/db/$connectionId" });
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false);
-  const [connectionToEdit, setConnectionToEdit] = useState<SavedConnection | null>(null);
+
   const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(
     null,
   );
@@ -171,8 +169,10 @@ function DatabaseStudio() {
   };
 
   const handleEditConnection = (savedConnection: SavedConnection) => {
-    setConnectionToEdit(savedConnection);
-    setEditConnectionDialogOpen(true);
+    navigate({
+      to: "/edit-connection/$connectionId",
+      params: { connectionId: savedConnection.id },
+    });
   };
 
   // Auto-reconnect on page reload if connection is not active
@@ -261,11 +261,6 @@ function DatabaseStudio() {
             </div>
           </div>
         </div>
-        <EditConnectionDialog
-          connection={connectionToEdit}
-          open={editConnectionDialogOpen}
-          onOpenChange={setEditConnectionDialogOpen}
-        />
         <CommandPalette
           open={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
@@ -378,11 +373,6 @@ function DatabaseStudio() {
 
       {statusBarVisible && <StatusBar />}
 
-      <EditConnectionDialog
-        connection={connectionToEdit}
-        open={editConnectionDialogOpen}
-        onOpenChange={setEditConnectionDialogOpen}
-      />
       <CommandPalette
         open={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
