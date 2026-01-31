@@ -385,12 +385,10 @@ export function CommandPalette({
                 <ClipboardPaste className="h-4 w-4" />
                 <span>{isProcessingAuth ? "Processing..." : "Paste Auth URL (Dev)"}</span>
               </CommandItem>
-              {appVersion && (
-                <CommandItem disabled className="opacity-70">
-                  <Info className="h-4 w-4" />
-                  <span>Version {appVersion}</span>
-                </CommandItem>
-              )}
+              <CommandItem disabled className="opacity-70">
+                <Info className="h-4 w-4" />
+                <span>{appVersion ? `Version ${appVersion}` : "Version ..."}</span>
+              </CommandItem>
             </CommandGroup>
           </>
         )}

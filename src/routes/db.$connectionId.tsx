@@ -152,7 +152,7 @@ function DatabaseStudio() {
   // Global keyboard shortcuts and menu event handling
   const { refreshAll } = useGlobalShortcuts({
     onNewConnection: handleNewConnection,
-    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenCommandPalette: () => setCommandPaletteOpen((prev) => !prev),
     onOpenSettings: () => {
       navigate({ to: "/settings" });
     },

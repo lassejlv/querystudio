@@ -35,7 +35,7 @@ function SettingsPage() {
     onNewConnection: () => {
       navigate({ to: "/new-connection" });
     },
-    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenCommandPalette: () => setCommandPaletteOpen((prev) => !prev),
     onOpenSettings: () => {
       // Already on settings page
     },

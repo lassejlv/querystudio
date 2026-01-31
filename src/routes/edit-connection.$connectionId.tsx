@@ -113,7 +113,7 @@ function EditConnectionPage() {
     onNewConnection: () => {
       navigate({ to: "/new-connection" });
     },
-    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenCommandPalette: () => setCommandPaletteOpen((prev) => !prev),
     onOpenSettings: () => {
       navigate({ to: "/settings" });
     },

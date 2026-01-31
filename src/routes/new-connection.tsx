@@ -109,7 +109,7 @@ function NewConnectionPage() {
       // Already on new connection page, just refresh
       window.location.reload();
     },
-    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenCommandPalette: () => setCommandPaletteOpen((prev) => !prev),
     onOpenSettings: () => {
       navigate({ to: "/settings" });
     },
