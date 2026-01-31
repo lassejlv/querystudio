@@ -1,44 +1,45 @@
 # QueryStudio
 
-a beautiful & lightweight sql studio written in rust & typescript.
+A beautiful & lightweight SQL studio built with Rust and TypeScript.
 
-## Getting Started
+## Features
 
-### Prerequisites
+- Modern SQL editor with syntax highlighting and autocomplete
+- Support for multiple database connections (PostgreSQL, SQLite)
+- Built-in terminal for query output
+- Clean, minimal UI with customizable themes
+- Cross-platform desktop app via Tauri
+
+## Prerequisites
 
 - [Bun](https://bun.sh/) - JavaScript runtime and package manager
 - [Rust](https://www.rust-lang.org/) - Required for Tauri
 
-### Installation
+## Development
 
 ```bash
 # Install dependencies
 bun install
-```
 
-### Development
-
-```bash
-# Run the Tauri app in development mode
+# Run in development mode
 bun run tauri dev
 ```
 
-### Build
+## Building
 
 ```bash
-# Build the Tauri app for production
+# Build for production
 bun run tauri build
 ```
 
-### Other Commands
+## Scripts
 
-```bash
-# Run linter
-bun run lint
-
-# Format code
-bun run fmt
-```
+| Command | Description |
+|---------|-------------|
+| `bun run tauri dev` | Start development server |
+| `bun run tauri build` | Build production app |
+| `bun run lint` | Run linter (oxlint) |
+| `bun run fmt` | Format code (oxfmt) |
 
 ## Sponsoring
 

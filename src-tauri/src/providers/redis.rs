@@ -2,20 +2,117 @@ use super::{
     async_trait, ColumnInfo, ConnectionParams, DatabaseProvider, DatabaseType, ProviderError,
     QueryResult, TableInfo,
 };
-use redis::{aio::ConnectionManager, AsyncCommands, Client, RedisError};
+use redis::{
+    aio::ConnectionManager,
+    cluster_async::ClusterConnection,
+    AsyncCommands, Client, RedisError,
+};
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
+
+/// Type of Redis connection
+#[derive(Clone)]
+enum RedisConnection {
+    Single(Arc<Mutex<ConnectionManager>>),
+    Cluster(Arc<Mutex<ClusterConnection>>),
+}
+
+/// Pub/Sub message type
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PubSubMessage {
+    pub channel: String,
+    pub payload: String,
+    pub pattern: Option<String>,
+}
+
+/// Redis server information
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ServerInfo {
+    pub version: String,
+    pub mode: String,
+    pub os: String,
+    pub process_id: i64,
+    pub tcp_port: i64,
+    pub uptime_in_seconds: i64,
+    pub connected_clients: i64,
+    pub used_memory_human: String,
+    pub total_keys: i64,
+}
+
+/// Key information with metadata
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct KeyInfo {
+    pub key: String,
+    pub key_type: String,
+    pub ttl: i64,
+    pub size: i64,
+    pub encoding: String,
+}
+
+/// Transaction result
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TransactionResult {
+    pub results: Vec<serde_json::Value>,
+    pub success: bool,
+}
+
+/// Pipeline result
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PipelineResult {
+    pub results: Vec<serde_json::Value>,
+    pub errors: Vec<String>,
+}
 
 pub struct RedisProvider {
-    conn: Arc<Mutex<ConnectionManager>>,
+    conn: RedisConnection,
     #[allow(dead_code)]
-    client: Client,
+    client: Option<Client>,
+    cluster_client: Option<redis::cluster::ClusterClient>,
+    /// Pub/Sub sender channel
+    pubsub_tx: Arc<RwLock<Option<tokio::sync::mpsc::Sender<PubSubMessage>>>>,
+    /// Active subscriptions
+    subscriptions: Arc<RwLock<Vec<String>>>,
+    /// Is cluster mode
+    is_cluster: bool,
 }
 
 impl RedisProvider {
     pub async fn connect(params: ConnectionParams) -> Result<Self, ProviderError> {
-        let url = params.to_redis_url();
+        match params {
+            ConnectionParams::ConnectionString { connection_string } => {
+                if connection_string.contains(',') || connection_string.starts_with("redis-cluster://")
+                {
+                    Self::connect_cluster(connection_string).await
+                } else {
+                    Self::connect_single(connection_string).await
+                }
+            }
+            ConnectionParams::Parameters {
+                host,
+                port,
+                database,
+                username,
+                password,
+            } => {
+                let auth = if !username.is_empty() && !password.is_empty() {
+                    format!("{}:{}@", username, password)
+                } else if !password.is_empty() {
+                    format!(":{}@", password)
+                } else {
+                    String::new()
+                };
+                let db = if !database.is_empty() && database != "0" {
+                    format!("/ {}", database)
+                } else {
+                    String::new()
+                };
+                let url = format!("redis://{}{}:{}{}", auth, host, port, db);
+                Self::connect_single(url).await
+            }
+        }
+    }
 
+    async fn connect_single(url: String) -> Result<Self, ProviderError> {
         let client = Client::open(url.as_str())
             .map_err(|e| ProviderError::new(format!("Failed to create Redis client: {}", e)))?;
 
@@ -24,60 +121,244 @@ impl RedisProvider {
             .map_err(|e| ProviderError::new(format!("Failed to connect to Redis: {}", e)))?;
 
         Ok(Self {
-            conn: Arc::new(Mutex::new(conn)),
-            client,
+            conn: RedisConnection::Single(Arc::new(Mutex::new(conn))),
+            client: Some(client),
+            cluster_client: None,
+            pubsub_tx: Arc::new(RwLock::new(None)),
+            subscriptions: Arc::new(RwLock::new(Vec::new())),
+            is_cluster: false,
+        })
+    }
+
+    async fn connect_cluster(urls: String) -> Result<Self, ProviderError> {
+        let url_list: Vec<String> = if urls.starts_with("redis-cluster://") {
+            vec![urls]
+        } else {
+            urls.split(',').map(|s| s.trim().to_string()).collect()
+        };
+
+        let client = redis::cluster::ClusterClient::builder(url_list)
+            .build()
+            .map_err(|e| ProviderError::new(format!("Failed to create Redis cluster client: {}", e)))?;
+
+        let conn = client
+            .get_async_connection()
+            .await
+            .map_err(|e| ProviderError::new(format!("Failed to connect to Redis cluster: {}", e)))?;
+
+        Ok(Self {
+            conn: RedisConnection::Cluster(Arc::new(Mutex::new(conn))),
+            client: None,
+            cluster_client: Some(client),
+            pubsub_tx: Arc::new(RwLock::new(None)),
+            subscriptions: Arc::new(RwLock::new(Vec::new())),
+            is_cluster: true,
         })
     }
 
     fn format_error(e: RedisError) -> ProviderError {
-        ProviderError::new(e.to_string())
+        let msg = e.to_string();
+        let detail = if msg.contains("NOAUTH") {
+            Some("Authentication required. Check your password.".to_string())
+        } else if msg.contains("WRONGPASS") {
+            Some("Invalid password provided.".to_string())
+        } else if msg.contains("ERR") {
+            Some(msg.clone())
+        } else {
+            None
+        };
+
+        ProviderError::new(msg).with_detail(detail.unwrap_or_default())
+    }
+
+    /// Get database size (total keys)
+    async fn db_size(&self) -> Result<i64, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let size: i64 = redis::cmd("DBSIZE")
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(size)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let size: i64 = redis::cmd("DBSIZE")
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(size)
+            }
+        }
     }
 
     /// Scan keys matching a pattern
     async fn scan_keys(&self, pattern: &str, count: usize) -> Result<Vec<String>, ProviderError> {
-        let mut conn = self.conn.lock().await;
-        let mut keys: Vec<String> = Vec::new();
-        let mut cursor: u64 = 0;
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let mut keys: Vec<String> = Vec::new();
+                let mut cursor: u64 = 0;
 
-        loop {
-            let (new_cursor, batch): (u64, Vec<String>) = redis::cmd("SCAN")
-                .arg(cursor)
-                .arg("MATCH")
-                .arg(pattern)
-                .arg("COUNT")
-                .arg(100)
-                .query_async(&mut *conn)
-                .await
-                .map_err(Self::format_error)?;
+                loop {
+                    let (new_cursor, batch): (u64, Vec<String>) = redis::cmd("SCAN")
+                        .arg(cursor)
+                        .arg("MATCH")
+                        .arg(pattern)
+                        .arg("COUNT")
+                        .arg(100)
+                        .query_async(&mut *c)
+                        .await
+                        .map_err(Self::format_error)?;
 
-            keys.extend(batch);
-            cursor = new_cursor;
+                    keys.extend(batch);
+                    cursor = new_cursor;
 
-            if cursor == 0 || keys.len() >= count {
-                break;
+                    if cursor == 0 || keys.len() >= count {
+                        break;
+                    }
+                }
+
+                keys.truncate(count);
+                Ok(keys)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let mut keys: Vec<String> = Vec::new();
+                let mut cursor: u64 = 0;
+
+                loop {
+                    let (new_cursor, batch): (u64, Vec<String>) = redis::cmd("SCAN")
+                        .arg(cursor)
+                        .arg("MATCH")
+                        .arg(pattern)
+                        .arg("COUNT")
+                        .arg(100)
+                        .query_async(&mut *c)
+                        .await
+                        .map_err(Self::format_error)?;
+
+                    keys.extend(batch);
+                    cursor = new_cursor;
+
+                    if cursor == 0 || keys.len() >= count {
+                        break;
+                    }
+                }
+
+                keys.truncate(count);
+                Ok(keys)
             }
         }
-
-        keys.truncate(count);
-        Ok(keys)
     }
 
     /// Get the type of a key
     async fn get_key_type(&self, key: &str) -> Result<String, ProviderError> {
-        let mut conn = self.conn.lock().await;
-        let key_type: String = redis::cmd("TYPE")
-            .arg(key)
-            .query_async(&mut *conn)
-            .await
-            .map_err(Self::format_error)?;
-        Ok(key_type)
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let key_type: String = redis::cmd("TYPE")
+                    .arg(key)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(key_type)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let key_type: String = redis::cmd("TYPE")
+                    .arg(key)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(key_type)
+            }
+        }
     }
 
     /// Get TTL of a key
     async fn get_key_ttl(&self, key: &str) -> Result<i64, ProviderError> {
-        let mut conn = self.conn.lock().await;
-        let ttl: i64 = conn.ttl(key).await.map_err(Self::format_error)?;
-        Ok(ttl)
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let ttl: i64 = c.ttl(key).await.map_err(Self::format_error)?;
+                Ok(ttl)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let ttl: i64 = c.ttl(key).await.map_err(Self::format_error)?;
+                Ok(ttl)
+            }
+        }
+    }
+
+    /// Get memory usage of a key
+    async fn get_key_size(&self, key: &str) -> Result<i64, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let size: i64 = redis::cmd("MEMORY")
+                    .arg("USAGE")
+                    .arg(key)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(size)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let size: i64 = redis::cmd("MEMORY")
+                    .arg("USAGE")
+                    .arg(key)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(size)
+            }
+        }
+    }
+
+    /// Get encoding of a key
+    async fn get_key_encoding(&self, key: &str) -> Result<String, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let encoding: String = redis::cmd("OBJECT")
+                    .arg("ENCODING")
+                    .arg(key)
+                    .query_async(&mut *c)
+                    .await
+                    .unwrap_or_default();
+                Ok(encoding)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let encoding: String = redis::cmd("OBJECT")
+                    .arg("ENCODING")
+                    .arg(key)
+                    .query_async(&mut *c)
+                    .await
+                    .unwrap_or_default();
+                Ok(encoding)
+            }
+        }
+    }
+
+    /// Get detailed key information
+    pub async fn get_key_info(&self, key: &str) -> Result<KeyInfo, ProviderError> {
+        let key_type = self.get_key_type(key).await?;
+        let ttl = self.get_key_ttl(key).await?;
+        let size = self.get_key_size(key).await.unwrap_or(0);
+        let encoding = self.get_key_encoding(key).await.unwrap_or_default();
+
+        Ok(KeyInfo {
+            key: key.to_string(),
+            key_type,
+            ttl,
+            size,
+            encoding,
+        })
     }
 
     /// Get value based on type
@@ -86,24 +367,42 @@ impl RedisProvider {
         key: &str,
         key_type: &str,
     ) -> Result<serde_json::Value, ProviderError> {
-        let mut conn = self.conn.lock().await;
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                Self::get_value_from_conn(&mut *c, key, key_type).await
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                Self::get_value_from_conn(&mut *c, key, key_type).await
+            }
+        }
+    }
 
+    async fn get_value_from_conn<C>(
+        conn: &mut C,
+        key: &str,
+        key_type: &str,
+    ) -> Result<serde_json::Value, ProviderError>
+    where
+        C: AsyncCommands + Send,
+    {
         match key_type {
             "string" => {
-                let val: Option<String> = conn.get(key).await.map_err(Self::format_error)?;
+                let val: Option<String> = conn.get(key).await.map_err(RedisProvider::format_error)?;
                 Ok(val
                     .map(serde_json::Value::String)
                     .unwrap_or(serde_json::Value::Null))
             }
             "list" => {
                 let vals: Vec<String> =
-                    conn.lrange(key, 0, 99).await.map_err(Self::format_error)?;
+                    conn.lrange(key, 0, 99).await.map_err(RedisProvider::format_error)?;
                 Ok(serde_json::Value::Array(
                     vals.into_iter().map(serde_json::Value::String).collect(),
                 ))
             }
             "set" => {
-                let vals: Vec<String> = conn.smembers(key).await.map_err(Self::format_error)?;
+                let vals: Vec<String> = conn.smembers(key).await.map_err(RedisProvider::format_error)?;
                 Ok(serde_json::Value::Array(
                     vals.into_iter().map(serde_json::Value::String).collect(),
                 ))
@@ -112,7 +411,7 @@ impl RedisProvider {
                 let vals: Vec<(String, f64)> = conn
                     .zrange_withscores(key, 0, 99)
                     .await
-                    .map_err(Self::format_error)?;
+                    .map_err(RedisProvider::format_error)?;
                 let arr: Vec<serde_json::Value> = vals
                     .into_iter()
                     .map(|(member, score)| {
@@ -126,7 +425,7 @@ impl RedisProvider {
             }
             "hash" => {
                 let vals: Vec<(String, String)> =
-                    conn.hgetall(key).await.map_err(Self::format_error)?;
+                    conn.hgetall(key).await.map_err(RedisProvider::format_error)?;
                 let obj: serde_json::Map<String, serde_json::Value> = vals
                     .into_iter()
                     .map(|(k, v)| (k, serde_json::Value::String(v)))
@@ -134,16 +433,15 @@ impl RedisProvider {
                 Ok(serde_json::Value::Object(obj))
             }
             "stream" => {
-                // For streams, get recent entries
                 let entries: redis::streams::StreamRangeReply = redis::cmd("XRANGE")
                     .arg(key)
                     .arg("-")
                     .arg("+")
                     .arg("COUNT")
                     .arg(100)
-                    .query_async(&mut *conn)
+                    .query_async(conn)
                     .await
-                    .map_err(Self::format_error)?;
+                    .map_err(RedisProvider::format_error)?;
 
                 let arr: Vec<serde_json::Value> = entries
                     .ids
@@ -166,7 +464,473 @@ impl RedisProvider {
                     .collect();
                 Ok(serde_json::Value::Array(arr))
             }
+            "ReJSON-RL" | "json" => {
+                let json_val: String = redis::cmd("JSON.GET")
+                    .arg(key)
+                    .arg(".")
+                    .query_async(conn)
+                    .await
+                    .unwrap_or_default();
+                Ok(serde_json::from_str(&json_val).unwrap_or(serde_json::Value::String(json_val)))
+            }
             _ => Ok(serde_json::Value::String(format!("<{}>", key_type))),
+        }
+    }
+
+    /// Execute a RedisJSON command
+    pub async fn execute_json_command(
+        &self,
+        command: &str,
+        key: &str,
+        path: &str,
+        value: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                Self::execute_json_internal(&mut *c, command, key, path, value).await
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                Self::execute_json_internal(&mut *c, command, key, path, value).await
+            }
+        }
+    }
+
+    async fn execute_json_internal<C>(
+        conn: &mut C,
+        command: &str,
+        key: &str,
+        path: &str,
+        value: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, ProviderError>
+    where
+        C: AsyncCommands + Send,
+    {
+        let result = match command.to_uppercase().as_str() {
+            "GET" => {
+                let val: String = redis::cmd("JSON.GET")
+                    .arg(key)
+                    .arg(path)
+                    .query_async(conn)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
+                serde_json::from_str(&val).unwrap_or(serde_json::Value::String(val))
+            }
+            "SET" => {
+                if let Some(v) = value {
+                    let val_str = v.to_string();
+                    let result: String = redis::cmd("JSON.SET")
+                        .arg(key)
+                        .arg(path)
+                        .arg(val_str)
+                        .query_async(conn)
+                        .await
+                        .map_err(RedisProvider::format_error)?;
+                    serde_json::Value::String(result)
+                } else {
+                    return Err(ProviderError::new("JSON.SET requires a value"));
+                }
+            }
+            "DEL" => {
+                let result: i64 = redis::cmd("JSON.DEL")
+                    .arg(key)
+                    .arg(path)
+                    .query_async(conn)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
+                serde_json::Value::Number(result.into())
+            }
+            "TYPE" => {
+                let result: String = redis::cmd("JSON.TYPE")
+                    .arg(key)
+                    .arg(path)
+                    .query_async(conn)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
+                serde_json::Value::String(result)
+            }
+            "ARRLEN" => {
+                let result: i64 = redis::cmd("JSON.ARRLEN")
+                    .arg(key)
+                    .arg(path)
+                    .query_async(conn)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
+                serde_json::Value::Number(result.into())
+            }
+            "OBJLEN" => {
+                let result: i64 = redis::cmd("JSON.OBJLEN")
+                    .arg(key)
+                    .arg(path)
+                    .query_async(conn)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
+                serde_json::Value::Number(result.into())
+            }
+            "OBJKEYS" => {
+                let result: Vec<String> = redis::cmd("JSON.OBJKEYS")
+                    .arg(key)
+                    .arg(path)
+                    .query_async(conn)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
+                serde_json::Value::Array(result.into_iter().map(serde_json::Value::String).collect())
+            }
+            _ => return Err(ProviderError::new(format!("Unknown JSON command: {}", command))),
+        };
+
+        Ok(result)
+    }
+
+    /// Set key expiration
+    pub async fn expire(&self, key: &str, seconds: i64) -> Result<bool, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let result: bool = c.expire(key, seconds).await.map_err(Self::format_error)?;
+                Ok(result)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let result: bool = c.expire(key, seconds).await.map_err(Self::format_error)?;
+                Ok(result)
+            }
+        }
+    }
+
+    /// Set key expiration at specific timestamp
+    pub async fn expire_at(&self, key: &str, timestamp: i64) -> Result<bool, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let result: bool = redis::cmd("EXPIREAT")
+                    .arg(key)
+                    .arg(timestamp)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(result)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let result: bool = redis::cmd("EXPIREAT")
+                    .arg(key)
+                    .arg(timestamp)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(result)
+            }
+        }
+    }
+
+    /// Remove expiration from a key
+    pub async fn persist(&self, key: &str) -> Result<bool, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let result: bool = c.persist(key).await.map_err(Self::format_error)?;
+                Ok(result)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let result: bool = c.persist(key).await.map_err(Self::format_error)?;
+                Ok(result)
+            }
+        }
+    }
+
+    /// Get server information
+    pub async fn get_server_info(&self) -> Result<ServerInfo, ProviderError> {
+        let info_str = self.get_info_section("server").await?;
+        let memory_str = self.get_info_section("memory").await?;
+        let clients_str = self.get_info_section("clients").await?;
+        let keyspace_str = self.get_info_section("keyspace").await?;
+
+        let mut server_info = ServerInfo {
+            version: String::new(),
+            mode: if self.is_cluster { "cluster".to_string() } else { "standalone".to_string() },
+            os: String::new(),
+            process_id: 0,
+            tcp_port: 0,
+            uptime_in_seconds: 0,
+            connected_clients: 0,
+            used_memory_human: String::new(),
+            total_keys: 0,
+        };
+
+        // Parse server section
+        for line in info_str.lines() {
+            if let Some((key, value)) = line.split_once(':') {
+                match key {
+                    "redis_version" => server_info.version = value.to_string(),
+                    "os" => server_info.os = value.to_string(),
+                    "process_id" => server_info.process_id = value.parse().unwrap_or(0),
+                    "tcp_port" => server_info.tcp_port = value.parse().unwrap_or(0),
+                    "uptime_in_seconds" => server_info.uptime_in_seconds = value.parse().unwrap_or(0),
+                    _ => {}
+                }
+            }
+        }
+
+        // Parse memory section
+        for line in memory_str.lines() {
+            if let Some((key, value)) = line.split_once(':') {
+                if key == "used_memory_human" {
+                    server_info.used_memory_human = value.to_string();
+                }
+            }
+        }
+
+        // Parse clients section
+        for line in clients_str.lines() {
+            if let Some((key, value)) = line.split_once(':') {
+                if key == "connected_clients" {
+                    server_info.connected_clients = value.parse().unwrap_or(0);
+                }
+            }
+        }
+
+        // Parse keyspace section for total keys
+        for line in keyspace_str.lines() {
+            if line.starts_with("db") {
+                if let Some(keys_part) = line.split(',').find(|s| s.contains("keys=")) {
+                    if let Some(count_str) = keys_part.split('=').nth(1) {
+                        server_info.total_keys += count_str.parse::<i64>().unwrap_or(0);
+                    }
+                }
+            }
+        }
+
+        Ok(server_info)
+    }
+
+    /// Get specific INFO section
+    async fn get_info_section(&self, section: &str) -> Result<String, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let info: String = redis::cmd("INFO")
+                    .arg(section)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(info)
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let info: String = redis::cmd("INFO")
+                    .arg(section)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+                Ok(info)
+            }
+        }
+    }
+
+    /// Execute a transaction (MULTI/EXEC)
+    pub async fn execute_transaction(
+        &self,
+        commands: Vec<String>,
+    ) -> Result<TransactionResult, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                redis::cmd("MULTI")
+                    .query_async::<_, ()>(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+
+                let mut results = Vec::new();
+
+                for cmd_str in &commands {
+                    let parts: Vec<&str> = cmd_str.split_whitespace().collect();
+                    if !parts.is_empty() {
+                        let cmd_name = parts[0].to_uppercase();
+                        let mut cmd = redis::cmd(&cmd_name);
+                        for arg in &parts[1..] {
+                            cmd.arg(*arg);
+                        }
+                        let _: () = cmd.query_async(&mut *c).await.map_err(Self::format_error)?;
+                    }
+                }
+
+                let exec_result: redis::Value = redis::cmd("EXEC")
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+
+                if let redis::Value::Array(arr) = exec_result {
+                    for val in arr {
+                        results.push(redis_value_to_json(&val));
+                    }
+                }
+
+                Ok(TransactionResult {
+                    results,
+                    success: true,
+                })
+            }
+            RedisConnection::Cluster(_) => {
+                Err(ProviderError::new("Transactions are not supported in Redis Cluster mode").with_hint("Use pipelines instead."))
+            }
+        }
+    }
+
+    /// Execute a pipeline of commands
+    pub async fn execute_pipeline(
+        &self,
+        commands: Vec<String>,
+    ) -> Result<PipelineResult, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let mut pipe = redis::Pipeline::new();
+
+                for cmd_str in &commands {
+                    let parts: Vec<&str> = cmd_str.split_whitespace().collect();
+                    if !parts.is_empty() {
+                        let cmd_name = parts[0].to_uppercase();
+                        let mut cmd = redis::cmd(&cmd_name);
+                        for arg in &parts[1..] {
+                            cmd.arg(*arg);
+                        }
+                        pipe.add_command(cmd);
+                    }
+                }
+
+                let results: Vec<redis::Value> = pipe
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+
+                let json_results: Vec<serde_json::Value> =
+                    results.iter().map(redis_value_to_json).collect();
+
+                Ok(PipelineResult {
+                    results: json_results,
+                    errors: Vec::new(),
+                })
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let mut pipe = redis::Pipeline::new();
+
+                for cmd_str in &commands {
+                    let parts: Vec<&str> = cmd_str.split_whitespace().collect();
+                    if !parts.is_empty() {
+                        let cmd_name = parts[0].to_uppercase();
+                        let mut cmd = redis::cmd(&cmd_name);
+                        for arg in &parts[1..] {
+                            cmd.arg(*arg);
+                        }
+                        pipe.add_command(cmd);
+                    }
+                }
+
+                let results: Vec<redis::Value> = pipe
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+
+                let json_results: Vec<serde_json::Value> =
+                    results.iter().map(redis_value_to_json).collect();
+
+                Ok(PipelineResult {
+                    results: json_results,
+                    errors: Vec::new(),
+                })
+            }
+        }
+    }
+
+    /// Get slow log entries
+    pub async fn get_slowlog(&self, count: i64) -> Result<QueryResult, ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                let entries: Vec<Vec<redis::Value>> = redis::cmd("SLOWLOG")
+                    .arg("GET")
+                    .arg(count)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+
+                let mut rows = Vec::new();
+                for entry in entries {
+                    if entry.len() >= 4 {
+                        let id = redis_value_to_json(&entry[0]);
+                        let timestamp = redis_value_to_json(&entry[1]);
+                        let duration = redis_value_to_json(&entry[2]);
+                        let command = if let redis::Value::Array(cmd_parts) = &entry[3] {
+                            let parts: Vec<String> = cmd_parts
+                                .iter()
+                                .filter_map(|v| {
+                                    if let redis::Value::BulkString(bytes) = v {
+                                        String::from_utf8(bytes.clone()).ok()
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            serde_json::Value::String(parts.join(" "))
+                        } else {
+                            serde_json::Value::Null
+                        };
+
+                        rows.push(vec![id, timestamp, duration, command]);
+                    }
+                }
+
+                Ok(QueryResult {
+                    columns: vec!["id".to_string(), "timestamp".to_string(), "duration_us".to_string(), "command".to_string()],
+                    row_count: rows.len(),
+                    rows,
+                })
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                let entries: Vec<Vec<redis::Value>> = redis::cmd("SLOWLOG")
+                    .arg("GET")
+                    .arg(count)
+                    .query_async(&mut *c)
+                    .await
+                    .map_err(Self::format_error)?;
+
+                let mut rows = Vec::new();
+                for entry in entries {
+                    if entry.len() >= 4 {
+                        let id = redis_value_to_json(&entry[0]);
+                        let timestamp = redis_value_to_json(&entry[1]);
+                        let duration = redis_value_to_json(&entry[2]);
+                        let command = if let redis::Value::Array(cmd_parts) = &entry[3] {
+                            let parts: Vec<String> = cmd_parts
+                                .iter()
+                                .filter_map(|v| {
+                                    if let redis::Value::BulkString(bytes) = v {
+                                        String::from_utf8(bytes.clone()).ok()
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            serde_json::Value::String(parts.join(" "))
+                        } else {
+                            serde_json::Value::Null
+                        };
+
+                        rows.push(vec![id, timestamp, duration, command]);
+                    }
+                }
+
+                Ok(QueryResult {
+                    columns: vec!["id".to_string(), "timestamp".to_string(), "duration_us".to_string(), "command".to_string()],
+                    row_count: rows.len(),
+                    rows,
+                })
+            }
         }
     }
 
@@ -180,50 +944,98 @@ impl RedisProvider {
         let cmd_name = parts[0].to_uppercase();
         let args = &parts[1..];
 
-        let mut conn = self.conn.lock().await;
-        let mut cmd = redis::cmd(&cmd_name);
+        // Handle special commands
+        match cmd_name.as_str() {
+            "MULTI" => {
+                return Err(ProviderError::new("Use execute_transaction() for MULTI/EXEC transactions"));
+            }
+            "EXEC" | "DISCARD" => {
+                return Err(ProviderError::new("Use execute_transaction() for MULTI/EXEC transactions"));
+            }
+            _ => {}
+        }
+
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                Self::execute_command_internal_single(&mut *c, &cmd_name, args).await
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                Self::execute_command_internal_cluster(&mut *c, &cmd_name, args).await
+            }
+        }
+    }
+
+    async fn execute_command_internal_single(
+        conn: &mut ConnectionManager,
+        cmd_name: &str,
+        args: &[&str],
+    ) -> Result<QueryResult, ProviderError> {
+        let mut cmd = redis::cmd(cmd_name);
         for arg in args {
             cmd.arg(*arg);
         }
 
         let result: redis::Value = cmd
-            .query_async(&mut *conn)
+            .query_async(conn)
             .await
-            .map_err(Self::format_error)?;
+            .map_err(RedisProvider::format_error)?;
 
-        let json_value = redis_value_to_json(&result);
+        format_command_result(result)
+    }
 
-        // Format result as a table
-        match json_value {
-            serde_json::Value::Array(arr) => {
-                let rows: Vec<Vec<serde_json::Value>> = arr
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, v)| vec![serde_json::Value::Number(i.into()), v])
-                    .collect();
-                Ok(QueryResult {
-                    columns: vec!["index".to_string(), "value".to_string()],
-                    row_count: rows.len(),
-                    rows,
-                })
-            }
-            serde_json::Value::Object(obj) => {
-                let rows: Vec<Vec<serde_json::Value>> = obj
-                    .into_iter()
-                    .map(|(k, v)| vec![serde_json::Value::String(k), v])
-                    .collect();
-                Ok(QueryResult {
-                    columns: vec!["key".to_string(), "value".to_string()],
-                    row_count: rows.len(),
-                    rows,
-                })
-            }
-            _ => Ok(QueryResult {
-                columns: vec!["result".to_string()],
-                row_count: 1,
-                rows: vec![vec![json_value]],
-            }),
+    async fn execute_command_internal_cluster(
+        conn: &mut ClusterConnection,
+        cmd_name: &str,
+        args: &[&str],
+    ) -> Result<QueryResult, ProviderError> {
+        let mut cmd = redis::cmd(cmd_name);
+        for arg in args {
+            cmd.arg(*arg);
         }
+
+        let result: redis::Value = cmd
+            .query_async(conn)
+            .await
+            .map_err(RedisProvider::format_error)?;
+
+        format_command_result(result)
+    }
+}
+
+fn format_command_result(result: redis::Value) -> Result<QueryResult, ProviderError> {
+    let json_value = redis_value_to_json(&result);
+
+    match json_value {
+        serde_json::Value::Array(arr) => {
+            let rows: Vec<Vec<serde_json::Value>> = arr
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| vec![serde_json::Value::Number(i.into()), v])
+                .collect();
+            Ok(QueryResult {
+                columns: vec!["index".to_string(), "value".to_string()],
+                row_count: rows.len(),
+                rows,
+            })
+        }
+        serde_json::Value::Object(obj) => {
+            let rows: Vec<Vec<serde_json::Value>> = obj
+                .into_iter()
+                .map(|(k, v)| vec![serde_json::Value::String(k), v])
+                .collect();
+            Ok(QueryResult {
+                columns: vec!["key".to_string(), "value".to_string()],
+                row_count: rows.len(),
+                rows,
+            })
+        }
+        _ => Ok(QueryResult {
+            columns: vec!["result".to_string()],
+            row_count: 1,
+            rows: vec![vec![json_value]],
+        }),
     }
 }
 
@@ -234,8 +1046,6 @@ impl DatabaseProvider for RedisProvider {
     }
 
     async fn list_tables(&self) -> Result<Vec<TableInfo>, ProviderError> {
-        // For Redis, we'll show key prefixes as "tables"
-        // First, let's get a sample of keys to identify patterns
         let keys = self.scan_keys("*", 1000).await?;
 
         // Group keys by prefix (before first : or entire key if no :)
@@ -251,13 +1061,7 @@ impl DatabaseProvider for RedisProvider {
             *prefix_counts.entry(prefix).or_insert(0) += 1;
         }
 
-        // Also add a special entry for all keys
-        let mut conn = self.conn.lock().await;
-        let total_keys: i64 = redis::cmd("DBSIZE")
-            .query_async(&mut *conn)
-            .await
-            .map_err(Self::format_error)?;
-        drop(conn);
+        let total_keys = self.db_size().await?;
 
         let mut tables: Vec<TableInfo> = prefix_counts
             .into_iter()
@@ -268,7 +1072,6 @@ impl DatabaseProvider for RedisProvider {
             })
             .collect();
 
-        // Sort by name
         tables.sort_by(|a, b| a.name.cmp(&b.name));
 
         // Add "*" at the beginning to show all keys
@@ -289,7 +1092,6 @@ impl DatabaseProvider for RedisProvider {
         _schema: &str,
         _table: &str,
     ) -> Result<Vec<ColumnInfo>, ProviderError> {
-        // For Redis, columns represent key metadata
         Ok(vec![
             ColumnInfo {
                 name: "key".to_string(),
@@ -313,6 +1115,20 @@ impl DatabaseProvider for RedisProvider {
                 has_default: false,
             },
             ColumnInfo {
+                name: "size".to_string(),
+                data_type: "integer".to_string(),
+                is_nullable: true,
+                is_primary_key: false,
+                has_default: false,
+            },
+            ColumnInfo {
+                name: "encoding".to_string(),
+                data_type: "string".to_string(),
+                is_nullable: true,
+                is_primary_key: false,
+                has_default: false,
+            },
+            ColumnInfo {
                 name: "value".to_string(),
                 data_type: "any".to_string(),
                 is_nullable: true,
@@ -329,17 +1145,13 @@ impl DatabaseProvider for RedisProvider {
         limit: i64,
         offset: i64,
     ) -> Result<QueryResult, ProviderError> {
-        // Use the table name as a key pattern
         let pattern = if table == "*" {
             "*".to_string()
         } else {
             table.to_string()
         };
 
-        // Get keys matching pattern
         let all_keys = self.scan_keys(&pattern, (offset + limit) as usize).await?;
-
-        // Apply offset
         let keys: Vec<String> = all_keys
             .into_iter()
             .skip(offset as usize)
@@ -351,10 +1163,12 @@ impl DatabaseProvider for RedisProvider {
         for key in keys {
             let key_type = self.get_key_type(&key).await?;
             let ttl = self.get_key_ttl(&key).await?;
+            let size = self.get_key_size(&key).await.unwrap_or(0);
+            let encoding = self.get_key_encoding(&key).await.unwrap_or_default();
             let value = self.get_value(&key, &key_type).await?;
 
             let ttl_value = if ttl == -1 {
-                serde_json::Value::Null // No expiry
+                serde_json::Value::Null
             } else if ttl == -2 {
                 serde_json::Value::String("expired".to_string())
             } else {
@@ -365,6 +1179,8 @@ impl DatabaseProvider for RedisProvider {
                 serde_json::Value::String(key),
                 serde_json::Value::String(key_type),
                 ttl_value,
+                serde_json::Value::Number(size.into()),
+                serde_json::Value::String(encoding),
                 value,
             ]);
         }
@@ -374,6 +1190,8 @@ impl DatabaseProvider for RedisProvider {
                 "key".to_string(),
                 "type".to_string(),
                 "ttl".to_string(),
+                "size".to_string(),
+                "encoding".to_string(),
                 "value".to_string(),
             ],
             row_count: rows.len(),
@@ -383,15 +1201,12 @@ impl DatabaseProvider for RedisProvider {
 
     async fn execute_query(&self, query: &str) -> Result<QueryResult, ProviderError> {
         let trimmed = query.trim();
-
-        // Handle multiple commands separated by newlines
         let commands: Vec<&str> = trimmed.lines().filter(|l| !l.trim().is_empty()).collect();
 
         if commands.is_empty() {
             return Err(ProviderError::new("No command provided"));
         }
 
-        // Execute commands and return the last result
         let mut last_result = QueryResult {
             columns: vec![],
             rows: vec![],
@@ -407,12 +1222,7 @@ impl DatabaseProvider for RedisProvider {
 
     async fn get_table_count(&self, _schema: &str, table: &str) -> Result<i64, ProviderError> {
         if table == "*" {
-            let mut conn = self.conn.lock().await;
-            let count: i64 = redis::cmd("DBSIZE")
-                .query_async(&mut *conn)
-                .await
-                .map_err(Self::format_error)?;
-            Ok(count)
+            self.db_size().await
         } else {
             let keys = self.scan_keys(table, 10000).await?;
             Ok(keys.len() as i64)
