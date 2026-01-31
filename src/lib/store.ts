@@ -11,26 +11,83 @@ const LAST_CHAT_SESSION_KEY = "querystudio_last_chat_session";
 
 // Connection state
 interface ConnectionState {
-  connection: Connection | null;
+  // Multiple active connections support
+  activeConnections: Connection[];
+  activeConnectionId: string | null;
+  // Tables and selected table for the active connection
   tables: TableInfo[];
   selectedTable: { schema: string; name: string } | null;
 
-  setConnection: (connection: Connection | null) => void;
+  // Actions
+  addConnection: (connection: Connection) => void;
+  removeConnection: (connectionId: string) => void;
+  setActiveConnection: (connectionId: string | null) => void;
   setTables: (tables: TableInfo[]) => void;
   setSelectedTable: (table: { schema: string; name: string } | null) => void;
-  disconnect: () => void;
+  disconnect: (connectionId?: string) => void;
+  disconnectAll: () => void;
+
+  // Getters
+  getConnection: (connectionId: string) => Connection | undefined;
+  getActiveConnection: () => Connection | null;
 }
 
-export const useConnectionStore = create<ConnectionState>()((set) => ({
-  connection: null,
+export const useConnectionStore = create<ConnectionState>()((set, get) => ({
+  activeConnections: [],
+  activeConnectionId: null,
   tables: [],
   selectedTable: null,
 
-  setConnection: (connection: Connection | null) => {
-    if (connection) {
-      localStorage.setItem(LAST_CONNECTION_KEY, connection.id);
-    }
-    set({ connection, tables: [], selectedTable: null });
+  addConnection: (connection: Connection) => {
+    set((state) => {
+      // Check if connection already exists
+      const exists = state.activeConnections.some((c) => c.id === connection.id);
+      if (exists) {
+        // Just activate it
+        return { activeConnectionId: connection.id, tables: [], selectedTable: null };
+      }
+      // Add new connection and activate it
+      return {
+        activeConnections: [...state.activeConnections, connection],
+        activeConnectionId: connection.id,
+        tables: [],
+        selectedTable: null,
+      };
+    });
+    localStorage.setItem(LAST_CONNECTION_KEY, connection.id);
+  },
+
+  removeConnection: (connectionId: string) => {
+    set((state) => {
+      const newConnections = state.activeConnections.filter((c) => c.id !== connectionId);
+      let newActiveId = state.activeConnectionId;
+
+      // If we removed the active connection, activate another one
+      if (state.activeConnectionId === connectionId) {
+        newActiveId = newConnections.length > 0 ? newConnections[0].id : null;
+      }
+
+      return {
+        activeConnections: newConnections,
+        activeConnectionId: newActiveId,
+        tables: [],
+        selectedTable: null,
+      };
+    });
+  },
+
+  setActiveConnection: (connectionId: string | null) => {
+    set((state) => {
+      if (connectionId === null) {
+        return { activeConnectionId: null, tables: [], selectedTable: null };
+      }
+      const connection = state.activeConnections.find((c) => c.id === connectionId);
+      if (connection) {
+        localStorage.setItem(LAST_CONNECTION_KEY, connectionId);
+        return { activeConnectionId: connectionId, tables: [], selectedTable: null };
+      }
+      return state;
+    });
   },
 
   setTables: (tables: TableInfo[]) => set({ tables }),
@@ -38,9 +95,52 @@ export const useConnectionStore = create<ConnectionState>()((set) => ({
   setSelectedTable: (table: { schema: string; name: string } | null) =>
     set({ selectedTable: table }),
 
-  disconnect: () => {
+  disconnect: (connectionId?: string) => {
+    const targetId = connectionId || get().activeConnectionId;
+    if (!targetId) return;
+
+    set((state) => {
+      const newConnections = state.activeConnections.filter((c) => c.id !== targetId);
+      let newActiveId = state.activeConnectionId;
+
+      if (state.activeConnectionId === targetId) {
+        newActiveId = newConnections.length > 0 ? newConnections[0].id : null;
+      }
+
+      // If no connections left, clear localStorage
+      if (newConnections.length === 0) {
+        localStorage.removeItem(LAST_CONNECTION_KEY);
+      } else if (newActiveId) {
+        localStorage.setItem(LAST_CONNECTION_KEY, newActiveId);
+      }
+
+      return {
+        activeConnections: newConnections,
+        activeConnectionId: newActiveId,
+        tables: [],
+        selectedTable: null,
+      };
+    });
+  },
+
+  disconnectAll: () => {
     localStorage.removeItem(LAST_CONNECTION_KEY);
-    set({ connection: null, tables: [], selectedTable: null });
+    set({
+      activeConnections: [],
+      activeConnectionId: null,
+      tables: [],
+      selectedTable: null,
+    });
+  },
+
+  getConnection: (connectionId: string) => {
+    return get().activeConnections.find((c) => c.id === connectionId);
+  },
+
+  getActiveConnection: () => {
+    const { activeConnections, activeConnectionId } = get();
+    if (!activeConnectionId) return null;
+    return activeConnections.find((c) => c.id === activeConnectionId) || null;
   },
 }));
 

@@ -13,9 +13,11 @@ interface GlobalShortcutsOptions {
 
 export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
   const queryClient = useQueryClient();
-  const connection = useConnectionStore((s) => s.connection);
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
+  const getActiveConnection = useConnectionStore((s) => s.getActiveConnection);
+  const connection = getActiveConnection();
   const selectedTable = useConnectionStore((s) => s.selectedTable);
-  const connectionId = connection?.id ?? "";
+  const connectionId = activeConnectionId ?? "";
 
   // Layout store for multi-pane/tab support
   const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);

@@ -241,7 +241,7 @@ function formatSQL(sql: string): string {
  */
 export function usePluginSDK(connectionId: string, tabId: string, paneId: string): PluginSDK {
   // Get connection state
-  const connection = useConnectionStore((s) => s.connection);
+  const connection = useConnectionStore((s) => s.getActiveConnection());
   const tables = useConnectionStore((s) => s.tables);
   const selectedTable = useConnectionStore((s) => s.selectedTable);
   const setSelectedTable = useConnectionStore((s) => s.setSelectedTable);
