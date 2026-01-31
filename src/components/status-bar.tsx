@@ -124,7 +124,8 @@ function formatRowCount(count: number): string {
 }
 
 export function StatusBar() {
-  const connection = useConnectionStore((s) => s.connection);
+  const connection = useConnectionStore((s) => s.getActiveConnection());
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
   const selectedTable = useConnectionStore((s) => s.selectedTable);
   const tables = useConnectionStore((s) => s.tables);
 
@@ -139,7 +140,7 @@ export function StatusBar() {
   const session = authClient.useSession();
 
   // Get terminal tabs count and create function from layout store
-  const connectionId = connection?.id ?? "";
+  const connectionId = activeConnectionId ?? "";
   const getActivePane = useLayoutStore((s) => s.getActivePane);
   const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
   const createTab = useLayoutStore((s) => s.createTab);

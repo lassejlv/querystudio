@@ -62,8 +62,10 @@ export function CommandPalette({
   const { data: savedConnections } = useSavedConnections();
   const deleteConnection = useDeleteSavedConnection();
   const disconnect = useDisconnect();
-  const connection = useConnectionStore((s) => s.connection);
-  const connectionId = connection?.id ?? "";
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
+  const getActiveConnection = useConnectionStore((s) => s.getActiveConnection);
+  const connection = getActiveConnection();
+  const connectionId = activeConnectionId ?? "";
   const getAllLeafPanes = useLayoutStore((s) => s.getAllLeafPanes);
   const setActiveTab = useLayoutStore((s) => s.setActiveTab);
   const createTab = useLayoutStore((s) => s.createTab);

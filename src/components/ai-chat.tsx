@@ -306,7 +306,7 @@ const MessageBubble = memo(function MessageBubble({
 // ============================================================================
 
 export const AIChat = memo(function AIChat() {
-  const connection = useConnectionStore((s) => s.connection);
+  const connection = useConnectionStore((s) => s.getActiveConnection());
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);

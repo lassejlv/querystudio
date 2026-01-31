@@ -67,10 +67,14 @@ export function DatabaseIcon({ type, className }: { type: DatabaseType; classNam
 }
 
 export const Sidebar = memo(function Sidebar() {
+  // Get active connection
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
+  const getActiveConnection = useConnectionStore((s) => s.getActiveConnection);
+  const connection = getActiveConnection();
+  
   // Use shallow comparison to minimize re-renders
-  const { connection, tables, selectedTable } = useConnectionStore(
+  const { tables, selectedTable } = useConnectionStore(
     useShallow((s) => ({
-      connection: s.connection,
       tables: s.tables,
       selectedTable: s.selectedTable,
     })),
@@ -88,12 +92,11 @@ export const Sidebar = memo(function Sidebar() {
     })),
   );
   const setSidebarWidth = useAIQueryStore((s) => s.setSidebarWidth);
-  const toggleSidebar = useAIQueryStore((s) => s.toggleSidebar);
 
   const [isResizing, setIsResizing] = useState(false);
 
-  const { data: fetchedTables } = useTables(connection?.id ?? null);
-  const disconnect = useDisconnect();
+  const { data: fetchedTables } = useTables(activeConnectionId);
+  const disconnect = useDisconnect(activeConnectionId ?? undefined);
 
   useEffect(() => {
     if (fetchedTables && fetchedTables !== tables) {

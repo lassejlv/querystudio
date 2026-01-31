@@ -81,8 +81,8 @@ export const RedisConsole = memo(function RedisConsole({
   paneId: _paneId,
   connectionId: propsConnectionId,
 }: TabContentProps) {
-  const connection = useConnectionStore((s) => s.connection);
-  const connectionId = propsConnectionId || connection?.id || null;
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
+  const connectionId = propsConnectionId || activeConnectionId || null;
   const activeThemeId = useThemeStore((s) => s.activeTheme);
 
   const containerRef = useRef<HTMLDivElement>(null);

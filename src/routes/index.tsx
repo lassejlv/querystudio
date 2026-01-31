@@ -17,14 +17,14 @@ function Home() {
   const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(
     null,
   );
-  const connection = useConnectionStore((s) => s.connection);
+  const activeConnections = useConnectionStore((s) => s.activeConnections);
 
-  // If there's an active connection, redirect to the database studio
+  // If there are active connections, redirect to the database studio
   useEffect(() => {
-    if (connection) {
-      navigate({ to: "/db/$connectionId", params: { connectionId: connection.id } });
+    if (activeConnections.length > 0) {
+      navigate({ to: "/db" });
     }
-  }, [connection, navigate]);
+  }, [activeConnections, navigate]);
 
   const handleNewConnection = () => {
     navigate({ to: "/new-connection" });

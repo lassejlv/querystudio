@@ -48,8 +48,9 @@ export const QueryEditor = memo(function QueryEditor({
   paneId,
   connectionId: _connectionId,
 }: QueryEditorProps) {
-  const connection = useConnectionStore((s) => s.connection);
-  const connectionId = connection?.id ?? null;
+  const connection = useConnectionStore((s) => s.getActiveConnection());
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
+  const connectionId = activeConnectionId ?? null;
   const tables = useConnectionStore((s) => s.tables);
   const isRedis = connection?.db_type === "redis";
   const isMongodb = connection?.db_type === "mongodb";

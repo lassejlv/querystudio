@@ -66,11 +66,12 @@ export const TableViewer = memo(function TableViewer({
   paneId,
   connectionId: propsConnectionId,
 }: TableViewerProps) {
-  const connection = useConnectionStore((s) => s.connection);
+  const connection = useConnectionStore((s) => s.getActiveConnection());
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
   const globalSelectedTable = useConnectionStore((s) => s.selectedTable);
 
   // Use connectionId from props or fall back to connection store
-  const connectionId = propsConnectionId || connection?.id || "";
+  const connectionId = propsConnectionId || activeConnectionId || "";
 
   // Get tableInfo from the tab's state in the layout store
   const pane = useLayoutStore((s) => s.panes[connectionId]?.[paneId]);
