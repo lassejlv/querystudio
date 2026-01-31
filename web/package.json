@@ -6,7 +6,7 @@
     "cf-tunnel": "cloudflared tunnel run lasse-local-tunnel",
     "start": "bun run .output/server/index.mjs",
     "test": "vitest run",
-    "build": "vite build",
+    "build": "bun drizzle-kit migrate && vite build",
     "gen-auth": "bun --bun better-auth generate --config src/lib/auth.tsx",
     "dev": "vite dev",
     "bauth": "bun --bun better-auth",
