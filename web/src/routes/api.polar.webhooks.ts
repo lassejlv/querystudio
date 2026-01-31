@@ -33,6 +33,35 @@ export const Route = createFileRoute("/api/polar/webhooks")({
               break;
             }
 
+            case "subscription.active": {
+              const { customerId } = event.data;
+
+              if (customerId) {
+                await db
+                  .update(userTable)
+                  .set({ isPro: true })
+                  .where(eq(userTable.polarCustomerId, customerId));
+
+                console.log(`[Polar Webhook] Subscription activated for customer: ${customerId}`);
+              }
+              break;
+            }
+
+            case "subscription.canceled":
+            case "subscription.revoked": {
+              const { customerId } = event.data;
+
+              if (customerId) {
+                await db
+                  .update(userTable)
+                  .set({ isPro: false })
+                  .where(eq(userTable.polarCustomerId, customerId));
+
+                console.log(`[Polar Webhook] Subscription ${event.type === "subscription.canceled" ? "canceled" : "revoked"} for customer: ${customerId}`);
+              }
+              break;
+            }
+
             case "benefit_grant.created": {
               const { customerId, benefit, properties } = event.data;
 
