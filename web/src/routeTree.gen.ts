@@ -8,499 +8,390 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as WaitlistRouteImport } from "./routes/waitlist";
-import { Route as SignupRouteImport } from "./routes/signup";
-import { Route as PricingRouteImport } from "./routes/pricing";
-import { Route as LoginRouteImport } from "./routes/login";
-import { Route as DownloadRouteImport } from "./routes/download";
-import { Route as AuthedRouteImport } from "./routes/_authed";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as AuthDesktopRouteImport } from "./routes/auth/desktop";
-import { Route as ApiTestRouteImport } from "./routes/api/test";
-import { Route as ApiRealtimeRouteImport } from "./routes/api/realtime";
-import { Route as ApiLicenseRouteImport } from "./routes/api.license";
-import { Route as AuthedDashboardRouteImport } from "./routes/_authed/dashboard";
-import { Route as AuthedDashboardIndexRouteImport } from "./routes/_authed/dashboard/index";
-import { Route as ApiPolarWebhooksRouteImport } from "./routes/api.polar.webhooks";
-import { Route as ApiLicenseSplatRouteImport } from "./routes/api.license.$";
-import { Route as ApiDownloadsSplatRouteImport } from "./routes/api.downloads.$";
-import { Route as ApiAuthSplatRouteImport } from "./routes/api.auth.$";
-import { Route as AuthedDashboardSecurityRouteImport } from "./routes/_authed/dashboard/security";
-import { Route as AuthedDashboardDevicesRouteImport } from "./routes/_authed/dashboard/devices";
-import { Route as AuthedDashboardBillingRouteImport } from "./routes/_authed/dashboard/billing";
-import { Route as AuthedDashboardAdminRouteImport } from "./routes/_authed/dashboard/admin";
-import { Route as AuthedDashboardAccountRouteImport } from "./routes/_authed/dashboard/account";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DownloadRouteImport } from './routes/download'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthDesktopRouteImport } from './routes/auth/desktop'
+import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedDashboardIndexRouteImport } from './routes/_authed/dashboard/index'
+import { Route as ApiPolarWebhooksRouteImport } from './routes/api.polar.webhooks'
+import { Route as ApiDownloadsSplatRouteImport } from './routes/api.downloads.$'
+import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as AuthedDashboardSecurityRouteImport } from './routes/_authed/dashboard/security'
+import { Route as AuthedDashboardBillingRouteImport } from './routes/_authed/dashboard/billing'
+import { Route as AuthedDashboardAdminRouteImport } from './routes/_authed/dashboard/admin'
+import { Route as AuthedDashboardAccountRouteImport } from './routes/_authed/dashboard/account'
 
 const WaitlistRoute = WaitlistRouteImport.update({
-  id: "/waitlist",
-  path: "/waitlist",
+  id: '/waitlist',
+  path: '/waitlist',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const SignupRoute = SignupRouteImport.update({
-  id: "/signup",
-  path: "/signup",
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const PricingRoute = PricingRouteImport.update({
-  id: "/pricing",
-  path: "/pricing",
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const LoginRoute = LoginRouteImport.update({
-  id: "/login",
-  path: "/login",
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const DownloadRoute = DownloadRouteImport.update({
-  id: "/download",
-  path: "/download",
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthedRoute = AuthedRouteImport.update({
-  id: "/_authed",
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthDesktopRoute = AuthDesktopRouteImport.update({
-  id: "/auth/desktop",
-  path: "/auth/desktop",
+  id: '/auth/desktop',
+  path: '/auth/desktop',
   getParentRoute: () => rootRouteImport,
-} as any);
-const ApiTestRoute = ApiTestRouteImport.update({
-  id: "/api/test",
-  path: "/api/test",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const ApiRealtimeRoute = ApiRealtimeRouteImport.update({
-  id: "/api/realtime",
-  path: "/api/realtime",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const ApiLicenseRoute = ApiLicenseRouteImport.update({
-  id: "/api/license",
-  path: "/api/license",
-  getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
-  id: "/dashboard",
-  path: "/dashboard",
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthedRoute,
-} as any);
+} as any)
 const AuthedDashboardIndexRoute = AuthedDashboardIndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => AuthedDashboardRoute,
-} as any);
+} as any)
 const ApiPolarWebhooksRoute = ApiPolarWebhooksRouteImport.update({
-  id: "/api/polar/webhooks",
-  path: "/api/polar/webhooks",
+  id: '/api/polar/webhooks',
+  path: '/api/polar/webhooks',
   getParentRoute: () => rootRouteImport,
-} as any);
-const ApiLicenseSplatRoute = ApiLicenseSplatRouteImport.update({
-  id: "/$",
-  path: "/$",
-  getParentRoute: () => ApiLicenseRoute,
-} as any);
+} as any)
 const ApiDownloadsSplatRoute = ApiDownloadsSplatRouteImport.update({
-  id: "/api/downloads/$",
-  path: "/api/downloads/$",
+  id: '/api/downloads/$',
+  path: '/api/downloads/$',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: "/api/auth/$",
-  path: "/api/auth/$",
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthedDashboardSecurityRoute = AuthedDashboardSecurityRouteImport.update({
-  id: "/security",
-  path: "/security",
+  id: '/security',
+  path: '/security',
   getParentRoute: () => AuthedDashboardRoute,
-} as any);
-const AuthedDashboardDevicesRoute = AuthedDashboardDevicesRouteImport.update({
-  id: "/devices",
-  path: "/devices",
-  getParentRoute: () => AuthedDashboardRoute,
-} as any);
+} as any)
 const AuthedDashboardBillingRoute = AuthedDashboardBillingRouteImport.update({
-  id: "/billing",
-  path: "/billing",
+  id: '/billing',
+  path: '/billing',
   getParentRoute: () => AuthedDashboardRoute,
-} as any);
+} as any)
 const AuthedDashboardAdminRoute = AuthedDashboardAdminRouteImport.update({
-  id: "/admin",
-  path: "/admin",
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthedDashboardRoute,
-} as any);
+} as any)
 const AuthedDashboardAccountRoute = AuthedDashboardAccountRouteImport.update({
-  id: "/account",
-  path: "/account",
+  id: '/account',
+  path: '/account',
   getParentRoute: () => AuthedDashboardRoute,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/download": typeof DownloadRoute;
-  "/login": typeof LoginRoute;
-  "/pricing": typeof PricingRoute;
-  "/signup": typeof SignupRoute;
-  "/waitlist": typeof WaitlistRoute;
-  "/dashboard": typeof AuthedDashboardRouteWithChildren;
-  "/api/license": typeof ApiLicenseRouteWithChildren;
-  "/api/realtime": typeof ApiRealtimeRoute;
-  "/api/test": typeof ApiTestRoute;
-  "/auth/desktop": typeof AuthDesktopRoute;
-  "/dashboard/account": typeof AuthedDashboardAccountRoute;
-  "/dashboard/admin": typeof AuthedDashboardAdminRoute;
-  "/dashboard/billing": typeof AuthedDashboardBillingRoute;
-  "/dashboard/devices": typeof AuthedDashboardDevicesRoute;
-  "/dashboard/security": typeof AuthedDashboardSecurityRoute;
-  "/api/auth/$": typeof ApiAuthSplatRoute;
-  "/api/downloads/$": typeof ApiDownloadsSplatRoute;
-  "/api/license/$": typeof ApiLicenseSplatRoute;
-  "/api/polar/webhooks": typeof ApiPolarWebhooksRoute;
-  "/dashboard/": typeof AuthedDashboardIndexRoute;
+  '/': typeof IndexRoute
+  '/download': typeof DownloadRoute
+  '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/signup': typeof SignupRoute
+  '/waitlist': typeof WaitlistRoute
+  '/dashboard': typeof AuthedDashboardRouteWithChildren
+  '/auth/desktop': typeof AuthDesktopRoute
+  '/dashboard/account': typeof AuthedDashboardAccountRoute
+  '/dashboard/admin': typeof AuthedDashboardAdminRoute
+  '/dashboard/billing': typeof AuthedDashboardBillingRoute
+  '/dashboard/security': typeof AuthedDashboardSecurityRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/downloads/$': typeof ApiDownloadsSplatRoute
+  '/api/polar/webhooks': typeof ApiPolarWebhooksRoute
+  '/dashboard/': typeof AuthedDashboardIndexRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/download": typeof DownloadRoute;
-  "/login": typeof LoginRoute;
-  "/pricing": typeof PricingRoute;
-  "/signup": typeof SignupRoute;
-  "/waitlist": typeof WaitlistRoute;
-  "/api/license": typeof ApiLicenseRouteWithChildren;
-  "/api/realtime": typeof ApiRealtimeRoute;
-  "/api/test": typeof ApiTestRoute;
-  "/auth/desktop": typeof AuthDesktopRoute;
-  "/dashboard/account": typeof AuthedDashboardAccountRoute;
-  "/dashboard/admin": typeof AuthedDashboardAdminRoute;
-  "/dashboard/billing": typeof AuthedDashboardBillingRoute;
-  "/dashboard/devices": typeof AuthedDashboardDevicesRoute;
-  "/dashboard/security": typeof AuthedDashboardSecurityRoute;
-  "/api/auth/$": typeof ApiAuthSplatRoute;
-  "/api/downloads/$": typeof ApiDownloadsSplatRoute;
-  "/api/license/$": typeof ApiLicenseSplatRoute;
-  "/api/polar/webhooks": typeof ApiPolarWebhooksRoute;
-  "/dashboard": typeof AuthedDashboardIndexRoute;
+  '/': typeof IndexRoute
+  '/download': typeof DownloadRoute
+  '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/signup': typeof SignupRoute
+  '/waitlist': typeof WaitlistRoute
+  '/auth/desktop': typeof AuthDesktopRoute
+  '/dashboard/account': typeof AuthedDashboardAccountRoute
+  '/dashboard/admin': typeof AuthedDashboardAdminRoute
+  '/dashboard/billing': typeof AuthedDashboardBillingRoute
+  '/dashboard/security': typeof AuthedDashboardSecurityRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/downloads/$': typeof ApiDownloadsSplatRoute
+  '/api/polar/webhooks': typeof ApiPolarWebhooksRoute
+  '/dashboard': typeof AuthedDashboardIndexRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/_authed": typeof AuthedRouteWithChildren;
-  "/download": typeof DownloadRoute;
-  "/login": typeof LoginRoute;
-  "/pricing": typeof PricingRoute;
-  "/signup": typeof SignupRoute;
-  "/waitlist": typeof WaitlistRoute;
-  "/_authed/dashboard": typeof AuthedDashboardRouteWithChildren;
-  "/api/license": typeof ApiLicenseRouteWithChildren;
-  "/api/realtime": typeof ApiRealtimeRoute;
-  "/api/test": typeof ApiTestRoute;
-  "/auth/desktop": typeof AuthDesktopRoute;
-  "/_authed/dashboard/account": typeof AuthedDashboardAccountRoute;
-  "/_authed/dashboard/admin": typeof AuthedDashboardAdminRoute;
-  "/_authed/dashboard/billing": typeof AuthedDashboardBillingRoute;
-  "/_authed/dashboard/devices": typeof AuthedDashboardDevicesRoute;
-  "/_authed/dashboard/security": typeof AuthedDashboardSecurityRoute;
-  "/api/auth/$": typeof ApiAuthSplatRoute;
-  "/api/downloads/$": typeof ApiDownloadsSplatRoute;
-  "/api/license/$": typeof ApiLicenseSplatRoute;
-  "/api/polar/webhooks": typeof ApiPolarWebhooksRoute;
-  "/_authed/dashboard/": typeof AuthedDashboardIndexRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
+  '/download': typeof DownloadRoute
+  '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/signup': typeof SignupRoute
+  '/waitlist': typeof WaitlistRoute
+  '/_authed/dashboard': typeof AuthedDashboardRouteWithChildren
+  '/auth/desktop': typeof AuthDesktopRoute
+  '/_authed/dashboard/account': typeof AuthedDashboardAccountRoute
+  '/_authed/dashboard/admin': typeof AuthedDashboardAdminRoute
+  '/_authed/dashboard/billing': typeof AuthedDashboardBillingRoute
+  '/_authed/dashboard/security': typeof AuthedDashboardSecurityRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/downloads/$': typeof ApiDownloadsSplatRoute
+  '/api/polar/webhooks': typeof ApiPolarWebhooksRoute
+  '/_authed/dashboard/': typeof AuthedDashboardIndexRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/download"
-    | "/login"
-    | "/pricing"
-    | "/signup"
-    | "/waitlist"
-    | "/dashboard"
-    | "/api/license"
-    | "/api/realtime"
-    | "/api/test"
-    | "/auth/desktop"
-    | "/dashboard/account"
-    | "/dashboard/admin"
-    | "/dashboard/billing"
-    | "/dashboard/devices"
-    | "/dashboard/security"
-    | "/api/auth/$"
-    | "/api/downloads/$"
-    | "/api/license/$"
-    | "/api/polar/webhooks"
-    | "/dashboard/";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/download'
+    | '/login'
+    | '/pricing'
+    | '/signup'
+    | '/waitlist'
+    | '/dashboard'
+    | '/auth/desktop'
+    | '/dashboard/account'
+    | '/dashboard/admin'
+    | '/dashboard/billing'
+    | '/dashboard/security'
+    | '/api/auth/$'
+    | '/api/downloads/$'
+    | '/api/polar/webhooks'
+    | '/dashboard/'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/"
-    | "/download"
-    | "/login"
-    | "/pricing"
-    | "/signup"
-    | "/waitlist"
-    | "/api/license"
-    | "/api/realtime"
-    | "/api/test"
-    | "/auth/desktop"
-    | "/dashboard/account"
-    | "/dashboard/admin"
-    | "/dashboard/billing"
-    | "/dashboard/devices"
-    | "/dashboard/security"
-    | "/api/auth/$"
-    | "/api/downloads/$"
-    | "/api/license/$"
-    | "/api/polar/webhooks"
-    | "/dashboard";
+    | '/'
+    | '/download'
+    | '/login'
+    | '/pricing'
+    | '/signup'
+    | '/waitlist'
+    | '/auth/desktop'
+    | '/dashboard/account'
+    | '/dashboard/admin'
+    | '/dashboard/billing'
+    | '/dashboard/security'
+    | '/api/auth/$'
+    | '/api/downloads/$'
+    | '/api/polar/webhooks'
+    | '/dashboard'
   id:
-    | "__root__"
-    | "/"
-    | "/_authed"
-    | "/download"
-    | "/login"
-    | "/pricing"
-    | "/signup"
-    | "/waitlist"
-    | "/_authed/dashboard"
-    | "/api/license"
-    | "/api/realtime"
-    | "/api/test"
-    | "/auth/desktop"
-    | "/_authed/dashboard/account"
-    | "/_authed/dashboard/admin"
-    | "/_authed/dashboard/billing"
-    | "/_authed/dashboard/devices"
-    | "/_authed/dashboard/security"
-    | "/api/auth/$"
-    | "/api/downloads/$"
-    | "/api/license/$"
-    | "/api/polar/webhooks"
-    | "/_authed/dashboard/";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/'
+    | '/_authed'
+    | '/download'
+    | '/login'
+    | '/pricing'
+    | '/signup'
+    | '/waitlist'
+    | '/_authed/dashboard'
+    | '/auth/desktop'
+    | '/_authed/dashboard/account'
+    | '/_authed/dashboard/admin'
+    | '/_authed/dashboard/billing'
+    | '/_authed/dashboard/security'
+    | '/api/auth/$'
+    | '/api/downloads/$'
+    | '/api/polar/webhooks'
+    | '/_authed/dashboard/'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  AuthedRoute: typeof AuthedRouteWithChildren;
-  DownloadRoute: typeof DownloadRoute;
-  LoginRoute: typeof LoginRoute;
-  PricingRoute: typeof PricingRoute;
-  SignupRoute: typeof SignupRoute;
-  WaitlistRoute: typeof WaitlistRoute;
-  ApiLicenseRoute: typeof ApiLicenseRouteWithChildren;
-  ApiRealtimeRoute: typeof ApiRealtimeRoute;
-  ApiTestRoute: typeof ApiTestRoute;
-  AuthDesktopRoute: typeof AuthDesktopRoute;
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute;
-  ApiDownloadsSplatRoute: typeof ApiDownloadsSplatRoute;
-  ApiPolarWebhooksRoute: typeof ApiPolarWebhooksRoute;
+  IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
+  DownloadRoute: typeof DownloadRoute
+  LoginRoute: typeof LoginRoute
+  PricingRoute: typeof PricingRoute
+  SignupRoute: typeof SignupRoute
+  WaitlistRoute: typeof WaitlistRoute
+  AuthDesktopRoute: typeof AuthDesktopRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDownloadsSplatRoute: typeof ApiDownloadsSplatRoute
+  ApiPolarWebhooksRoute: typeof ApiPolarWebhooksRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/waitlist": {
-      id: "/waitlist";
-      path: "/waitlist";
-      fullPath: "/waitlist";
-      preLoaderRoute: typeof WaitlistRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/signup": {
-      id: "/signup";
-      path: "/signup";
-      fullPath: "/signup";
-      preLoaderRoute: typeof SignupRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/pricing": {
-      id: "/pricing";
-      path: "/pricing";
-      fullPath: "/pricing";
-      preLoaderRoute: typeof PricingRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/login": {
-      id: "/login";
-      path: "/login";
-      fullPath: "/login";
-      preLoaderRoute: typeof LoginRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/download": {
-      id: "/download";
-      path: "/download";
-      fullPath: "/download";
-      preLoaderRoute: typeof DownloadRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_authed": {
-      id: "/_authed";
-      path: "";
-      fullPath: "/";
-      preLoaderRoute: typeof AuthedRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/auth/desktop": {
-      id: "/auth/desktop";
-      path: "/auth/desktop";
-      fullPath: "/auth/desktop";
-      preLoaderRoute: typeof AuthDesktopRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/test": {
-      id: "/api/test";
-      path: "/api/test";
-      fullPath: "/api/test";
-      preLoaderRoute: typeof ApiTestRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/realtime": {
-      id: "/api/realtime";
-      path: "/api/realtime";
-      fullPath: "/api/realtime";
-      preLoaderRoute: typeof ApiRealtimeRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/license": {
-      id: "/api/license";
-      path: "/api/license";
-      fullPath: "/api/license";
-      preLoaderRoute: typeof ApiLicenseRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_authed/dashboard": {
-      id: "/_authed/dashboard";
-      path: "/dashboard";
-      fullPath: "/dashboard";
-      preLoaderRoute: typeof AuthedDashboardRouteImport;
-      parentRoute: typeof AuthedRoute;
-    };
-    "/_authed/dashboard/": {
-      id: "/_authed/dashboard/";
-      path: "/";
-      fullPath: "/dashboard/";
-      preLoaderRoute: typeof AuthedDashboardIndexRouteImport;
-      parentRoute: typeof AuthedDashboardRoute;
-    };
-    "/api/polar/webhooks": {
-      id: "/api/polar/webhooks";
-      path: "/api/polar/webhooks";
-      fullPath: "/api/polar/webhooks";
-      preLoaderRoute: typeof ApiPolarWebhooksRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/license/$": {
-      id: "/api/license/$";
-      path: "/$";
-      fullPath: "/api/license/$";
-      preLoaderRoute: typeof ApiLicenseSplatRouteImport;
-      parentRoute: typeof ApiLicenseRoute;
-    };
-    "/api/downloads/$": {
-      id: "/api/downloads/$";
-      path: "/api/downloads/$";
-      fullPath: "/api/downloads/$";
-      preLoaderRoute: typeof ApiDownloadsSplatRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/auth/$": {
-      id: "/api/auth/$";
-      path: "/api/auth/$";
-      fullPath: "/api/auth/$";
-      preLoaderRoute: typeof ApiAuthSplatRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_authed/dashboard/security": {
-      id: "/_authed/dashboard/security";
-      path: "/security";
-      fullPath: "/dashboard/security";
-      preLoaderRoute: typeof AuthedDashboardSecurityRouteImport;
-      parentRoute: typeof AuthedDashboardRoute;
-    };
-    "/_authed/dashboard/devices": {
-      id: "/_authed/dashboard/devices";
-      path: "/devices";
-      fullPath: "/dashboard/devices";
-      preLoaderRoute: typeof AuthedDashboardDevicesRouteImport;
-      parentRoute: typeof AuthedDashboardRoute;
-    };
-    "/_authed/dashboard/billing": {
-      id: "/_authed/dashboard/billing";
-      path: "/billing";
-      fullPath: "/dashboard/billing";
-      preLoaderRoute: typeof AuthedDashboardBillingRouteImport;
-      parentRoute: typeof AuthedDashboardRoute;
-    };
-    "/_authed/dashboard/admin": {
-      id: "/_authed/dashboard/admin";
-      path: "/admin";
-      fullPath: "/dashboard/admin";
-      preLoaderRoute: typeof AuthedDashboardAdminRouteImport;
-      parentRoute: typeof AuthedDashboardRoute;
-    };
-    "/_authed/dashboard/account": {
-      id: "/_authed/dashboard/account";
-      path: "/account";
-      fullPath: "/dashboard/account";
-      preLoaderRoute: typeof AuthedDashboardAccountRouteImport;
-      parentRoute: typeof AuthedDashboardRoute;
-    };
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/desktop': {
+      id: '/auth/desktop'
+      path: '/auth/desktop'
+      fullPath: '/auth/desktop'
+      preLoaderRoute: typeof AuthDesktopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/dashboard': {
+      id: '/_authed/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthedDashboardRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/dashboard/': {
+      id: '/_authed/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof AuthedDashboardIndexRouteImport
+      parentRoute: typeof AuthedDashboardRoute
+    }
+    '/api/polar/webhooks': {
+      id: '/api/polar/webhooks'
+      path: '/api/polar/webhooks'
+      fullPath: '/api/polar/webhooks'
+      preLoaderRoute: typeof ApiPolarWebhooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/downloads/$': {
+      id: '/api/downloads/$'
+      path: '/api/downloads/$'
+      fullPath: '/api/downloads/$'
+      preLoaderRoute: typeof ApiDownloadsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/dashboard/security': {
+      id: '/_authed/dashboard/security'
+      path: '/security'
+      fullPath: '/dashboard/security'
+      preLoaderRoute: typeof AuthedDashboardSecurityRouteImport
+      parentRoute: typeof AuthedDashboardRoute
+    }
+    '/_authed/dashboard/billing': {
+      id: '/_authed/dashboard/billing'
+      path: '/billing'
+      fullPath: '/dashboard/billing'
+      preLoaderRoute: typeof AuthedDashboardBillingRouteImport
+      parentRoute: typeof AuthedDashboardRoute
+    }
+    '/_authed/dashboard/admin': {
+      id: '/_authed/dashboard/admin'
+      path: '/admin'
+      fullPath: '/dashboard/admin'
+      preLoaderRoute: typeof AuthedDashboardAdminRouteImport
+      parentRoute: typeof AuthedDashboardRoute
+    }
+    '/_authed/dashboard/account': {
+      id: '/_authed/dashboard/account'
+      path: '/account'
+      fullPath: '/dashboard/account'
+      preLoaderRoute: typeof AuthedDashboardAccountRouteImport
+      parentRoute: typeof AuthedDashboardRoute
+    }
   }
 }
 
 interface AuthedDashboardRouteChildren {
-  AuthedDashboardAccountRoute: typeof AuthedDashboardAccountRoute;
-  AuthedDashboardAdminRoute: typeof AuthedDashboardAdminRoute;
-  AuthedDashboardBillingRoute: typeof AuthedDashboardBillingRoute;
-  AuthedDashboardDevicesRoute: typeof AuthedDashboardDevicesRoute;
-  AuthedDashboardSecurityRoute: typeof AuthedDashboardSecurityRoute;
-  AuthedDashboardIndexRoute: typeof AuthedDashboardIndexRoute;
+  AuthedDashboardAccountRoute: typeof AuthedDashboardAccountRoute
+  AuthedDashboardAdminRoute: typeof AuthedDashboardAdminRoute
+  AuthedDashboardBillingRoute: typeof AuthedDashboardBillingRoute
+  AuthedDashboardSecurityRoute: typeof AuthedDashboardSecurityRoute
+  AuthedDashboardIndexRoute: typeof AuthedDashboardIndexRoute
 }
 
 const AuthedDashboardRouteChildren: AuthedDashboardRouteChildren = {
   AuthedDashboardAccountRoute: AuthedDashboardAccountRoute,
   AuthedDashboardAdminRoute: AuthedDashboardAdminRoute,
   AuthedDashboardBillingRoute: AuthedDashboardBillingRoute,
-  AuthedDashboardDevicesRoute: AuthedDashboardDevicesRoute,
   AuthedDashboardSecurityRoute: AuthedDashboardSecurityRoute,
   AuthedDashboardIndexRoute: AuthedDashboardIndexRoute,
-};
+}
 
 const AuthedDashboardRouteWithChildren = AuthedDashboardRoute._addFileChildren(
   AuthedDashboardRouteChildren,
-);
+)
 
 interface AuthedRouteChildren {
-  AuthedDashboardRoute: typeof AuthedDashboardRouteWithChildren;
+  AuthedDashboardRoute: typeof AuthedDashboardRouteWithChildren
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRouteWithChildren,
-};
-
-const AuthedRouteWithChildren = AuthedRoute._addFileChildren(AuthedRouteChildren);
-
-interface ApiLicenseRouteChildren {
-  ApiLicenseSplatRoute: typeof ApiLicenseSplatRoute;
 }
 
-const ApiLicenseRouteChildren: ApiLicenseRouteChildren = {
-  ApiLicenseSplatRoute: ApiLicenseSplatRoute,
-};
-
-const ApiLicenseRouteWithChildren = ApiLicenseRoute._addFileChildren(ApiLicenseRouteChildren);
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -510,23 +401,20 @@ const rootRouteChildren: RootRouteChildren = {
   PricingRoute: PricingRoute,
   SignupRoute: SignupRoute,
   WaitlistRoute: WaitlistRoute,
-  ApiLicenseRoute: ApiLicenseRouteWithChildren,
-  ApiRealtimeRoute: ApiRealtimeRoute,
-  ApiTestRoute: ApiTestRoute,
   AuthDesktopRoute: AuthDesktopRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDownloadsSplatRoute: ApiDownloadsSplatRoute,
   ApiPolarWebhooksRoute: ApiPolarWebhooksRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }

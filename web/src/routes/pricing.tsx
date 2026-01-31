@@ -31,11 +31,11 @@ function PricingPage() {
             Pricing that you can overcome
           </h1>
           <p className="mt-4 text-muted-foreground text-lg">
-            Free for personal use. One-time payment for professionals.
+            Free for personal use. Monthly or one-time options for professionals.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {/* Free Tier */}
           <Card className="flex flex-col shadow-md">
             <CardHeader>
@@ -77,8 +77,56 @@ function PricingPage() {
             </CardFooter>
           </Card>
 
-          {/* Pro Tier */}
+          {/* Pro Monthly Tier */}
           <Card className="flex flex-col shadow-md border-primary relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3">
+              <Badge variant="secondary" className="text-xs">
+                Monthly
+              </Badge>
+            </div>
+            <CardHeader>
+              <CardTitle className="text-xl">{pricing.tiers.proMonthly.name}</CardTitle>
+              <CardDescription>For professionals and commercial use</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <div className="flex items-baseline gap-2 mb-6">
+                <span className="text-3xl font-bold">${pricing.tiers.proMonthly.price}</span>
+                <span className="text-muted-foreground text-sm">/month</span>
+              </div>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-primary" />
+                  <span>Commercial use allowed</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-primary" />
+                  <span>Unlimited Connections</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-primary" />
+                  <span>Priority Support</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-primary" />
+                  <span>Everything in Free</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-primary" />
+                  <span>Continuous updates</span>
+                </li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link to="/dashboard/billing" search={{ upgrade: true, plan: 'monthly' }}>
+                  Get Pro Monthly
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* Pro One-time Tier */}
+          <Card className="flex flex-col shadow-md relative overflow-hidden">
             <div className="absolute top-0 right-0 p-3">
               <Badge variant="secondary" className="text-xs">
                 Early Bird
@@ -86,7 +134,7 @@ function PricingPage() {
             </div>
             <CardHeader>
               <CardTitle className="text-xl">{pricing.tiers.pro.name}</CardTitle>
-              <CardDescription>For professionals and commercial use</CardDescription>
+              <CardDescription>One-time purchase, lifetime access</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
               <div className="flex items-baseline gap-2 mb-6">
@@ -120,9 +168,9 @@ function PricingPage() {
               </ul>
             </CardContent>
             <CardFooter>
-              <Button asChild className="w-full">
-                <Link to="/dashboard/billing" search={{ upgrade: true }}>
-                  Get Pro
+              <Button asChild className="w-full" variant="outline">
+                <Link to="/dashboard/billing" search={{ upgrade: true, plan: 'onetime' }}>
+                  Get Pro One-time
                 </Link>
               </Button>
             </CardFooter>
@@ -141,23 +189,21 @@ function PricingPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-medium mb-2">Is Pro really one-time?</h3>
+              <h3 className="font-medium mb-2">What's the difference between monthly and one-time?</h3>
               <p className="text-sm text-muted-foreground">
-                Yes. Pay once, use forever. All future updates are included. No subscriptions.
+                Monthly is a subscription at $3.99/month with continuous updates. One-time is a single payment of $19.99 (early bird) for lifetime access and updates. Both have the same features.
               </p>
             </div>
             <div>
-              <h3 className="font-medium mb-2">Can I upgrade later?</h3>
+              <h3 className="font-medium mb-2">Can I upgrade or switch plans later?</h3>
               <p className="text-sm text-muted-foreground">
-                Yes. Start with the Free version and upgrade to Pro anytime from your dashboard when
-                you need more power.
+                Yes. Start with the Free version and upgrade to Pro anytime. You can also switch between monthly and one-time plans from your dashboard.
               </p>
             </div>
             <div>
               <h3 className="font-medium mb-2">Do you offer refunds?</h3>
               <p className="text-sm text-muted-foreground">
-                Yes. If you're not satisfied, email us within 14 days of purchase for a full refund.
-                No questions asked.
+                Yes. For one-time purchases, email us within 14 days for a full refund. For monthly subscriptions, you can cancel anytime and keep access until the end of your billing period.
               </p>
             </div>
           </div>

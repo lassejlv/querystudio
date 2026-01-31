@@ -6,36 +6,41 @@ import { getRequest } from "@tanstack/react-start/server";
 import { db } from "drizzle";
 import { eq } from "drizzle-orm";
 import { user as userTable } from "drizzle/schema/auth";
+import z from "zod";
 
-export const createCheckout = createServerFn().handler(async () => {
-  const req = getRequest();
-  const session = await auth.api.getSession({ headers: req.headers });
-  if (!session) throw new Error("Unauthorized");
+export const createCheckout = createServerFn({ method: 'POST' })
+  .inputValidator(z.object({ plan: z.enum(['monthly', 'onetime']) }))
+  .handler(async ({ data }) => {
+    const req = getRequest();
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session) throw new Error("Unauthorized");
 
-  const { user } = session;
+    const { user } = session;
 
-  let customerId = "";
+    let customerId = "";
 
-  if (!user.polarCustomerId) {
-    const newCustomer = await polar.customers.create({ email: user.email, name: user.name });
-    await db
-      .update(userTable)
-      .set({ polarCustomerId: newCustomer.id })
-      .where(eq(userTable.id, user.id));
-    customerId = newCustomer.id;
-  } else {
-    customerId = user.polarCustomerId;
-  }
+    if (!user.polarCustomerId) {
+      const newCustomer = await polar.customers.create({ email: user.email, name: user.name });
+      await db
+        .update(userTable)
+        .set({ polarCustomerId: newCustomer.id })
+        .where(eq(userTable.id, user.id));
+      customerId = newCustomer.id;
+    } else {
+      customerId = user.polarCustomerId;
+    }
 
-  const checkout = await polar.checkouts.create({
-    customerId,
-    products: [env.POLAR_PRICING_ID],
-    allowDiscountCodes: true,
-    ...(env.POLAR_EARLY_BIRD_DISCOUNT && { discountId: env.POLAR_EARLY_BIRD_DISCOUNT }),
+    const productId = data.plan === 'monthly' ? env.POLAR_MONTHLY_ID : env.POLAR_PRICING_ID;
+
+    const checkout = await polar.checkouts.create({
+      customerId,
+      products: [productId],
+      allowDiscountCodes: true,
+      ...(data.plan === 'onetime' && env.POLAR_EARLY_BIRD_DISCOUNT && { discountId: env.POLAR_EARLY_BIRD_DISCOUNT }),
+    });
+
+    return { url: checkout.url };
   });
-
-  return { url: checkout.url };
-});
 
 export const createCustomerPortal = createServerFn().handler(async () => {
   const req = getRequest();

@@ -1,37 +1,50 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from '@tanstack/react-start'
 
 const pricing = {
   tiers: {
     free: {
-      name: "Free",
+      name: 'Free',
       price: 0,
       features: {
         maxConnections: 2,
-        dialects: ["all"],
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         personalUseOnly: true,
-        ai: "byok",
+        ai: 'byok',
       },
     },
-    pro: {
-      name: "Pro",
-      price: 39.99,
-      earlyBirdPrice: 19.99,
-      licenseType: "one-time",
+    proMonthly: {
+      name: 'Pro',
+      price: 4.99,
+      licenseType: 'monthly',
       features: {
         maxConnections: Infinity,
-        dialects: ["all"],
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         personalUseOnly: false,
-        ai: "byok",
+        ai: 'byok',
+      },
+    },
+    pro: {
+      name: 'Onetime-purchase',
+      price: 39.99,
+      earlyBirdPrice: 19.99,
+      licenseType: 'one-time',
+      features: {
+        maxConnections: Infinity,
+        dialects: ['all'],
+        sqlRunner: true,
+        autoComplete: true,
+        personalUseOnly: false,
+        ai: 'byok',
       },
     },
   },
   ai: {
-    supportedProviders: ["openai", "anthropic", "google"],
+    supportedProviders: ['openai', 'anthropic', 'google'],
   },
-} as const;
+} as const
 
-export const getPricing = createServerFn({ method: "GET" }).handler(async () => pricing);
+export const getPricing = createServerFn({ method: 'GET' }).handler(async () => pricing)

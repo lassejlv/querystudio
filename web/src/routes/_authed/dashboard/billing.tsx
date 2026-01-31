@@ -1,13 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { getPricing } from "@/server/pricing";
 import { useMutation } from "@tanstack/react-query";
 import { createCheckout, createCustomerPortal } from "@/server/billing";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authed/dashboard/billing")({
   component: BillingPage,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      upgrade: search.upgrade as boolean | undefined,
+      plan: search.plan as 'monthly' | 'onetime' | undefined,
+    };
+  },
   loader: async () => {
     const pricing = await getPricing();
     return { pricing };
@@ -17,10 +24,11 @@ export const Route = createFileRoute("/_authed/dashboard/billing")({
 function BillingPage() {
   const { user } = Route.useRouteContext();
   const { pricing } = Route.useLoaderData();
+  const search = useSearch({ from: "/_authed/dashboard/billing" });
 
   const createCheckoutMutation = useMutation({
-    mutationFn: async () => {
-      return await createCheckout();
+    mutationFn: async (plan: 'monthly' | 'onetime') => {
+      return await createCheckout({ data: { plan } });
     },
     onSuccess: (data) => {
       return window.location.replace(data.url);
@@ -29,6 +37,15 @@ function BillingPage() {
       toast.error("Error", { description: err.message });
     },
   });
+
+  useEffect(() => {
+    if (search.upgrade && search.plan && !user.isPro) {
+      const plan = search.plan as 'monthly' | 'onetime';
+      if (plan === 'monthly' || plan === 'onetime') {
+        createCheckoutMutation.mutate(plan);
+      }
+    }
+  }, [search.upgrade, search.plan, user.isPro]);
 
   const portalMutation = useMutation({
     mutationFn: async () => {
@@ -105,7 +122,7 @@ function BillingPage() {
             <Button
               size="sm"
               className="mt-4"
-              onClick={() => createCheckoutMutation.mutate()}
+              onClick={() => createCheckoutMutation.mutate('onetime')}
               disabled={createCheckoutMutation.isPending}
             >
               {createCheckoutMutation.isPending ? "Loading..." : "Upgrade"}
