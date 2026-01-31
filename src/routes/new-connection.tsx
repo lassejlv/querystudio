@@ -9,7 +9,11 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useConnect, useTestConnection, useCanSaveConnection } from "@/lib/hooks";
 import { toast } from "sonner";
-import type { ConnectionConfig, DatabaseType } from "@/lib/types";
+import type { ConnectionConfig, DatabaseType, SavedConnection } from "@/lib/types";
+import { CommandPalette } from "@/components/command-palette";
+import { EditConnectionDialog } from "@/components/edit-connection-dialog";
+import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
+import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 
 export const Route = createFileRoute("/new-connection")({
   component: NewConnectionPage,
@@ -78,6 +82,10 @@ type ConnectionMode = "params" | "string" | "file";
 
 function NewConnectionPage() {
   const navigate = useNavigate();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false);
+  const [connectionToEdit, setConnectionToEdit] = useState<SavedConnection | null>(null);
+  const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(null);
   const [mode, setMode] = useState<ConnectionMode>("params");
   const [dbType, setDbType] = useState<DatabaseType>("postgres");
   const [tested, setTested] = useState(false);
@@ -95,6 +103,18 @@ function NewConnectionPage() {
   const connect = useConnect();
   const testConnection = useTestConnection();
   const { canSave, currentSaved, maxSaved, isPro } = useCanSaveConnection();
+
+  // Global keyboard shortcuts
+  useGlobalShortcuts({
+    onNewConnection: () => {
+      // Already on new connection page, just refresh
+      window.location.reload();
+    },
+    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenSettings: () => {
+      navigate({ to: "/settings" });
+    },
+  });
 
   const selectedDb = DATABASE_OPTIONS.find((db) => db.id === dbType)!;
 
@@ -115,6 +135,21 @@ function NewConnectionPage() {
     }
     setTested(false);
     setErrors({});
+  };
+
+  const handleSelectSavedConnection = (savedConnection: SavedConnection) => {
+    // If it's a connection string, it has the password embedded, so connect directly
+    if ("connection_string" in savedConnection.config) {
+      setPasswordPromptConnection(savedConnection);
+    } else {
+      // Need password for params-based connections
+      setPasswordPromptConnection(savedConnection);
+    }
+  };
+
+  const handleEditConnection = (savedConnection: SavedConnection) => {
+    setConnectionToEdit(savedConnection);
+    setEditConnectionDialogOpen(true);
   };
 
   const validate = () => {
@@ -520,6 +555,23 @@ function NewConnectionPage() {
           </div>
         </main>
       </div>
+      <EditConnectionDialog
+        connection={connectionToEdit}
+        open={editConnectionDialogOpen}
+        onOpenChange={setEditConnectionDialogOpen}
+      />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onSelectConnection={handleSelectSavedConnection}
+        onEditConnection={handleEditConnection}
+        onNewConnection={() => window.location.reload()}
+      />
+      <PasswordPromptDialog
+        connection={passwordPromptConnection}
+        open={passwordPromptConnection !== null}
+        onOpenChange={(open) => !open && setPasswordPromptConnection(null)}
+      />
     </div>
   );
 }

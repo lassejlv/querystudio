@@ -118,10 +118,6 @@ export function CommandPalette({
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        onOpenChange(!open);
-      }
       // Handle ESC on themes page to go back instead of closing
       if (e.key === "Escape" && open && page === "themes") {
         e.preventDefault();
@@ -132,7 +128,7 @@ export function CommandPalette({
 
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, [open, onOpenChange, page]);
+  }, [open, page]);
 
   const handleSelect = (connection: SavedConnection) => {
     onOpenChange(false);

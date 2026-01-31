@@ -175,6 +175,13 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions = {}) {
         options.onNewConnection?.();
         return;
       }
+
+      // Cmd+K - Open command palette
+      if (isMod && e.key === "k") {
+        e.preventDefault();
+        options.onOpenCommandPalette?.();
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);

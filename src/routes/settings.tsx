@@ -15,6 +15,11 @@ import { useAIQueryStore } from "@/lib/store";
 import { ThemeSelector } from "@/components/theme-selector";
 import { toast } from "sonner";
 import { authClient, signInWithGithub } from "@/lib/auth-client";
+import { CommandPalette } from "@/components/command-palette";
+import { EditConnectionDialog } from "@/components/edit-connection-dialog";
+import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
+import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
+import type { SavedConnection } from "@/lib/types";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -24,8 +29,38 @@ type SettingsTab = "general" | "account" | "appearance" | "experimental";
 
 function SettingsPage() {
   const navigate = useNavigate();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false);
+  const [connectionToEdit, setConnectionToEdit] = useState<SavedConnection | null>(null);
+  const [passwordPromptConnection, setPasswordPromptConnection] = useState<SavedConnection | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const experimentalPlugins = useAIQueryStore((s) => s.experimentalPlugins);
+
+  // Global keyboard shortcuts
+  useGlobalShortcuts({
+    onNewConnection: () => {
+      navigate({ to: "/new-connection" });
+    },
+    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenSettings: () => {
+      // Already on settings page
+    },
+  });
+
+  const handleSelectSavedConnection = (savedConnection: SavedConnection) => {
+    // If it's a connection string, it has the password embedded, so connect directly
+    if ("connection_string" in savedConnection.config) {
+      setPasswordPromptConnection(savedConnection);
+    } else {
+      // Need password for params-based connections
+      setPasswordPromptConnection(savedConnection);
+    }
+  };
+
+  const handleEditConnection = (savedConnection: SavedConnection) => {
+    setConnectionToEdit(savedConnection);
+    setEditConnectionDialogOpen(true);
+  };
 
   const tabs: { id: SettingsTab; label: string }[] = [
     { id: "general", label: "General" },
@@ -85,6 +120,23 @@ function SettingsPage() {
           </div>
         </main>
       </div>
+      <EditConnectionDialog
+        connection={connectionToEdit}
+        open={editConnectionDialogOpen}
+        onOpenChange={setEditConnectionDialogOpen}
+      />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onSelectConnection={handleSelectSavedConnection}
+        onEditConnection={handleEditConnection}
+        onNewConnection={() => navigate({ to: "/new-connection" })}
+      />
+      <PasswordPromptDialog
+        connection={passwordPromptConnection}
+        open={passwordPromptConnection !== null}
+        onOpenChange={(open) => !open && setPasswordPromptConnection(null)}
+      />
     </div>
   );
 }

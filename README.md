@@ -33,15 +33,6 @@ bun run tauri build
 ### Other Commands
 
 ```bash
-# Run Vite dev server only (without Tauri)
-bun run dev
-
-# Build frontend only
-bun run build
-
-# Preview production build
-bun run preview
-
 # Run linter
 bun run lint
 
