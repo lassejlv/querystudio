@@ -26,6 +26,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useConnectionStore, useAIQueryStore, useQueryHistoryStore } from "@/lib/store";
+import { REDIS_COMMANDS } from "@/lib/redis-commands";
 import { useLayoutStore } from "@/lib/layout-store";
 import { useShallow } from "zustand/react/shallow";
 import { useStatusBarStore } from "@/components/status-bar";
@@ -364,115 +365,29 @@ export const QueryEditor = memo(function QueryEditor({
     // Configure language completions based on database type
     const language = isRedis ? "plaintext" : "sql";
     completionProviderRef.current = monaco.languages.registerCompletionItemProvider(language, {
-      provideCompletionItems: () => {
+      triggerCharacters: isRedis ? [' '] : [],
+      provideCompletionItems: (model: editor.ITextModel, position: any) => {
+        const wordUntilPosition = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: wordUntilPosition.startColumn,
+          endColumn: wordUntilPosition.endColumn,
+        };
+
         const keywords = isRedis
-          ? [
-              // String commands
-              "GET",
-              "SET",
-              "SETNX",
-              "SETEX",
-              "PSETEX",
-              "MGET",
-              "MSET",
-              "INCR",
-              "INCRBY",
-              "INCRBYFLOAT",
-              "DECR",
-              "DECRBY",
-              "APPEND",
-              "STRLEN",
-              "GETRANGE",
-              "SETRANGE",
-              // Key commands
-              "DEL",
-              "EXISTS",
-              "EXPIRE",
-              "EXPIREAT",
-              "PEXPIRE",
-              "TTL",
-              "PTTL",
-              "PERSIST",
-              "KEYS",
-              "SCAN",
-              "TYPE",
-              "RENAME",
-              "RENAMENX",
-              "RANDOMKEY",
-              "DBSIZE",
-              "FLUSHDB",
-              "FLUSHALL",
-              // Hash commands
-              "HGET",
-              "HSET",
-              "HSETNX",
-              "HMGET",
-              "HMSET",
-              "HGETALL",
-              "HDEL",
-              "HEXISTS",
-              "HKEYS",
-              "HVALS",
-              "HLEN",
-              "HINCRBY",
-              "HINCRBYFLOAT",
-              "HSCAN",
-              // List commands
-              "LPUSH",
-              "RPUSH",
-              "LPOP",
-              "RPOP",
-              "LRANGE",
-              "LLEN",
-              "LINDEX",
-              "LSET",
-              "LINSERT",
-              "LREM",
-              "LTRIM",
-              // Set commands
-              "SADD",
-              "SREM",
-              "SMEMBERS",
-              "SISMEMBER",
-              "SCARD",
-              "SPOP",
-              "SRANDMEMBER",
-              "SDIFF",
-              "SINTER",
-              "SUNION",
-              "SSCAN",
-              // Sorted Set commands
-              "ZADD",
-              "ZREM",
-              "ZRANGE",
-              "ZREVRANGE",
-              "ZRANGEBYSCORE",
-              "ZREVRANGEBYSCORE",
-              "ZRANK",
-              "ZREVRANK",
-              "ZSCORE",
-              "ZCARD",
-              "ZCOUNT",
-              "ZINCRBY",
-              "ZSCAN",
-              // Stream commands
-              "XADD",
-              "XREAD",
-              "XRANGE",
-              "XREVRANGE",
-              "XLEN",
-              "XINFO",
-              // Server commands
-              "PING",
-              "ECHO",
-              "INFO",
-              "CONFIG",
-              "CLIENT",
-              "SELECT",
-            ].map((keyword) => ({
-              label: keyword,
+          ? REDIS_COMMANDS.map((cmd) => ({
+              label: cmd.name,
               kind: monaco.languages.CompletionItemKind.Function,
-              insertText: keyword,
+              insertText: cmd.args ? `${cmd.name} ${cmd.args}` : cmd.name,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              detail: `${cmd.name} - ${cmd.complexity}`,
+              documentation: {
+                value: `**${cmd.name}**\n\n${cmd.summary}\n\n**Complexity:** ${cmd.complexity}\n\n**Arguments:** ${cmd.args || 'None'}`,
+                isTrusted: true,
+              },
+              range,
+              sortText: cmd.name,
             }))
           : [
               "SELECT",
@@ -536,6 +451,7 @@ export const QueryEditor = memo(function QueryEditor({
               label: keyword,
               kind: monaco.languages.CompletionItemKind.Keyword,
               insertText: keyword,
+              range,
             }));
 
         // Add table names from connection

@@ -2,12 +2,16 @@ import { useEffect, useRef, useCallback, memo } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
-import { CanvasAddon } from "@xterm/addon-canvas";
 import { useConnectionStore } from "@/lib/store";
 import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
 import "@xterm/xterm/css/xterm.css";
 import type { TabContentProps } from "@/lib/tab-sdk";
+
+// Constants
+const PROMPT = "\x1b[32mredis>\x1b[0m ";
+const HISTORY_KEY = "redis-console-history";
+const MAX_HISTORY = 1000;
 
 // Get computed color from CSS variable and convert to hex
 function getCssVarAsHex(varName: string): string {
@@ -96,7 +100,29 @@ export const RedisConsole = memo(function RedisConsole({
   const historyIndexRef = useRef<number>(-1);
   const cursorPosRef = useRef<number>(0);
 
-  const PROMPT = "\x1b[32mredis>\x1b[0m ";
+  // Load history from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      if (saved) {
+        commandHistoryRef.current = JSON.parse(saved);
+      }
+    } catch {
+      commandHistoryRef.current = [];
+    }
+  }, []);
+
+  // Save history to localStorage
+  const saveHistory = useCallback(() => {
+    try {
+      localStorage.setItem(
+        HISTORY_KEY,
+        JSON.stringify(commandHistoryRef.current.slice(-MAX_HISTORY)),
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
 
   const formatValue = useCallback((value: unknown): string => {
     if (value === null || value === undefined) return "(nil)";
@@ -115,8 +141,34 @@ export const RedisConsole = memo(function RedisConsole({
       if (!trimmedCommand) return;
 
       // Handle local commands
-      if (trimmedCommand.toLowerCase() === "clear") {
+      const upperCmd = trimmedCommand.toUpperCase();
+      if (upperCmd === "CLEAR") {
         terminal.clear();
+        return;
+      }
+      if (upperCmd === "HELP" || upperCmd === "?") {
+        terminal.writeln("");
+        terminal.writeln("\x1b[36mRedis Console Commands:\x1b[0m");
+        terminal.writeln("  \x1b[33mhelp\x1b[0m      - Show this help");
+        terminal.writeln("  \x1b[33mclear\x1b[0m     - Clear the screen");
+        terminal.writeln("  \x1b[33mhistory\x1b[0m   - Show command history");
+        terminal.writeln("");
+        terminal.writeln("\x1b[36mKeyboard Shortcuts:\x1b[0m");
+        terminal.writeln("  \x1b[33mCtrl+L\x1b[0m    - Clear screen");
+        terminal.writeln("  \x1b[33mCtrl+U\x1b[0m    - Clear current line");
+        terminal.writeln("  \x1b[33m↑/↓\x1b[0m      - Navigate history");
+        return;
+      }
+      if (upperCmd === "HISTORY") {
+        terminal.writeln("");
+        const history = commandHistoryRef.current;
+        if (history.length === 0) {
+          terminal.writeln("\x1b[90mNo history\x1b[0m");
+        } else {
+          history.slice(-20).forEach((cmd, i) => {
+            terminal.writeln(`  \x1b[90m${i + 1})\x1b[0m ${cmd}`);
+          });
+        }
         return;
       }
 
@@ -146,25 +198,19 @@ export const RedisConsole = memo(function RedisConsole({
     [connectionId, formatValue],
   );
 
-  const writePrompt = useCallback(
-    (terminal: XTerm) => {
-      terminal.write("\r\n" + PROMPT);
-    },
-    [PROMPT],
-  );
+  const writePrompt = useCallback((terminal: XTerm) => {
+    terminal.write("\r\n" + PROMPT);
+  }, []);
 
-  const refreshLine = useCallback(
-    (terminal: XTerm) => {
-      // Clear current line and rewrite
-      terminal.write("\r\x1b[K" + PROMPT + inputBufferRef.current);
-      // Move cursor to correct position
-      const moveBack = inputBufferRef.current.length - cursorPosRef.current;
-      if (moveBack > 0) {
-        terminal.write(`\x1b[${moveBack}D`);
-      }
-    },
-    [PROMPT],
-  );
+  const refreshLine = useCallback((terminal: XTerm) => {
+    // Clear current line and rewrite
+    terminal.write("\r\x1b[K" + PROMPT + inputBufferRef.current);
+    // Move cursor to correct position
+    const moveBack = inputBufferRef.current.length - cursorPosRef.current;
+    if (moveBack > 0) {
+      terminal.write(`\x1b[${moveBack}D`);
+    }
+  }, []);
 
   // Initialize terminal
   useEffect(() => {
@@ -189,30 +235,33 @@ export const RedisConsole = memo(function RedisConsole({
 
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
-    const canvasAddon = new CanvasAddon();
 
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(webLinksAddon);
 
     terminal.open(containerRef.current);
-    terminal.loadAddon(canvasAddon);
 
+    // Delay fit to ensure renderer is ready
     requestAnimationFrame(() => {
-      fitAddon.fit();
+      try {
+        fitAddon.fit();
+      } catch (e) {
+        console.warn("Initial fit failed:", e);
+      }
     });
 
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
     // Welcome message
-    terminal.writeln("\x1b[36m╔════════════════════════════════════════╗\x1b[0m");
+    terminal.writeln("\x1b[36m╔══════════════════════════════════════════════════════╗\x1b[0m");
     terminal.writeln(
-      "\x1b[36m║\x1b[0m       \x1b[1;32mRedis Console\x1b[0m                   \x1b[36m║\x1b[0m",
+      "\x1b[36m║\x1b[0m          \x1b[1;32mRedis Console\x1b[0m - \x1b[90mv2.0\x1b[0m                 \x1b[36m║\x1b[0m",
     );
-    terminal.writeln("\x1b[36m╚════════════════════════════════════════╝\x1b[0m");
+    terminal.writeln("\x1b[36m╚══════════════════════════════════════════════════════╝\x1b[0m");
     terminal.writeln("");
-    terminal.writeln("\x1b[90mType Redis commands and press Enter to execute.\x1b[0m");
-    terminal.writeln("\x1b[90mUse ↑/↓ for command history, 'clear' to clear screen.\x1b[0m");
+    terminal.writeln("\x1b[90mType 'help' for available commands\x1b[0m");
+    terminal.writeln("\x1b[90mUse ↑/↓ for history, Ctrl+L to clear\x1b[0m");
     terminal.write(PROMPT);
 
     // Handle user input
@@ -224,6 +273,7 @@ export const RedisConsole = memo(function RedisConsole({
         const command = inputBufferRef.current;
         if (command.trim()) {
           commandHistoryRef.current.push(command);
+          saveHistory();
           historyIndexRef.current = -1;
         }
         executeCommand(command, terminal).then(() => {
@@ -240,6 +290,14 @@ export const RedisConsole = memo(function RedisConsole({
           cursorPosRef.current--;
           refreshLine(terminal);
         }
+      } else if (data === "\t") {
+        // Tab - insert a tab character
+        inputBufferRef.current =
+          inputBufferRef.current.slice(0, cursorPosRef.current) +
+          "\t" +
+          inputBufferRef.current.slice(cursorPosRef.current);
+        cursorPosRef.current += 1;
+        refreshLine(terminal);
       } else if (data === "\x1b[A") {
         // Arrow up
         if (commandHistoryRef.current.length > 0) {
@@ -318,9 +376,13 @@ export const RedisConsole = memo(function RedisConsole({
 
     // Handle window resize
     const handleResize = () => {
-      if (fitAddonRef.current && terminalRef.current) {
+      if (fitAddonRef.current && terminalRef.current && isInitializedRef.current) {
         requestAnimationFrame(() => {
-          fitAddonRef.current?.fit();
+          try {
+            fitAddonRef.current?.fit();
+          } catch (e) {
+            // Ignore resize errors when renderer is not ready
+          }
         });
       }
     };
@@ -329,9 +391,13 @@ export const RedisConsole = memo(function RedisConsole({
 
     // ResizeObserver for container
     const resizeObserver = new ResizeObserver(() => {
-      if (fitAddonRef.current && terminalRef.current) {
+      if (fitAddonRef.current && terminalRef.current && isInitializedRef.current) {
         requestAnimationFrame(() => {
-          fitAddonRef.current?.fit();
+          try {
+            fitAddonRef.current?.fit();
+          } catch (e) {
+            // Ignore resize errors when renderer is not ready
+          }
         });
       }
     });
@@ -345,7 +411,12 @@ export const RedisConsole = memo(function RedisConsole({
       fitAddonRef.current = null;
       isInitializedRef.current = false;
     };
-  }, [PROMPT, executeCommand, refreshLine, writePrompt]);
+  }, [
+    executeCommand,
+    refreshLine,
+    writePrompt,
+    saveHistory,
+  ]);
 
   // Update theme when it changes
   useEffect(() => {
@@ -356,10 +427,14 @@ export const RedisConsole = memo(function RedisConsole({
 
   // Focus terminal when visible
   useEffect(() => {
-    if (fitAddonRef.current && terminalRef.current) {
+    if (fitAddonRef.current && terminalRef.current && isInitializedRef.current) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          fitAddonRef.current?.fit();
+          try {
+            fitAddonRef.current?.fit();
+          } catch (e) {
+            // Ignore fit errors when renderer is not ready
+          }
           terminalRef.current?.focus();
         });
       });
@@ -374,5 +449,11 @@ export const RedisConsole = memo(function RedisConsole({
     );
   }
 
-  return <div ref={containerRef} className="h-full w-full" style={{ padding: "8px" }} />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" style={{ padding: "8px" }} />
+
+
+    </div>
+  );
 });
