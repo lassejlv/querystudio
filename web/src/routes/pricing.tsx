@@ -26,7 +26,7 @@ function useScrollReveal() {
           }
         })
       },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
     )
 
     if (ref.current) {
@@ -58,21 +58,15 @@ function PricingPage() {
           <p className='mt-4 text-muted-foreground text-lg'>Free for personal use. Monthly or one-time options for professionals.</p>
         </div>
 
-        <div 
-          ref={cardsRef.ref}
-          className={`grid md:grid-cols-3 gap-8 max-w-5xl mx-auto transition-all duration-1000 ${cardsRef.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-        >
+        <div ref={cardsRef.ref} className={`grid md:grid-cols-3 gap-8 max-w-5xl mx-auto transition-all duration-1000 ${cardsRef.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Free Tier */}
           <Card className='flex flex-col shadow-md hover-glow card-shine transition-all duration-300 group'>
             <CardHeader>
               <div className='flex items-center justify-between'>
                 <CardTitle className='text-xl'>{pricing.tiers.free.name}</CardTitle>
-                <div className='w-10 h-10 rounded-full bg-muted flex items-center justify-center'>
-                  <Zap className='w-5 h-5 text-muted-foreground' />
-                </div>
               </div>
               <CardDescription>Perfect for hobbyists and students</CardDescription>
-            </CardHeader>            
+            </CardHeader>
             <CardContent className='flex-1'>
               <div className='text-4xl font-bold mb-6'>$0</div>
               <ul className='space-y-3 text-sm'>
@@ -115,17 +109,14 @@ function PricingPage() {
                 Popular
               </Badge>
             </div>
-            <div className='absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity' />
-            
+            <div className='absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity' />
+
             <CardHeader className='relative'>
               <div className='flex items-center justify-between'>
                 <CardTitle className='text-xl'>{pricing.tiers.proMonthly.name}</CardTitle>
-                <div className='w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center'>
-                  <Crown className='w-5 h-5 text-primary' />
-                </div>
               </div>
               <CardDescription>For professionals and commercial use</CardDescription>
-            </CardHeader>            
+            </CardHeader>
             <CardContent className='flex-1 relative'>
               <div className='flex items-baseline gap-2 mb-2'>
                 <span className='text-4xl font-bold'>${pricing.tiers.proMonthly.price}</span>
@@ -171,18 +162,15 @@ function PricingPage() {
                 Early Bird
               </Badge>
             </div>
-            
+
             <div className='absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity' />
-            
+
             <CardHeader className='relative'>
               <div className='flex items-center justify-between'>
                 <CardTitle className='text-xl'>{pricing.tiers.pro.name}</CardTitle>
-                <div className='w-10 h-10 rounded-full bg-muted flex items-center justify-center'>
-                  <Sparkles className='w-5 h-5 text-muted-foreground' />
-                </div>
               </div>
               <CardDescription>One-time purchase, lifetime access</CardDescription>
-            </CardHeader>            
+            </CardHeader>
             <CardContent className='flex-1 relative'>
               <div className='flex items-baseline gap-2 mb-6'>
                 <span className='text-4xl font-bold'>${pricing.tiers.pro.earlyBirdPrice}</span>
@@ -223,10 +211,7 @@ function PricingPage() {
         </div>
 
         {/* FAQ */}
-        <div 
-          ref={faqRef.ref}
-          className={`mt-24 max-w-3xl mx-auto transition-all duration-1000 ${faqRef.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-        >
+        <div ref={faqRef.ref} className={`mt-24 max-w-3xl mx-auto transition-all duration-1000 ${faqRef.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <h2 className='text-2xl font-semibold text-center mb-12'>Frequently Asked Questions</h2>
           <div className='grid gap-8 md:grid-cols-2'>
             <div className='group p-4 rounded-xl hover:bg-muted/50 transition-colors'>

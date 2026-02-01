@@ -158,7 +158,7 @@ function useScrollReveal() {
           }
         })
       },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
     )
 
     if (ref.current) {
@@ -196,7 +196,9 @@ function DownloadPage() {
             <p className='mt-2 text-muted-foreground'>No releases available yet.</p>
             <div className='mt-6'>
               <Button variant='outline' asChild>
-                <Link to='/' className='inline-flex items-center gap-2'>Back to home</Link>
+                <Link to='/' className='inline-flex items-center gap-2'>
+                  Back to home
+                </Link>
               </Button>
             </div>
           </div>
@@ -209,19 +211,6 @@ function DownloadPage() {
   const windowsAssets = release.assets.filter((a) => a.platform === 'windows' && !isSignatureFile(a.name))
   const linuxAssets = release.assets.filter((a) => a.platform === 'linux' && !isSignatureFile(a.name))
 
-  const PlatformIcon = ({ platform }: { platform: string }) => {
-    switch (platform) {
-      case 'macos':
-        return <Apple className='w-6 h-6' />
-      case 'windows':
-        return <Monitor className='w-6 h-6' />
-      case 'linux':
-        return <Terminal className='w-6 h-6' />
-      default:
-        return <Download className='w-6 h-6' />
-    }
-  }
-
   return (
     <div className='min-h-screen bg-background'>
       <Header />
@@ -229,56 +218,36 @@ function DownloadPage() {
       <main className='container mx-auto px-4 py-16 max-w-5xl'>
         {/* Hero */}
         <div className='text-center mb-16'>
-          <div className='inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm mb-6'>
-            <Sparkles className='w-4 h-4' />
-            <span>Latest Release</span>
-          </div>
-          
           <h1 className='text-4xl md:text-5xl font-bold mb-4'>Download QueryStudio</h1>
           <p className='text-xl text-muted-foreground'>
-            Version <span className='font-mono text-primary'>{release.version}</span> · {' '}
+            Version <span className='font-mono text-primary'>{release.version}</span> ·{' '}
             <time dateTime={release.publishedAt}>
               {new Date(release.publishedAt).toLocaleDateString(undefined, {
                 year: 'numeric',
                 month: 'long',
-                day: 'numeric'
+                day: 'numeric',
               })}
             </time>
           </p>
         </div>
 
-        <div 
-          ref={cardsRef.ref}
-          className={`grid md:grid-cols-3 gap-6 mb-12 transition-all duration-1000 ${cardsRef.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-        >
+        <div ref={cardsRef.ref} className={`grid md:grid-cols-3 gap-6 mb-12 transition-all duration-1000 ${cardsRef.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* macOS */}
           <div className={`group relative p-6 rounded-2xl border bg-card hover-glow card-shine transition-all duration-300 ${userPlatform === 'macos' ? 'ring-2 ring-primary' : ''}`}>
             <div className='flex items-center justify-between mb-6'>
               <div className='flex items-center gap-3'>
-                <div className='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform'>
-                  <PlatformIcon platform='macos' />
-                </div>
                 <div>
                   <h2 className='font-semibold text-lg'>macOS</h2>
                   <p className='text-sm text-muted-foreground'>10.15 or later</p>
                 </div>
               </div>
-              {userPlatform === 'macos' && (
-                <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full animate-pulse'>
-                  Your platform
-                </span>
-              )}
+              {userPlatform === 'macos' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full animate-pulse'>Your platform</span>}
             </div>
-            
+
             {macosAssets.length > 0 ? (
               <div className='space-y-2'>
                 {macosAssets.map((asset) => (
-                  <a 
-                    key={asset.name} 
-                    href={asset.downloadUrl} 
-                    download 
-                    className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted transition-all group/link'
-                  >
+                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted transition-all group/link'>
                     <div className='flex items-center gap-3'>
                       <Download className='w-4 h-4 text-muted-foreground group-hover/link:text-primary transition-colors' />
                       <span className='font-medium'>{getArchLabel(asset.arch)}</span>
@@ -296,35 +265,21 @@ function DownloadPage() {
           <div className={`group relative p-6 rounded-2xl border bg-card hover-glow card-shine transition-all duration-300 ${userPlatform === 'windows' ? 'ring-2 ring-primary' : ''}`}>
             <div className='flex items-center justify-between mb-6'>
               <div className='flex items-center gap-3'>
-                <div className='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform'>
-                  <PlatformIcon platform='windows' />
-                </div>
                 <div>
                   <h2 className='font-semibold text-lg'>Windows</h2>
                   <p className='text-sm text-muted-foreground'>10 or later</p>
                 </div>
               </div>
-              {userPlatform === 'windows' && (
-                <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full animate-pulse'>
-                  Your platform
-                </span>
-              )}
+              {userPlatform === 'windows' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full animate-pulse'>Your platform</span>}
             </div>
-            
+
             {windowsAssets.length > 0 ? (
               <div className='space-y-2'>
                 {windowsAssets.map((asset) => (
-                  <a 
-                    key={asset.name} 
-                    href={asset.downloadUrl} 
-                    download 
-                    className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted transition-all group/link'
-                  >
+                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted transition-all group/link'>
                     <div className='flex items-center gap-3'>
                       <Download className='w-4 h-4 text-muted-foreground group-hover/link:text-primary transition-colors' />
-                      <span className='font-medium'>
-                        {asset.name.endsWith('.exe') ? 'Installer' : asset.name.endsWith('.msi') ? 'MSI' : getArchLabel(asset.arch)}
-                      </span>
+                      <span className='font-medium'>{asset.name.endsWith('.exe') ? 'Installer' : asset.name.endsWith('.msi') ? 'MSI' : getArchLabel(asset.arch)}</span>
                     </div>
                     <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
                   </a>
@@ -339,30 +294,18 @@ function DownloadPage() {
           <div className={`group relative p-6 rounded-2xl border bg-card hover-glow card-shine transition-all duration-300 ${userPlatform === 'linux' ? 'ring-2 ring-primary' : ''}`}>
             <div className='flex items-center justify-between mb-6'>
               <div className='flex items-center gap-3'>
-                <div className='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform'>
-                  <PlatformIcon platform='linux' />
-                </div>
                 <div>
                   <h2 className='font-semibold text-lg'>Linux</h2>
                   <p className='text-sm text-muted-foreground'>Various distros</p>
                 </div>
               </div>
-              {userPlatform === 'linux' && (
-                <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full animate-pulse'>
-                  Your platform
-                </span>
-              )}
+              {userPlatform === 'linux' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full animate-pulse'>Your platform</span>}
             </div>
-            
+
             {linuxAssets.length > 0 ? (
               <div className='space-y-2'>
                 {linuxAssets.map((asset) => (
-                  <a 
-                    key={asset.name} 
-                    href={asset.downloadUrl} 
-                    download 
-                    className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted transition-all group/link'
-                  >
+                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted transition-all group/link'>
                     <div className='flex items-center gap-3'>
                       <Download className='w-4 h-4 text-muted-foreground group-hover/link:text-primary transition-colors' />
                       <span className='font-medium'>
@@ -387,30 +330,16 @@ function DownloadPage() {
                 <Apple className='w-5 h-5' />
                 macOS Note
               </h3>
-              <p className='text-sm text-muted-foreground leading-relaxed'>
-                The app isn't signed yet. Right-click and select "Open" on first launch to bypass Gatekeeper.
-              </p>
-              <a 
-                href={donateUrl} 
-                target='_blank' 
-                rel='noopener noreferrer' 
-                className='inline-flex items-center gap-1 text-sm mt-3 hover:underline text-primary'
-              >
+              <p className='text-sm text-muted-foreground leading-relaxed'>The app isn't signed yet. Right-click and select "Open" on first launch to bypass Gatekeeper.</p>
+              <a href={donateUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm mt-3 hover:underline text-primary'>
                 Support signing <ExternalLink className='h-3 w-3' />
               </a>
             </div>
-            
+
             <div>
               <h3 className='font-semibold mb-3'>Release Notes</h3>
-              <p className='text-sm text-muted-foreground leading-relaxed mb-3'>
-                View the full changelog and release notes on GitHub.
-              </p>
-              <a 
-                href={release.htmlUrl} 
-                target='_blank' 
-                rel='noopener noreferrer' 
-                className='inline-flex items-center gap-1 text-sm hover:underline text-primary'
-              >
+              <p className='text-sm text-muted-foreground leading-relaxed mb-3'>View the full changelog and release notes on GitHub.</p>
+              <a href={release.htmlUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm hover:underline text-primary'>
                 View on GitHub <ExternalLink className='h-3 w-3' />
               </a>
             </div>
