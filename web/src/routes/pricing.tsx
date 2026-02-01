@@ -50,10 +50,6 @@ function PricingPage() {
 
       <main className='flex-1 container mx-auto px-4 py-16 md:py-24'>
         <div className='max-w-2xl mx-auto text-center mb-16'>
-          <div className='inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm mb-6'>
-            <Sparkles className='w-4 h-4' />
-            <span>Simple, transparent pricing</span>
-          </div>
           <h1 className='text-4xl md:text-5xl font-bold tracking-tight'>Pricing that you can overcome</h1>
           <p className='mt-4 text-muted-foreground text-lg'>Free for personal use. Monthly or one-time options for professionals.</p>
         </div>
@@ -163,7 +159,7 @@ function PricingPage() {
               </Badge>
             </div>
 
-            <div className='absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity' />
+            <div className='absolute inset-0 bg-linear-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity' />
 
             <CardHeader className='relative'>
               <div className='flex items-center justify-between'>
