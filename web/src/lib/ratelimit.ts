@@ -1,16 +1,16 @@
-import { Ratelimit } from '@upstash/ratelimit'
-import { redis } from './redis'
+import { Ratelimit, slidingWindow } from 'bunlimit'
+import { redis } from 'bun'
 
 export const apiRatelimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(300, '60 s'),
-  prefix: '@upstash/ratelimit:api',
+  limiter: slidingWindow(300, 60),
+  prefix: 'ratelimit:api',
   analytics: true,
 })
 
 export const authRatelimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(30, '60 s'),
-  prefix: '@upstash/ratelimit:auth',
+  limiter: slidingWindow(30, 60),
+  prefix: 'ratelimit:auth',
   analytics: true,
 })
