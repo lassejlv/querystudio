@@ -1,0 +1,246 @@
+---
+title: Custom Themes
+description: Create and import custom color themes for QueryStudio.
+icon: Palette
+---
+
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+QueryStudio supports custom themes that let you personalize the entire application's appearance. Choose from built-in themes or create your own.
+
+## Built-in Themes
+
+<Cards>
+  <Card title="Default" description="Clean light theme for daytime use" />
+  <Card title="Dark" description="Default dark theme, easy on the eyes" />
+  <Card title="Tokyo Night" description="Inspired by Tokyo's neon-lit nights" />
+  <Card title="One Dark" description="The beloved Atom editor theme" />
+  <Card title="GitHub Dark" description="GitHub's official dark appearance" />
+  <Card title="Rose Pine" description="Elegant dark theme with rose accents" />
+  <Card title="Catppuccin Mocha" description="Soothing pastel colors on dark" />
+</Cards>
+
+---
+
+## Creating a Custom Theme
+
+Custom themes are JSON files that define your color palette. Here's the complete structure:
+
+<Tabs items={['Minimal', 'Full Example']}>
+  <Tab value="Minimal">
+    Start with just the essentials:
+
+    ```json title="my-theme.json"
+    {
+      "id": "my-theme",
+      "name": "my-theme",
+      "displayName": "My Theme",
+      "isDark": true,
+      "colors": {
+        "background": "#1a1b26",
+        "foreground": "#c0caf5",
+        "primary": "#7aa2f7",
+        "primaryForeground": "#1a1b26"
+      }
+    }
+    ```
+
+    <Callout type="info">
+      Missing color properties will inherit from the default theme.
+    </Callout>
+  </Tab>
+  <Tab value="Full Example">
+    Complete theme with all properties:
+
+    ```json title="catppuccin-example.json"
+    {
+      "id": "catppuccin",
+      "name": "catppuccin",
+      "displayName": "Catppuccin Mocha",
+      "description": "Soothing pastel theme for late-night coding",
+      "author": "Your Name",
+      "version": "1.0.0",
+      "isDark": true,
+      "isBuiltIn": false,
+      "colors": {
+        "background": "#1e1e2e",
+        "foreground": "#cdd6f4",
+        "card": "#181825",
+        "cardForeground": "#cdd6f4",
+        "popover": "#181825",
+        "popoverForeground": "#cdd6f4",
+        "primary": "#cba6f7",
+        "primaryForeground": "#1e1e2e",
+        "secondary": "#313244",
+        "secondaryForeground": "#cdd6f4",
+        "muted": "#181825",
+        "mutedForeground": "#a6adc8",
+        "accent": "#313244",
+        "accentForeground": "#cdd6f4",
+        "destructive": "#f38ba8",
+        "border": "#313244",
+        "input": "#313244",
+        "ring": "#cba6f7",
+        "chart1": "#cba6f7",
+        "chart2": "#89b4fa",
+        "chart3": "#a6e3a1",
+        "chart4": "#f9e2af",
+        "chart5": "#f38ba8",
+        "sidebar": "#11111b",
+        "sidebarForeground": "#cdd6f4",
+        "sidebarPrimary": "#cba6f7",
+        "sidebarPrimaryForeground": "#1e1e2e",
+        "sidebarAccent": "#181825",
+        "sidebarAccentForeground": "#cdd6f4",
+        "sidebarBorder": "#313244",
+        "sidebarRing": "#cba6f7"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Theme Schema
+
+### Metadata
+
+| Property | Type | Required | Description |
+| --- | --- | :---: | --- |
+| `id` | `string` | Yes | Unique identifier (kebab-case recommended) |
+| `name` | `string` | Yes | Internal name, typically matches `id` |
+| `displayName` | `string` | Yes | Human-readable name shown in UI |
+| `description` | `string` | No | Brief description of the theme |
+| `author` | `string` | No | Theme creator's name |
+| `version` | `string` | No | Semantic version (e.g., `1.0.0`) |
+| `isDark` | `boolean` | Yes | Set `true` for dark themes |
+| `isBuiltIn` | `boolean` | No | Always `false` for custom themes |
+
+### Color Properties
+
+<Tabs items={['Core', 'UI Elements', 'Sidebar', 'Charts']}>
+  <Tab value="Core">
+    The fundamental colors that define your theme's personality.
+
+    | Property | Purpose |
+    | --- | --- |
+    | `background` | Main application background |
+    | `foreground` | Primary text color |
+    | `primary` | Accent color for buttons, links, focus states |
+    | `primaryForeground` | Text on primary-colored elements |
+    | `secondary` | Secondary actions and less prominent UI |
+    | `secondaryForeground` | Text on secondary elements |
+    | `muted` | Subtle backgrounds, disabled states |
+    | `mutedForeground` | Subtle text, placeholders |
+    | `accent` | Highlights, hover states |
+    | `accentForeground` | Text on accent elements |
+    | `destructive` | Dangerous actions, errors, delete buttons |
+  </Tab>
+  <Tab value="UI Elements">
+    Colors for specific interface components.
+
+    | Property | Purpose |
+    | --- | --- |
+    | `card` | Card and panel backgrounds |
+    | `cardForeground` | Text within cards |
+    | `popover` | Dropdown and popover backgrounds |
+    | `popoverForeground` | Text in popovers |
+    | `border` | Borders and dividers |
+    | `input` | Input field borders |
+    | `ring` | Focus ring around interactive elements |
+  </Tab>
+  <Tab value="Sidebar">
+    The sidebar has its own color system for visual separation.
+
+    | Property | Purpose |
+    | --- | --- |
+    | `sidebar` | Sidebar background |
+    | `sidebarForeground` | Sidebar text |
+    | `sidebarPrimary` | Active/selected items |
+    | `sidebarPrimaryForeground` | Text on active items |
+    | `sidebarAccent` | Hover state background |
+    | `sidebarAccentForeground` | Hover state text |
+    | `sidebarBorder` | Sidebar borders |
+    | `sidebarRing` | Focus ring in sidebar |
+  </Tab>
+  <Tab value="Charts">
+    Five colors for data visualization consistency.
+
+    | Property | Suggested Use |
+    | --- | --- |
+    | `chart1` | Primary data series |
+    | `chart2` | Secondary data series |
+    | `chart3` | Tertiary data series |
+    | `chart4` | Fourth data series |
+    | `chart5` | Fifth data series |
+
+    <Callout type="info">
+      Choose colors with good contrast between each other for readable charts.
+    </Callout>
+  </Tab>
+</Tabs>
+
+---
+
+## Import & Export
+
+<Steps>
+<Step>
+
+### Import a Theme
+
+Open **Settings** and navigate to **Appearance**. Click **Import Theme** and paste your JSON or select a file.
+
+</Step>
+<Step>
+
+### Apply Your Theme
+
+Your imported theme appears in the theme list. Click to activate it instantly.
+
+</Step>
+<Step>
+
+### Export for Sharing
+
+Select any theme and click **Export Theme** to download the JSON file. Share it with others or back it up.
+
+</Step>
+</Steps>
+
+---
+
+## Supported Color Formats
+
+<Cards>
+  <Card title="Hex" description="#1e1e2e, #cdd6f4, #fff" />
+  <Card title="RGB/RGBA" description="rgb(30, 30, 46), rgba(0,0,0,0.5)" />
+  <Card title="HSL" description="hsl(240, 21%, 15%)" />
+  <Card title="OKLCH" description="oklch(0.141 0.005 285.823)" />
+</Cards>
+
+<Callout type="info">
+  **OKLCH** is recommended for perceptually uniform color adjustments. It makes it easier to create harmonious color palettes.
+</Callout>
+
+---
+
+## Pro Tips
+
+<Accordions type="single">
+  <Accordion title="Start from an existing theme">
+    Export a built-in theme you like, then tweak the colors. This ensures you have all properties defined and a solid starting point.
+  </Accordion>
+  <Accordion title="Test accessibility">
+    Use a contrast checker to ensure text remains readable. Aim for at least 4.5:1 contrast ratio for body text.
+  </Accordion>
+  <Accordion title="Test all UI states">
+    Preview your theme with tables, charts, modals, and error states to catch any issues before sharing.
+  </Accordion>
+  <Accordion title="Set isDark correctly">
+    The `isDark` flag affects scrollbars, system UI elements, and certain component behaviors. Dark background themes should set this to `true`.
+  </Accordion>
+</Accordions>

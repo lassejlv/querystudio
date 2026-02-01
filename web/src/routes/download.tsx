@@ -193,6 +193,12 @@ function DownloadPage() {
   const macosAssets = release.assets.filter(
     (a) => a.platform === "macos" && !isSignatureFile(a.name),
   );
+  const windowsAssets = release.assets.filter(
+    (a) => a.platform === "windows" && !isSignatureFile(a.name),
+  );
+  const linuxAssets = release.assets.filter(
+    (a) => a.platform === "linux" && !isSignatureFile(a.name),
+  );
 
   return (
     <div className="min-h-screen bg-background">
