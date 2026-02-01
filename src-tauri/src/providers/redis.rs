@@ -3,9 +3,7 @@ use super::{
     QueryResult, TableInfo,
 };
 use redis::{
-    aio::ConnectionManager,
-    cluster_async::ClusterConnection,
-    AsyncCommands, Client, RedisError,
+    aio::ConnectionManager, cluster_async::ClusterConnection, AsyncCommands, Client, RedisError,
 };
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
@@ -80,7 +78,8 @@ impl RedisProvider {
     pub async fn connect(params: ConnectionParams) -> Result<Self, ProviderError> {
         match params {
             ConnectionParams::ConnectionString { connection_string } => {
-                if connection_string.contains(',') || connection_string.starts_with("redis-cluster://")
+                if connection_string.contains(',')
+                    || connection_string.starts_with("redis-cluster://")
                 {
                     Self::connect_cluster(connection_string).await
                 } else {
@@ -139,12 +138,13 @@ impl RedisProvider {
 
         let client = redis::cluster::ClusterClient::builder(url_list)
             .build()
-            .map_err(|e| ProviderError::new(format!("Failed to create Redis cluster client: {}", e)))?;
+            .map_err(|e| {
+                ProviderError::new(format!("Failed to create Redis cluster client: {}", e))
+            })?;
 
-        let conn = client
-            .get_async_connection()
-            .await
-            .map_err(|e| ProviderError::new(format!("Failed to connect to Redis cluster: {}", e)))?;
+        let conn = client.get_async_connection().await.map_err(|e| {
+            ProviderError::new(format!("Failed to connect to Redis cluster: {}", e))
+        })?;
 
         Ok(Self {
             conn: RedisConnection::Cluster(Arc::new(Mutex::new(conn))),
@@ -389,20 +389,26 @@ impl RedisProvider {
     {
         match key_type {
             "string" => {
-                let val: Option<String> = conn.get(key).await.map_err(RedisProvider::format_error)?;
+                let val: Option<String> =
+                    conn.get(key).await.map_err(RedisProvider::format_error)?;
                 Ok(val
                     .map(serde_json::Value::String)
                     .unwrap_or(serde_json::Value::Null))
             }
             "list" => {
-                let vals: Vec<String> =
-                    conn.lrange(key, 0, 99).await.map_err(RedisProvider::format_error)?;
+                let vals: Vec<String> = conn
+                    .lrange(key, 0, 99)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
                 Ok(serde_json::Value::Array(
                     vals.into_iter().map(serde_json::Value::String).collect(),
                 ))
             }
             "set" => {
-                let vals: Vec<String> = conn.smembers(key).await.map_err(RedisProvider::format_error)?;
+                let vals: Vec<String> = conn
+                    .smembers(key)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
                 Ok(serde_json::Value::Array(
                     vals.into_iter().map(serde_json::Value::String).collect(),
                 ))
@@ -424,8 +430,10 @@ impl RedisProvider {
                 Ok(serde_json::Value::Array(arr))
             }
             "hash" => {
-                let vals: Vec<(String, String)> =
-                    conn.hgetall(key).await.map_err(RedisProvider::format_error)?;
+                let vals: Vec<(String, String)> = conn
+                    .hgetall(key)
+                    .await
+                    .map_err(RedisProvider::format_error)?;
                 let obj: serde_json::Map<String, serde_json::Value> = vals
                     .into_iter()
                     .map(|(k, v)| (k, serde_json::Value::String(v)))
@@ -575,9 +583,16 @@ impl RedisProvider {
                     .query_async(conn)
                     .await
                     .map_err(RedisProvider::format_error)?;
-                serde_json::Value::Array(result.into_iter().map(serde_json::Value::String).collect())
+                serde_json::Value::Array(
+                    result.into_iter().map(serde_json::Value::String).collect(),
+                )
             }
-            _ => return Err(ProviderError::new(format!("Unknown JSON command: {}", command))),
+            _ => {
+                return Err(ProviderError::new(format!(
+                    "Unknown JSON command: {}",
+                    command
+                )))
+            }
         };
 
         Ok(result)
@@ -650,7 +665,11 @@ impl RedisProvider {
 
         let mut server_info = ServerInfo {
             version: String::new(),
-            mode: if self.is_cluster { "cluster".to_string() } else { "standalone".to_string() },
+            mode: if self.is_cluster {
+                "cluster".to_string()
+            } else {
+                "standalone".to_string()
+            },
             os: String::new(),
             process_id: 0,
             tcp_port: 0,
@@ -668,7 +687,9 @@ impl RedisProvider {
                     "os" => server_info.os = value.to_string(),
                     "process_id" => server_info.process_id = value.parse().unwrap_or(0),
                     "tcp_port" => server_info.tcp_port = value.parse().unwrap_or(0),
-                    "uptime_in_seconds" => server_info.uptime_in_seconds = value.parse().unwrap_or(0),
+                    "uptime_in_seconds" => {
+                        server_info.uptime_in_seconds = value.parse().unwrap_or(0)
+                    }
                     _ => {}
                 }
             }
@@ -773,9 +794,10 @@ impl RedisProvider {
                     success: true,
                 })
             }
-            RedisConnection::Cluster(_) => {
-                Err(ProviderError::new("Transactions are not supported in Redis Cluster mode").with_hint("Use pipelines instead."))
-            }
+            RedisConnection::Cluster(_) => Err(ProviderError::new(
+                "Transactions are not supported in Redis Cluster mode",
+            )
+            .with_hint("Use pipelines instead.")),
         }
     }
 
@@ -885,7 +907,12 @@ impl RedisProvider {
                 }
 
                 Ok(QueryResult {
-                    columns: vec!["id".to_string(), "timestamp".to_string(), "duration_us".to_string(), "command".to_string()],
+                    columns: vec![
+                        "id".to_string(),
+                        "timestamp".to_string(),
+                        "duration_us".to_string(),
+                        "command".to_string(),
+                    ],
                     row_count: rows.len(),
                     rows,
                 })
@@ -926,7 +953,12 @@ impl RedisProvider {
                 }
 
                 Ok(QueryResult {
-                    columns: vec!["id".to_string(), "timestamp".to_string(), "duration_us".to_string(), "command".to_string()],
+                    columns: vec![
+                        "id".to_string(),
+                        "timestamp".to_string(),
+                        "duration_us".to_string(),
+                        "command".to_string(),
+                    ],
                     row_count: rows.len(),
                     rows,
                 })
@@ -947,10 +979,14 @@ impl RedisProvider {
         // Handle special commands
         match cmd_name.as_str() {
             "MULTI" => {
-                return Err(ProviderError::new("Use execute_transaction() for MULTI/EXEC transactions"));
+                return Err(ProviderError::new(
+                    "Use execute_transaction() for MULTI/EXEC transactions",
+                ));
             }
             "EXEC" | "DISCARD" => {
-                return Err(ProviderError::new("Use execute_transaction() for MULTI/EXEC transactions"));
+                return Err(ProviderError::new(
+                    "Use execute_transaction() for MULTI/EXEC transactions",
+                ));
             }
             _ => {}
         }
