@@ -248,7 +248,23 @@ function DownloadPage() {
                 <span className="text-xs bg-muted px-2 py-0.5 rounded">Your platform</span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">On the way</p>
+            {windowsAssets.length > 0 ? (
+              <div className="space-y-2">
+                {windowsAssets.map((asset) => (
+                  <a
+                    key={asset.name}
+                    href={asset.downloadUrl}
+                    download
+                    className="flex items-center justify-between py-2 px-3 -mx-3 rounded hover:bg-muted transition-colors"
+                  >
+                    <span>{asset.name.endsWith(".exe") ? "Installer" : asset.name.endsWith(".msi") ? "MSI" : getArchLabel(asset.arch)}</span>
+                    <span className="text-sm text-muted-foreground">{formatBytes(asset.size)}</span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Coming soon</p>
+            )}
           </section>
 
           {/* Linux */}
@@ -259,7 +275,23 @@ function DownloadPage() {
                 <span className="text-xs bg-muted px-2 py-0.5 rounded">Your platform</span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">On the way</p>
+            {linuxAssets.length > 0 ? (
+              <div className="space-y-2">
+                {linuxAssets.map((asset) => (
+                  <a
+                    key={asset.name}
+                    href={asset.downloadUrl}
+                    download
+                    className="flex items-center justify-between py-2 px-3 -mx-3 rounded hover:bg-muted transition-colors"
+                  >
+                    <span>{asset.name.endsWith(".deb") ? "Debian/Ubuntu" : asset.name.endsWith(".rpm") ? "Fedora/RHEL" : asset.name.endsWith(".AppImage") ? "AppImage" : getArchLabel(asset.arch)}</span>
+                    <span className="text-sm text-muted-foreground">{formatBytes(asset.size)}</span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Coming soon</p>
+            )}
           </section>
         </div>
 
