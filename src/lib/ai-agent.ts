@@ -28,6 +28,7 @@ export const AI_MODELS: AIModelInfo[] = [
   { id: "gpt-5", name: "GPT-5", provider: "openai" },
   { id: "gpt-5-mini", name: "GPT-5 Mini", provider: "openai" },
   { id: "gemini-3-flash-preview", name: "Gemini 3 Flash", provider: "google" },
+  { id: "gemini-3-pro-preview", name: "Gemini 3 Pro", provider: "google" },
 ];
 
 export function getModelProvider(modelId: ModelId): AIProviderType {

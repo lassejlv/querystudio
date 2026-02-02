@@ -25,6 +25,7 @@ impl GeminiProvider {
     fn get_model_name(model: &AIModel) -> &'static str {
         match model {
             AIModel::Gemini3Flash => "gemini-3-flash-preview",
+            AIModel::Gemini3Pro => "gemini-3-pro-preview",
             _ => "gemini-3-flash-preview",
         }
     }
@@ -315,9 +316,7 @@ impl AIProvider for GeminiProvider {
 
         // Disable thinking to avoid thought_signature requirements for function calling
         let generation_config = Some(GeminiGenerationConfig {
-            thinking_config: Some(GeminiThinkingConfig {
-                thinking_budget: 0,
-            }),
+            thinking_config: Some(GeminiThinkingConfig { thinking_budget: 0 }),
         });
 
         let request = GeminiRequest {
@@ -456,9 +455,7 @@ impl AIProvider for GeminiProvider {
 
         // Disable thinking to avoid thought_signature requirements for function calling
         let generation_config = Some(GeminiGenerationConfig {
-            thinking_config: Some(GeminiThinkingConfig {
-                thinking_budget: 0,
-            }),
+            thinking_config: Some(GeminiThinkingConfig { thinking_budget: 0 }),
         });
 
         let request = GeminiRequest {
@@ -469,7 +466,10 @@ impl AIProvider for GeminiProvider {
         };
 
         println!("[Gemini] Sending request to {}", url);
-        println!("[Gemini] Request body: {}", serde_json::to_string_pretty(&request).unwrap_or_default());
+        println!(
+            "[Gemini] Request body: {}",
+            serde_json::to_string_pretty(&request).unwrap_or_default()
+        );
         let response = self
             .client
             .post(&url)
@@ -530,12 +530,21 @@ impl AIProvider for GeminiProvider {
                         buffer.push_str(&chunk_str);
 
                         // Process SSE events (handle both \n\n and \r\n\r\n)
-                        while let Some(pos) = buffer.find("\n\n").or_else(|| buffer.find("\r\n\r\n")) {
-                            let delimiter_len = if buffer[pos..].starts_with("\r\n\r\n") { 4 } else { 2 };
+                        while let Some(pos) =
+                            buffer.find("\n\n").or_else(|| buffer.find("\r\n\r\n"))
+                        {
+                            let delimiter_len = if buffer[pos..].starts_with("\r\n\r\n") {
+                                4
+                            } else {
+                                2
+                            };
                             let event = buffer[..pos].to_string();
                             buffer = buffer[pos + delimiter_len..].to_string();
-                            
-                            println!("[Gemini] Processing event: {}", &event[..std::cmp::min(200, event.len())]);
+
+                            println!(
+                                "[Gemini] Processing event: {}",
+                                &event[..std::cmp::min(200, event.len())]
+                            );
 
                             for line in event.lines() {
                                 if let Some(data) = line.strip_prefix("data: ") {

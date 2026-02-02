@@ -32,6 +32,8 @@ pub enum AIModel {
     Gpt5Mini,
     #[serde(rename = "gemini-3-flash-preview")]
     Gemini3Flash,
+    #[serde(rename = "gemini-3-pro-preview")]
+    Gemini3Pro,
 }
 
 impl AIModel {
@@ -40,13 +42,14 @@ impl AIModel {
             AIModel::Gpt5 => "gpt-5",
             AIModel::Gpt5Mini => "gpt-5-mini",
             AIModel::Gemini3Flash => "gemini-3-flash-preview",
+            AIModel::Gemini3Pro => "gemini-3-pro-preview",
         }
     }
 
     pub fn provider(&self) -> AIProviderType {
         match self {
             AIModel::Gpt5 | AIModel::Gpt5Mini => AIProviderType::OpenAI,
-            AIModel::Gemini3Flash => AIProviderType::Google,
+            AIModel::Gemini3Flash | AIModel::Gemini3Pro => AIProviderType::Google,
         }
     }
 
@@ -56,6 +59,7 @@ impl AIModel {
             AIModel::Gpt5 => "GPT-5",
             AIModel::Gpt5Mini => "GPT-5 Mini",
             AIModel::Gemini3Flash => "Gemini 3 Flash",
+            AIModel::Gemini3Pro => "Gemini 3 Pro",
         }
     }
 }
@@ -74,6 +78,7 @@ impl std::str::FromStr for AIModel {
             "gpt-5" => Ok(AIModel::Gpt5),
             "gpt-5-mini" => Ok(AIModel::Gpt5Mini),
             "gemini-3-flash-preview" => Ok(AIModel::Gemini3Flash),
+            "gemini-3-pro-preview" => Ok(AIModel::Gemini3Pro),
             _ => Err(AIProviderError::new(format!("Unknown model: {}", s))),
         }
     }
@@ -288,6 +293,11 @@ pub fn get_available_models() -> Vec<ModelInfo> {
         ModelInfo {
             id: AIModel::Gemini3Flash,
             name: "Gemini 3 Flash".to_string(),
+            provider: AIProviderType::Google,
+        },
+        ModelInfo {
+            id: AIModel::Gemini3Pro,
+            name: "Gemini 3 Pro".to_string(),
             provider: AIProviderType::Google,
         },
     ]
