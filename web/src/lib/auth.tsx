@@ -1,5 +1,11 @@
 import { betterAuth } from "better-auth";
-import { captcha, oAuthProxy, oneTimeToken } from "better-auth/plugins";
+import {
+  captcha,
+  oAuthProxy,
+  oneTimeToken,
+  haveIBeenPwned,
+  lastLoginMethod,
+} from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "drizzle";
 import { zeroId } from "zero-id";
@@ -84,6 +90,8 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    haveIBeenPwned(),
+    lastLoginMethod(),
     oAuthProxy(),
     oneTimeToken(),
     captcha({

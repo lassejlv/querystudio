@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import Spinner from "@/components/ui/spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TurnstileModule from "react-turnstile";
+import { Badge } from "@/components/ui/badge";
 
 const Turnstile = (TurnstileModule as any).default || TurnstileModule;
 
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const lastMethod = authClient.getLastUsedLoginMethod();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -122,6 +124,7 @@ function LoginPage() {
 
             <Button variant="outline" className="w-full" onClick={loginGithub} disabled={isLoading}>
               Github
+              {lastMethod === "github" && <Badge className="ml-2">Last used</Badge>}
             </Button>
           </CardContent>
           <div className="p-6 pt-0 text-center text-sm text-muted-foreground">
