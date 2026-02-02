@@ -1,8 +1,11 @@
 import { createAuthClient } from "better-auth/react";
-import { inferAdditionalFields, oneTimeTokenClient } from "better-auth/client/plugins";
-import { waitlistClient } from "better-auth-waitlist";
+import {
+  inferAdditionalFields,
+  oneTimeTokenClient,
+  lastLoginMethodClient,
+} from "better-auth/client/plugins";
 import { auth } from "./auth";
 
 export const authClient = createAuthClient({
-  plugins: [waitlistClient(), inferAdditionalFields<typeof auth>(), oneTimeTokenClient()],
+  plugins: [lastLoginMethodClient(), inferAdditionalFields<typeof auth>(), oneTimeTokenClient()],
 });
