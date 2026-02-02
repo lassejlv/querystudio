@@ -16,8 +16,6 @@ function LegacyConnectionRedirect() {
   const { connectionId } = useParams({ from: "/db/$connectionId" });
   
   const activeConnections = useConnectionStore((s) => s.activeConnections);
-  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
-  const addConnection = useConnectionStore((s) => s.addConnection);
   const setActiveConnection = useConnectionStore((s) => s.setActiveConnection);
   
   const { data: savedConnections, isLoading: isLoadingSaved } = useSavedConnections();
@@ -80,7 +78,7 @@ function LegacyConnectionRedirect() {
         },
       }
     );
-  }, [connectionId, activeConnections, savedConnections, isLoadingSaved, connect, addConnection, setActiveConnection, navigate]);
+  }, [connectionId, activeConnections, savedConnections, isLoadingSaved, connect, setActiveConnection, navigate]);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">

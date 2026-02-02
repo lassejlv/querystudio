@@ -26,11 +26,11 @@ export function ConnectionTabs({ onAddConnection }: ConnectionTabsProps) {
     
     try {
       await disconnect.mutateAsync(connectionId);
+      removeConnection(connectionId);
     } catch (err) {
       console.error("Disconnect failed:", err);
+      toast.error("Failed to disconnect. Please try again.");
     }
-    
-    removeConnection(connectionId);
   };
 
   const handleAddConnection = () => {

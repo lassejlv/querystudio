@@ -50,6 +50,7 @@ export function ConnectionPalette({ open, onOpenChange, onSelectConnection }: Co
             db_type: savedConnection.db_type || "postgres",
             connection_string: savedConnection.config.connection_string,
           },
+          save: false,
         });
         toast.success(`Connected to ${savedConnection.name}`);
       } catch (error) {

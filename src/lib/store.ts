@@ -38,7 +38,7 @@ export const useConnectionStore = create<ConnectionState>()((set, get) => ({
     set((state) => {
       const exists = state.activeConnections.some((c) => c.id === connection.id);
       if (exists) {
-        return { activeConnectionId: connection.id, tables: [], selectedTable: null };
+        return { activeConnectionId: connection.id };
       }
       return {
         activeConnections: [...state.activeConnections, connection],
