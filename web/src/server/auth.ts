@@ -37,3 +37,18 @@ export const updateNameFn = createServerFn({ method: 'POST' })
 
     return { success: true }
   })
+
+export const acceptTermsAndPrivacyFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const request = getRequest()
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  })
+
+  if (!session) {
+    throw new Error('Unauthorized')
+  }
+
+  await db.update(userTable).set({ termsAndPrivacyAccepted: true }).where(eq(userTable.id, session.user.id))
+
+  return { success: true }
+})

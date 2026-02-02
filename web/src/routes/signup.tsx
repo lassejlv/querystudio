@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import Spinner from "@/components/ui/spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import TurnstileModule from "react-turnstile";
 
 const Turnstile = (TurnstileModule as any).default || TurnstileModule;
@@ -21,15 +22,31 @@ function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const loginGithub = () => {
+    if (!captchaToken) {
+      toast.error("Please complete the captcha");
+      return;
+    }
+    if (!acceptedTerms) {
+      toast.error("Please accept the Terms of Service and Privacy Policy");
+      return;
+    }
     return authClient.signIn.social({ provider: "github" });
   };
 
+  const canSubmit = Boolean(captchaToken) && acceptedTerms && !isLoading;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!acceptedTerms) {
+      toast.error("Please accept the Terms of Service and Privacy Policy");
+      return;
+    }
 
     if (!captchaToken) {
       toast.error("Please complete the captcha");
@@ -113,6 +130,25 @@ function SignupPage() {
                 />
                 <p className="text-xs text-muted-foreground">At least 8 characters</p>
               </div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                  disabled={isLoading}
+                  className="mt-1"
+                />
+                <label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer select-none">
+                  I agree to the{" "}
+                  <Link to="/terms" className="text-primary hover:underline">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy" className="text-primary hover:underline">
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
               <div className="flex justify-center">
                 <Turnstile
                   sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
@@ -121,7 +157,7 @@ function SignupPage() {
                   onError={() => setCaptchaToken(null)}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading || !captchaToken}>
+              <Button type="submit" className="w-full" disabled={!canSubmit}>
                 {isLoading && <Spinner size={16} />}
                 Create account
               </Button>
@@ -136,7 +172,7 @@ function SignupPage() {
               </div>
             </div>
 
-            <Button variant="outline" className="w-full" onClick={loginGithub} disabled={isLoading}>
+            <Button variant="outline" className="w-full" onClick={loginGithub} disabled={!canSubmit}>
               Github
             </Button>
           </CardContent>

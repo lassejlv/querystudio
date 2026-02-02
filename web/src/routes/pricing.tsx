@@ -20,38 +20,39 @@ function PricingPage() {
 
       <main className='flex-1 container mx-auto px-4 py-16 md:py-24'>
         <div className='max-w-2xl mx-auto text-center mb-16'>
-          <h1 className='text-3xl font-bold tracking-tight sm:text-4xl'>Pricing that you can overcome</h1>
+          <h1 className='text-4xl md:text-5xl font-bold tracking-tight'>Pricing that you can overcome</h1>
           <p className='mt-4 text-muted-foreground text-lg'>Free for personal use. Monthly or one-time options for professionals.</p>
         </div>
 
         <div className='grid md:grid-cols-3 gap-8 max-w-5xl mx-auto'>
-          {/* Free Tier */}
-          <Card className='flex flex-col shadow-md'>
+          <Card className='flex flex-col'>
             <CardHeader>
-              <CardTitle className='text-xl'>{pricing.tiers.free.name}</CardTitle>
+              <div className='flex items-center justify-between'>
+                <CardTitle className='text-xl'>{pricing.tiers.free.name}</CardTitle>
+              </div>
               <CardDescription>Perfect for hobbyists and students</CardDescription>
             </CardHeader>
             <CardContent className='flex-1'>
-              <div className='text-3xl font-bold mb-6'>$0</div>
+              <div className='text-4xl font-bold mb-6'>$0</div>
               <ul className='space-y-3 text-sm'>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Personal use only</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>{pricing.tiers.free.features.maxConnections} Saved Connections</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>All database dialects (1 connection per dialect)</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>AI Assistant (BYOK)</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Local-first & Secure</span>
                 </li>
               </ul>
@@ -66,42 +67,44 @@ function PricingPage() {
             </CardFooter>
           </Card>
 
-          {/* Pro Monthly Tier */}
-          <Card className='flex flex-col shadow-md border-primary relative overflow-hidden'>
+          <Card className='flex flex-col border-primary relative'>
             <div className='absolute top-0 right-0 p-3'>
-              <Badge variant='secondary' className='text-xs'>
-                Monthly
+              <Badge variant='default' className='text-xs'>
+                Popular
               </Badge>
             </div>
+
             <CardHeader>
-              <CardTitle className='text-xl'>{pricing.tiers.proMonthly.name}</CardTitle>
+              <div className='flex items-center justify-between'>
+                <CardTitle className='text-xl'>{pricing.tiers.proMonthly.name}</CardTitle>
+              </div>
               <CardDescription>For professionals and commercial use</CardDescription>
             </CardHeader>
             <CardContent className='flex-1'>
               <div className='flex items-baseline gap-2 mb-2'>
-                <span className='text-3xl font-bold'>${pricing.tiers.proMonthly.price}</span>
+                <span className='text-4xl font-bold'>${pricing.tiers.proMonthly.price}</span>
                 <span className='text-muted-foreground text-sm'>/month</span>
               </div>
               <p className='text-sm text-muted-foreground mb-4'>3 days free trial</p>
               <ul className='space-y-3 text-sm'>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
-                  <span>Commercial use allowed</span>
+                  <Check className='h-4 w-4 text-green-500' />
+                  <span className='font-medium'>Commercial use allowed</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
-                  <span>Unlimited Connections</span>
+                  <Check className='h-4 w-4 text-green-500' />
+                  <span className='font-medium'>Unlimited Connections</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
-                  <span>Priority Support</span>
+                  <Check className='h-4 w-4 text-green-500' />
+                  <span className='font-medium'>Priority Support</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Everything in Free</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Continuous updates</span>
                 </li>
               </ul>
@@ -115,43 +118,45 @@ function PricingPage() {
             </CardFooter>
           </Card>
 
-          {/* Pro One-time Tier */}
-          <Card className='flex flex-col shadow-md relative overflow-hidden'>
+          <Card className='flex flex-col relative'>
             <div className='absolute top-0 right-0 p-3'>
               <Badge variant='secondary' className='text-xs'>
                 Early Bird
               </Badge>
             </div>
+
             <CardHeader>
-              <CardTitle className='text-xl'>{pricing.tiers.pro.name}</CardTitle>
+              <div className='flex items-center justify-between'>
+                <CardTitle className='text-xl'>{pricing.tiers.pro.name}</CardTitle>
+              </div>
               <CardDescription>One-time purchase, lifetime access</CardDescription>
             </CardHeader>
             <CardContent className='flex-1'>
               <div className='flex items-baseline gap-2 mb-6'>
-                <span className='text-3xl font-bold'>${pricing.tiers.pro.earlyBirdPrice}</span>
+                <span className='text-4xl font-bold'>${pricing.tiers.pro.earlyBirdPrice}</span>
                 <span className='text-muted-foreground line-through text-sm'>${pricing.tiers.pro.price}</span>
                 <span className='text-muted-foreground text-sm ml-1'>one-time</span>
               </div>
               <ul className='space-y-3 text-sm'>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Commercial use allowed</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Unlimited Connections</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Priority Support</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
+                  <Check className='h-4 w-4 text-green-500' />
                   <span>Everything in Free</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-primary' />
-                  <span>Lifetime updates</span>
+                  <Check className='h-4 w-4 text-green-500' />
+                  <span className='font-medium text-primary'>Lifetime updates</span>
                 </li>
               </ul>
             </CardContent>
@@ -165,26 +170,25 @@ function PricingPage() {
           </Card>
         </div>
 
-        {/* FAQ */}
         <div className='mt-24 max-w-3xl mx-auto'>
           <h2 className='text-2xl font-semibold text-center mb-12'>Frequently Asked Questions</h2>
           <div className='grid gap-8 md:grid-cols-2'>
-            <div>
+            <div className='p-4'>
               <h3 className='font-medium mb-2'>What does BYOK mean?</h3>
               <p className='text-sm text-muted-foreground'>Bring Your Own Key. You provide your own API key for OpenAI or Anthropic to use the AI features. We don't mark up AI costs.</p>
             </div>
-            <div>
+            <div className='p-4'>
               <h3 className='font-medium mb-2'>What's the difference between monthly and one-time?</h3>
               <p className='text-sm text-muted-foreground'>
                 Monthly is a subscription at $4.99/month with 3 days free trial and continuous updates. One-time is a single payment of $19.99 (early bird) for lifetime access and updates. Both have
                 the same features.
               </p>
             </div>
-            <div>
+            <div className='p-4'>
               <h3 className='font-medium mb-2'>Can I upgrade or switch plans later?</h3>
               <p className='text-sm text-muted-foreground'>Yes. Start with the Free version and upgrade to Pro anytime. You can also switch between monthly and one-time plans from your dashboard.</p>
             </div>
-            <div>
+            <div className='p-4'>
               <h3 className='font-medium mb-2'>Do you offer refunds?</h3>
               <p className='text-sm text-muted-foreground'>
                 Yes. For one-time purchases, email us within 14 days for a full refund. For monthly subscriptions, you can cancel anytime and keep access until the end of your billing period.

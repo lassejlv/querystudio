@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConnectionStore } from "@/lib/store";
 import { useConnect, useSavedConnections } from "@/lib/hooks";
 import { Loader2 } from "lucide-react";
@@ -16,14 +16,17 @@ function LegacyConnectionRedirect() {
   const { connectionId } = useParams({ from: "/db/$connectionId" });
   
   const activeConnections = useConnectionStore((s) => s.activeConnections);
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
   const addConnection = useConnectionStore((s) => s.addConnection);
   const setActiveConnection = useConnectionStore((s) => s.setActiveConnection);
   
-  const { data: savedConnections, isLoading } = useSavedConnections();
+  const { data: savedConnections, isLoading: isLoadingSaved } = useSavedConnections();
   const connect = useConnect();
+  const reconnectAttempted = useRef(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoadingSaved) return;
 
     // Check if already connected
     const existingConnection = activeConnections.find((c) => c.id === connectionId);
@@ -32,6 +35,10 @@ function LegacyConnectionRedirect() {
       navigate({ to: "/db", replace: true });
       return;
     }
+
+    // Prevent multiple reconnection attempts
+    if (reconnectAttempted.current) return;
+    reconnectAttempted.current = true;
 
     // Find saved connection
     const savedConnection = savedConnections?.find((c) => c.id === connectionId);
@@ -42,6 +49,7 @@ function LegacyConnectionRedirect() {
     }
 
     // Connect to it
+    setIsReconnecting(true);
     const config =
       "connection_string" in savedConnection.config
         ? {
@@ -63,6 +71,7 @@ function LegacyConnectionRedirect() {
       },
       {
         onSuccess: () => {
+          toast.success("Connected successfully");
           navigate({ to: "/db", replace: true });
         },
         onError: (error) => {
@@ -71,7 +80,7 @@ function LegacyConnectionRedirect() {
         },
       }
     );
-  }, [connectionId, activeConnections, savedConnections, isLoading, connect, addConnection, setActiveConnection, navigate]);
+  }, [connectionId, activeConnections, savedConnections, isLoadingSaved, connect, addConnection, setActiveConnection, navigate]);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -83,7 +92,9 @@ function LegacyConnectionRedirect() {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Connecting...</p>
+          <p className="text-muted-foreground">
+            {isReconnecting ? "Connecting..." : "Loading..."}
+          </p>
         </div>
       </div>
     </div>

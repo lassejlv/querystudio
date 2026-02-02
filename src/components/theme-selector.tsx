@@ -23,7 +23,7 @@ import { useThemeImport } from "@/lib/use-theme-import";
 import { Upload, Trash2 } from "lucide-react";
 
 export function ThemeSelector() {
-  const { getAllThemes, getActiveTheme, setActiveTheme, removeCustomTheme } = useThemeStore();
+  const { getAllThemes, activeTheme: activeThemeId, themes: themeStore, setActiveTheme, removeCustomTheme } = useThemeStore();
 
   const { importThemeFromJson, importAndApplyTheme } = useThemeImport();
 
@@ -31,7 +31,7 @@ export function ThemeSelector() {
   const [importJson, setImportJson] = useState("");
 
   const themes = getAllThemes();
-  const activeTheme = getActiveTheme();
+  const activeTheme = themeStore[activeThemeId] || themes[0];
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -62,7 +62,9 @@ export function ThemeSelector() {
         <Label htmlFor="theme-select">Theme:</Label>
         <Select value={activeTheme.id} onValueChange={setActiveTheme}>
           <SelectTrigger id="theme-select" className="w-48">
-            <SelectValue />
+            <SelectValue placeholder="Select theme...">
+              {activeTheme.displayName || activeTheme.name}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <div className="px-2 py-1.5 text-sm font-semibold">Built-in Themes</div>

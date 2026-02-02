@@ -1,5 +1,9 @@
-import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, useLocation, useRouter } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { acceptTermsAndPrivacyFn } from '@/server/auth'
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_authed/dashboard')({
   component: DashboardLayout,
@@ -11,8 +15,52 @@ const sidebarItems = [
   { label: 'Billing', href: '/dashboard/billing' },
 ]
 
+function TermsAcceptanceBanner() {
+  const router = useRouter()
+  const [isAccepting, setIsAccepting] = useState(false)
+
+  const handleAccept = async () => {
+    setIsAccepting(true)
+    try {
+      await acceptTermsAndPrivacyFn()
+      toast.success('Terms and Privacy Policy accepted')
+      router.invalidate()
+    } catch {
+      toast.error('Failed to accept terms')
+    } finally {
+      setIsAccepting(false)
+    }
+  }
+
+  return (
+    <div className='bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6'>
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+        <div>
+          <h3 className='font-medium text-amber-400'>Action Required</h3>
+          <p className='text-sm text-muted-foreground mt-1'>
+            Please review and accept our{' '}
+            <Link to='/terms' className='text-primary hover:underline'>
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link to='/privacy' className='text-primary hover:underline'>
+              Privacy Policy
+            </Link>{' '}
+            to continue using QueryStudio.
+          </p>
+        </div>
+        <Button onClick={handleAccept} disabled={isAccepting} size='sm' className='shrink-0'>
+          {isAccepting ? 'Accepting...' : 'I Accept'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function DashboardLayout() {
   const location = useLocation()
+  const { user } = Route.useRouteContext()
+  const showTermsBanner = !user.termsAndPrivacyAccepted
 
   return (
     <div className='min-h-screen bg-background'>
@@ -34,6 +82,7 @@ function DashboardLayout() {
       </header>
 
       <div className='container mx-auto px-4 py-8'>
+        {showTermsBanner && <TermsAcceptanceBanner />}
         <div className='flex gap-12'>
           {/* Sidebar */}
           <aside className='w-40 shrink-0'>

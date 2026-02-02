@@ -109,7 +109,7 @@ function NewConnectionPage() {
       // Already on new connection page, just refresh
       window.location.reload();
     },
-    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenCommandPalette: () => setCommandPaletteOpen((prev) => !prev),
     onOpenSettings: () => {
       navigate({ to: "/settings" });
     },
@@ -260,12 +260,26 @@ function NewConnectionPage() {
       return "C:\\path\\to\\database.db";
     }
     if (dbType === "redis") {
-      return "redis://[:password@]localhost:6379[/database]";
+      return "redis://[:password@]host:6379[/db] or rediss:// for TLS, cluster: host1:6379,host2:6379";
     }
     if (dbType === "mongodb") {
       return "mongodb://[user:password@]localhost:27017/database";
     }
     return "postgresql://user:password@localhost:5432/database";
+  };
+
+  const getConnectionStringHelp = () => {
+    if (dbType === "redis") {
+      return (
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p><strong>Standard:</strong> redis://:password@localhost:6379/0</p>
+          <p><strong>TLS/SSL:</strong> rediss://:password@localhost:6379/0</p>
+          <p><strong>Cluster:</strong> redis://host1:6379,redis://host2:6379,redis://host3:6379</p>
+          <p><strong>ACL (Redis 6+):</strong> redis://username:password@localhost:6379/0</p>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -523,6 +537,7 @@ function NewConnectionPage() {
                       )}
                       disabled={!canSave}
                     />
+                    {getConnectionStringHelp()}
                     {errors.connectionString && (
                       <p className="text-xs text-destructive">{errors.connectionString}</p>
                     )}

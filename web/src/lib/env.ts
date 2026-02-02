@@ -3,6 +3,7 @@ import { z } from 'zod/v4'
 const envSchema = z.object({
   DATABASE_URL: z.url(),
   DATABASE_DIRECT_URL: z.url(),
+  REDIS_URL: z.url(),
   USESEND_API_KEY: z.string(),
   USESEND_FROM: z.string(),
   POLAR_ACCESS_TOKEN: z.string(),

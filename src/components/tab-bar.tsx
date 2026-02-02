@@ -176,15 +176,16 @@ export const TabBar = memo(function TabBar({ connectionId, dbType, paneId }: Tab
   const installedPlugins = usePluginStore((s) => s.plugins);
 
   // Get creatable plugins from Tab SDK, filtered by enabled state in plugin store
+  // Also filter by database type if the plugin has database restrictions
   const creatablePlugins = useMemo(() => {
-    const allCreatable = tabRegistry.getCreatable(experimentalTerminal);
+    const allCreatable = tabRegistry.getCreatable(experimentalTerminal, dbType);
 
     // Filter out plugins that are disabled in the plugin store
     return allCreatable.filter((plugin) => {
       const installedPlugin = installedPlugins.find((p) => p.type === plugin.type);
       return !installedPlugin || installedPlugin.enabled;
     });
-  }, [experimentalTerminal, installedPlugins]);
+  }, [experimentalTerminal, installedPlugins, dbType]);
 
   const getTabIcon = useCallback((type: TabType) => {
     const plugin = tabRegistry.get(type);

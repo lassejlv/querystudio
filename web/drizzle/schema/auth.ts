@@ -15,6 +15,7 @@ export const user = pgTable("user", {
   isPro: boolean("is_pro"),
   licenseKey: text("license_key"),
   cancelAtPeriodEnd: boolean("cancel_at_period_end"),
+  termsAndPrivacyAccepted: boolean("terms_and_privacy_accepted").default(false),
 });
 
 export const session = pgTable(

@@ -11,6 +11,7 @@ import { ThemeSelector } from "@/components/theme-selector";
 import { toast } from "sonner";
 import { authClient, signInWithGithub } from "@/lib/auth-client";
 import { CommandPalette } from "@/components/command-palette";
+import { PluginSettings } from "@/components/plugin-settings";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import type { SavedConnection } from "@/lib/types";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-type SettingsTab = "general" | "account" | "appearance" | "experimental";
+type SettingsTab = "general" | "account" | "appearance" | "experimental" | "plugins";
 
 function SettingsPage() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ function SettingsPage() {
     onNewConnection: () => {
       navigate({ to: "/new-connection" });
     },
-    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onOpenCommandPalette: () => setCommandPaletteOpen((prev) => !prev),
     onOpenSettings: () => {
       // Already on settings page
     },
@@ -62,7 +63,8 @@ function SettingsPage() {
     { id: "general", label: "General" },
     { id: "account", label: "Account" },
     { id: "appearance", label: "Appearance" },
-    ...(experimentalPlugins ? [{ id: "experimental" as SettingsTab, label: "Experimental" }] : []),
+    { id: "experimental", label: "Experimental" },
+    ...(experimentalPlugins ? [{ id: "plugins" as SettingsTab, label: "Plugins" }] : []),
   ];
 
   return (
@@ -113,6 +115,7 @@ function SettingsPage() {
             {activeTab === "account" && <AccountSettings />}
             {activeTab === "appearance" && <AppearanceSettings />}
             {activeTab === "experimental" && <ExperimentalSettings />}
+            {activeTab === "plugins" && <PluginSettings />}
           </div>
         </main>
       </div>

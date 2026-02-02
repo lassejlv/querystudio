@@ -64,6 +64,13 @@
       "when": 1769872646470,
       "tag": "0008_reflective_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1769961512389,
+      "tag": "0009_confused_dragon_man",
+      "breakpoints": true
     }
   ]
 }

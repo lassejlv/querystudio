@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WaitlistRouteImport } from './routes/waitlist'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DownloadRouteImport } from './routes/download'
@@ -32,9 +34,19 @@ const WaitlistRoute = WaitlistRouteImport.update({
   path: '/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -117,7 +129,9 @@ export interface FileRoutesByFullPath {
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/waitlist': typeof WaitlistRoute
   '/dashboard': typeof AuthedDashboardRouteWithChildren
   '/auth/desktop': typeof AuthDesktopRoute
@@ -135,7 +149,9 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/waitlist': typeof WaitlistRoute
   '/auth/desktop': typeof AuthDesktopRoute
   '/dashboard/account': typeof AuthedDashboardAccountRoute
@@ -154,7 +170,9 @@ export interface FileRoutesById {
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/waitlist': typeof WaitlistRoute
   '/_authed/dashboard': typeof AuthedDashboardRouteWithChildren
   '/auth/desktop': typeof AuthDesktopRoute
@@ -174,7 +192,9 @@ export interface FileRouteTypes {
     | '/download'
     | '/login'
     | '/pricing'
+    | '/privacy'
     | '/signup'
+    | '/terms'
     | '/waitlist'
     | '/dashboard'
     | '/auth/desktop'
@@ -192,7 +212,9 @@ export interface FileRouteTypes {
     | '/download'
     | '/login'
     | '/pricing'
+    | '/privacy'
     | '/signup'
+    | '/terms'
     | '/waitlist'
     | '/auth/desktop'
     | '/dashboard/account'
@@ -210,7 +232,9 @@ export interface FileRouteTypes {
     | '/download'
     | '/login'
     | '/pricing'
+    | '/privacy'
     | '/signup'
+    | '/terms'
     | '/waitlist'
     | '/_authed/dashboard'
     | '/auth/desktop'
@@ -230,7 +254,9 @@ export interface RootRouteChildren {
   DownloadRoute: typeof DownloadRoute
   LoginRoute: typeof LoginRoute
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   SignupRoute: typeof SignupRoute
+  TermsRoute: typeof TermsRoute
   WaitlistRoute: typeof WaitlistRoute
   AuthDesktopRoute: typeof AuthDesktopRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -247,11 +273,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -399,7 +439,9 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadRoute: DownloadRoute,
   LoginRoute: LoginRoute,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   SignupRoute: SignupRoute,
+  TermsRoute: TermsRoute,
   WaitlistRoute: WaitlistRoute,
   AuthDesktopRoute: AuthDesktopRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

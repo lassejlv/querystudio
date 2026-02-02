@@ -1,292 +1,318 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Header } from "@/components/header";
-import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
-import { createServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
-import { redis } from "@/lib/redis";
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { Header } from '@/components/header'
+import { Button } from '@/components/ui/button'
+import { ExternalLink, Download, Apple } from 'lucide-react'
+import { createServerFn } from '@tanstack/react-start'
+import { useEffect, useState } from 'react'
+import { redis } from 'bun'
 
-const donateUrl = "https://buy.polar.sh/polar_cl_GjR7lflPCEnKKPTB2QE5eNOfWOLqlRNYJAvsF2Tf9t6";
+const donateUrl = 'https://buy.polar.sh/polar_cl_GjR7lflPCEnKKPTB2QE5eNOfWOLqlRNYJAvsF2Tf9t6'
 
 interface FormattedAsset {
-  name: string;
-  downloadUrl: string;
-  size: number;
-  downloadCount: number;
-  contentType: string;
-  platform: "macos" | "windows" | "linux" | "unknown";
-  arch: "x64" | "arm64" | "universal" | "unknown";
+  name: string
+  downloadUrl: string
+  size: number
+  downloadCount: number
+  contentType: string
+  platform: 'macos' | 'windows' | 'linux' | 'unknown'
+  arch: 'x64' | 'arm64' | 'universal' | 'unknown'
 }
 
 interface FormattedRelease {
-  id: number;
-  version: string;
-  name: string;
-  body: string;
-  isPrerelease: boolean;
-  createdAt: string;
-  publishedAt: string;
-  assets: FormattedAsset[];
-  htmlUrl: string;
+  id: number
+  version: string
+  name: string
+  body: string
+  isPrerelease: boolean
+  createdAt: string
+  publishedAt: string
+  assets: FormattedAsset[]
+  htmlUrl: string
 }
 
-const getLatestRelease = createServerFn({ method: "GET" }).handler(async () => {
-  const GITHUB_REPO = "lassejlv/querystudio-releases";
-  const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+const getLatestRelease = createServerFn({ method: 'GET' }).handler(async () => {
+  const GITHUB_REPO = 'lassejlv/querystudio-releases'
+  const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`
 
-  const isCached = await redis.get("latest-release");
-  if (isCached) {
-    return isCached as FormattedRelease;
+  const cachedData = await redis.get('latest-release')
+
+  if (cachedData) {
+    return JSON.parse(cachedData) as FormattedRelease
   }
 
   try {
     const response = await fetch(GITHUB_API_URL, {
       headers: {
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "QueryStudio-Web",
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'QueryStudio-Web',
       },
-    });
+    })
 
     if (!response.ok) {
       if (response.status === 404) {
-        return null;
+        return null
       }
-      throw new Error("Failed to fetch latest release");
+      throw new Error('Failed to fetch latest release')
     }
 
-    const release = await response.json();
+    const release = await response.json()
 
-    const detectPlatform = (filename: string): FormattedAsset["platform"] => {
-      const lower = filename.toLowerCase();
-      if (lower.includes(".dmg") || lower.includes("macos") || lower.includes("darwin")) {
-        return "macos";
+    const detectPlatform = (filename: string): FormattedAsset['platform'] => {
+      const lower = filename.toLowerCase()
+      if (lower.includes('.dmg') || lower.includes('macos') || lower.includes('darwin')) {
+        return 'macos'
       }
-      if (
-        lower.includes(".exe") ||
-        lower.includes(".msi") ||
-        lower.includes("windows") ||
-        lower.includes("win32") ||
-        lower.includes("win64")
-      ) {
-        return "windows";
+      if (lower.includes('.exe') || lower.includes('.msi') || lower.includes('windows') || lower.includes('win32') || lower.includes('win64')) {
+        return 'windows'
       }
-      if (
-        lower.includes(".deb") ||
-        lower.includes(".rpm") ||
-        lower.includes(".appimage") ||
-        lower.includes("linux")
-      ) {
-        return "linux";
+      if (lower.includes('.deb') || lower.includes('.rpm') || lower.includes('.appimage') || lower.includes('linux')) {
+        return 'linux'
       }
-      return "unknown";
-    };
+      return 'unknown'
+    }
 
-    const detectArch = (filename: string): FormattedAsset["arch"] => {
-      const lower = filename.toLowerCase();
-      if (lower.includes("universal")) {
-        return "universal";
+    const detectArch = (filename: string): FormattedAsset['arch'] => {
+      const lower = filename.toLowerCase()
+      if (lower.includes('universal')) {
+        return 'universal'
       }
-      if (lower.includes("arm64") || lower.includes("aarch64")) {
-        return "arm64";
+      if (lower.includes('arm64') || lower.includes('aarch64')) {
+        return 'arm64'
       }
-      if (lower.includes("x64") || lower.includes("x86_64") || lower.includes("amd64")) {
-        return "x64";
+      if (lower.includes('x64') || lower.includes('x86_64') || lower.includes('amd64')) {
+        return 'x64'
       }
-      return "unknown";
-    };
+      return 'unknown'
+    }
 
     const data = {
       id: release.id,
       version: release.tag_name,
       name: release.name || release.tag_name,
-      body: release.body || "",
+      body: release.body || '',
       isPrerelease: release.prerelease,
       createdAt: release.created_at,
       publishedAt: release.published_at,
       htmlUrl: release.html_url,
-      assets: release.assets.map(
-        (asset: {
-          name: string;
-          browser_download_url: string;
-          size: number;
-          download_count: number;
-          content_type: string;
-        }) => ({
-          name: asset.name,
-          downloadUrl: asset.browser_download_url,
-          size: asset.size,
-          downloadCount: asset.download_count,
-          contentType: asset.content_type,
-          platform: detectPlatform(asset.name),
-          arch: detectArch(asset.name),
-        }),
-      ),
-    } as FormattedRelease;
+      assets: release.assets.map((asset: { name: string; browser_download_url: string; size: number; download_count: number; content_type: string }) => ({
+        name: asset.name,
+        downloadUrl: asset.browser_download_url,
+        size: asset.size,
+        downloadCount: asset.download_count,
+        contentType: asset.content_type,
+        platform: detectPlatform(asset.name),
+        arch: detectArch(asset.name),
+      })),
+    } as FormattedRelease
 
-    await redis.set("latest-release", JSON.stringify(data), { ex: 3600 });
+    await redis.set('latest-release', JSON.stringify(data), 'EX', 3600)
 
-    return data;
+    return data
   } catch (error) {
-    console.error("Error fetching latest release:", error);
-    return null;
+    console.error('Error fetching latest release:', error)
+    return null
   }
-});
+})
 
-export const Route = createFileRoute("/download")({
+export const Route = createFileRoute('/download')({
   component: DownloadPage,
   loader: () => getLatestRelease(),
-});
+})
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
 function isSignatureFile(filename: string): boolean {
-  return filename.endsWith(".sig") || filename.endsWith(".asc");
+  return filename.endsWith('.sig') || filename.endsWith('.asc')
 }
 
-function getArchLabel(arch: FormattedAsset["arch"]) {
+function getArchLabel(arch: FormattedAsset['arch']) {
   switch (arch) {
-    case "arm64":
-      return "Apple Silicon";
-    case "x64":
-      return "Intel";
-    case "universal":
-      return "Universal";
+    case 'arm64':
+      return 'Apple Silicon'
+    case 'x64':
+      return 'Intel'
+    case 'universal':
+      return 'Universal'
     default:
-      return "";
+      return ''
   }
 }
 
 function DownloadPage() {
-  const release = Route.useLoaderData();
-  const [userPlatform, setUserPlatform] = useState<"macos" | "windows" | "linux" | null>(null);
+  const release = Route.useLoaderData()
+  const [userPlatform, setUserPlatform] = useState<'macos' | 'windows' | 'linux' | null>(null)
 
   useEffect(() => {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("mac")) setUserPlatform("macos");
-    else if (ua.includes("win")) setUserPlatform("windows");
-    else if (ua.includes("linux") || ua.includes("x11")) setUserPlatform("linux");
-  }, []);
+    const ua = navigator.userAgent.toLowerCase()
+    if (ua.includes('mac')) setUserPlatform('macos')
+    else if (ua.includes('win')) setUserPlatform('windows')
+    else if (ua.includes('linux') || ua.includes('x11')) setUserPlatform('linux')
+  }, [])
 
   if (!release) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className='min-h-screen bg-background'>
         <Header />
-        <main className="container mx-auto px-4 py-16">
-          <h1 className="text-2xl font-semibold">Download</h1>
-          <p className="mt-2 text-muted-foreground">No releases available yet.</p>
-          <div className="mt-6">
-            <Button variant="outline" asChild>
-              <Link to="/">Back to home</Link>
-            </Button>
+        <main className='container mx-auto px-4 py-16'>
+          <div className='max-w-xl mx-auto text-center'>
+            <div className='w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center'>
+              <Download className='w-8 h-8 text-muted-foreground' />
+            </div>
+            <h1 className='text-2xl font-semibold mb-2'>Download</h1>
+            <p className='mt-2 text-muted-foreground'>No releases available yet.</p>
+            <div className='mt-6'>
+              <Button variant='outline' asChild>
+                <Link to='/' className='inline-flex items-center gap-2'>
+                  Back to home
+                </Link>
+              </Button>
+            </div>
           </div>
         </main>
       </div>
-    );
+    )
   }
 
-  const macosAssets = release.assets.filter(
-    (a) => a.platform === "macos" && !isSignatureFile(a.name),
-  );
+  const macosAssets = release.assets.filter((a) => a.platform === 'macos' && !isSignatureFile(a.name))
+  const windowsAssets = release.assets.filter((a) => a.platform === 'windows' && !isSignatureFile(a.name))
+  const linuxAssets = release.assets.filter((a) => a.platform === 'linux' && !isSignatureFile(a.name))
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className='min-h-screen bg-background'>
       <Header />
 
-      <main className="container mx-auto px-4 py-16 max-w-4xl">
-        <div className="mb-12">
-          <h1 className="text-2xl font-semibold">Download QueryStudio</h1>
-          <p className="mt-1 text-muted-foreground">
-            Version {release.version} · {new Date(release.publishedAt).toLocaleDateString()}
+      <main className='container mx-auto px-4 py-16 max-w-5xl'>
+        <div className='text-center mb-16'>
+          <h1 className='text-4xl md:text-5xl font-bold mb-4'>Download QueryStudio</h1>
+          <p className='text-xl text-muted-foreground'>
+            Version <span className='font-mono text-primary'>{release.version}</span> ·{' '}
+            <time dateTime={release.publishedAt}>
+              {new Date(release.publishedAt).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </time>
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-10">
-          {/* macOS */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="font-medium">macOS</h2>
-              {userPlatform === "macos" && (
-                <span className="text-xs bg-muted px-2 py-0.5 rounded">Your platform</span>
-              )}
+        <div className='grid md:grid-cols-3 gap-6 mb-12'>
+          <div className={`p-6 rounded-2xl border bg-card ${userPlatform === 'macos' ? 'ring-2 ring-primary' : ''}`}>
+            <div className='flex items-center justify-between mb-6'>
+              <div className='flex items-center gap-3'>
+                <div>
+                  <h2 className='font-semibold text-lg'>macOS</h2>
+                  <p className='text-sm text-muted-foreground'>10.15 or later</p>
+                </div>
+              </div>
+              {userPlatform === 'macos' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full'>Your platform</span>}
             </div>
+
             {macosAssets.length > 0 ? (
-              <div className="space-y-2">
+              <div className='space-y-2'>
                 {macosAssets.map((asset) => (
-                  <a
-                    key={asset.name}
-                    href={asset.downloadUrl}
-                    download
-                    className="flex items-center justify-between py-2 px-3 -mx-3 rounded hover:bg-muted transition-colors"
-                  >
-                    <span>{getArchLabel(asset.arch)}</span>
-                    <span className="text-sm text-muted-foreground">{formatBytes(asset.size)}</span>
+                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted'>
+                    <div className='flex items-center gap-3'>
+                      <Download className='w-4 h-4 text-muted-foreground' />
+                      <span className='font-medium'>{getArchLabel(asset.arch)}</span>
+                    </div>
+                    <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
                   </a>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Coming soon</p>
+              <p className='text-sm text-muted-foreground py-4'>Coming soon</p>
             )}
-          </section>
+          </div>
 
-          {/* Windows */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="font-medium">Windows</h2>
-              {userPlatform === "windows" && (
-                <span className="text-xs bg-muted px-2 py-0.5 rounded">Your platform</span>
-              )}
+          <div className={`p-6 rounded-2xl border bg-card ${userPlatform === 'windows' ? 'ring-2 ring-primary' : ''}`}>
+            <div className='flex items-center justify-between mb-6'>
+              <div className='flex items-center gap-3'>
+                <div>
+                  <h2 className='font-semibold text-lg'>Windows</h2>
+                  <p className='text-sm text-muted-foreground'>10 or later</p>
+                </div>
+              </div>
+              {userPlatform === 'windows' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full'>Your platform</span>}
             </div>
-            <p className="text-sm text-muted-foreground">On the way</p>
-          </section>
 
-          {/* Linux */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="font-medium">Linux</h2>
-              {userPlatform === "linux" && (
-                <span className="text-xs bg-muted px-2 py-0.5 rounded">Your platform</span>
-              )}
+            {windowsAssets.length > 0 ? (
+              <div className='space-y-2'>
+                {windowsAssets.map((asset) => (
+                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted'>
+                    <div className='flex items-center gap-3'>
+                      <Download className='w-4 h-4 text-muted-foreground' />
+                      <span className='font-medium'>{asset.name.endsWith('.exe') ? 'Installer' : asset.name.endsWith('.msi') ? 'MSI' : getArchLabel(asset.arch)}</span>
+                    </div>
+                    <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className='text-sm text-muted-foreground py-4'>Coming soon</p>
+            )}
+          </div>
+
+          <div className={`p-6 rounded-2xl border bg-card ${userPlatform === 'linux' ? 'ring-2 ring-primary' : ''}`}>
+            <div className='flex items-center justify-between mb-6'>
+              <div className='flex items-center gap-3'>
+                <div>
+                  <h2 className='font-semibold text-lg'>Linux</h2>
+                  <p className='text-sm text-muted-foreground'>Various distros</p>
+                </div>
+              </div>
+              {userPlatform === 'linux' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full'>Your platform</span>}
             </div>
-            <p className="text-sm text-muted-foreground">On the way</p>
-          </section>
+
+            {linuxAssets.length > 0 ? (
+              <div className='space-y-2'>
+                {linuxAssets.map((asset) => (
+                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted'>
+                    <div className='flex items-center gap-3'>
+                      <Download className='w-4 h-4 text-muted-foreground' />
+                      <span className='font-medium'>
+                        {asset.name.endsWith('.deb') ? 'Debian/Ubuntu' : asset.name.endsWith('.rpm') ? 'Fedora/RHEL' : asset.name.endsWith('.AppImage') ? 'AppImage' : getArchLabel(asset.arch)}
+                      </span>
+                    </div>
+                    <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className='text-sm text-muted-foreground py-4'>Coming soon</p>
+            )}
+          </div>
         </div>
 
-        <hr className="my-10" />
+        <div className='p-8 rounded-2xl bg-muted/30 border'>
+          <div className='grid md:grid-cols-2 gap-8'>
+            <div>
+              <h3 className='font-semibold mb-3 flex items-center gap-2'>
+                <Apple className='w-5 h-5' />
+                macOS Note
+              </h3>
+              <p className='text-sm text-muted-foreground leading-relaxed'>The app isn't signed yet. Right-click and select "Open" on first launch to bypass Gatekeeper.</p>
+              <a href={donateUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm mt-3 hover:underline text-primary'>
+                Support signing <ExternalLink className='h-3 w-3' />
+              </a>
+            </div>
 
-        {/* Notes */}
-        <section className="mb-10">
-          <h2 className="font-medium mb-3">macOS note</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            The app isn't signed yet. Right-click and select "Open" on first launch to bypass
-            Gatekeeper.
-          </p>
-          <a
-            href={donateUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm mt-2 hover:underline"
-          >
-            Support signing <ExternalLink className="h-3 w-3" />
-          </a>
-        </section>
-
-        <section>
-          <a
-            href={release.htmlUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            View release notes on GitHub <ExternalLink className="h-3 w-3" />
-          </a>
-        </section>
+            <div>
+              <h3 className='font-semibold mb-3'>Release Notes</h3>
+              <p className='text-sm text-muted-foreground leading-relaxed mb-3'>View the full changelog and release notes on GitHub.</p>
+              <a href={release.htmlUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm hover:underline text-primary'>
+                View on GitHub <ExternalLink className='h-3 w-3' />
+              </a>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
-  );
+  )
 }

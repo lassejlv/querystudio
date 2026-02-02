@@ -296,6 +296,10 @@ export function trackBundledPlugin(module: LocalPluginModule): void {
   // Try to derive the icon name from the plugin's icon
   const iconName = deriveIconName(plugin.icon);
 
+  // Check if this plugin should be disabled by default
+  // Plugins with supportedDatabases are disabled by default and enabled when connecting to a supported database
+  const enabledByDefault = !plugin.supportedDatabases;
+
   store.installPlugin({
     type: plugin.type,
     displayName: plugin.displayName,
@@ -303,7 +307,7 @@ export function trackBundledPlugin(module: LocalPluginModule): void {
     description: `Built-in ${plugin.displayName} tab`,
     version: "1.0.0",
     author: "QueryStudio",
-    enabled: true,
+    enabled: enabledByDefault,
     priority: plugin.priority ?? 50,
     experimental: plugin.experimental ?? false,
     isBundled: true,

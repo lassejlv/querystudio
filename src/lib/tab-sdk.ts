@@ -140,6 +140,9 @@ export interface TabPlugin {
   // Whether this plugin requires experimental features to be enabled
   experimental?: boolean;
 
+  // List of supported database types (if undefined, all databases are supported)
+  supportedDatabases?: string[];
+
   // Validate metadata before creating tab
   validateMetadata?: (metadata: Record<string, unknown>) => boolean;
 
@@ -216,9 +219,17 @@ class TabPluginRegistry {
   }
 
   // Get all creatable plugins (sorted by priority)
-  getCreatable(includeExperimental = false): TabPlugin[] {
+  getCreatable(includeExperimental = false, databaseType?: string): TabPlugin[] {
     return this.getAll()
-      .filter((p) => p.canCreate && (includeExperimental || !p.experimental))
+      .filter((p) => {
+        if (!p.canCreate) return false;
+        if (!includeExperimental && p.experimental) return false;
+        // Filter by database type if specified and plugin has restrictions
+        if (databaseType && p.supportedDatabases) {
+          return p.supportedDatabases.includes(databaseType.toLowerCase());
+        }
+        return true;
+      })
       .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
   }
 
@@ -375,11 +386,11 @@ export function useTabPlugins(): TabPlugin[] {
 }
 
 // Hook to get creatable plugins
-export function useCreatableTabPlugins(includeExperimental = false): TabPlugin[] {
+export function useCreatableTabPlugins(includeExperimental = false, databaseType?: string): TabPlugin[] {
   return useSyncExternalStore(
     (callback) => tabRegistry.subscribe(callback),
-    () => tabRegistry.getCreatable(includeExperimental),
-    () => tabRegistry.getCreatable(includeExperimental),
+    () => tabRegistry.getCreatable(includeExperimental, databaseType),
+    () => tabRegistry.getCreatable(includeExperimental, databaseType),
   );
 }
 
