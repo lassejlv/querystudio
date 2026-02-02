@@ -17,7 +17,7 @@ jobs:
             args: "--target aarch64-apple-darwin"
           - platform: "macos-latest" # for Intel based macs.
             args: "--target x86_64-apple-darwin"
-          - platform: "blacksmith-4vcpu-ubuntu-2204"
+          - platform: "ubuntu-22.04"
             args: ""
           - platform: "windows-latest"
             args: ""
@@ -69,7 +69,7 @@ jobs:
 
   sync-release:
     needs: publish-tauri
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
