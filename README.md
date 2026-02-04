@@ -1,6 +1,6 @@
 # QueryStudio
 
-A beautiful & lightweight SQL studio built with Rust and TypeScript.
+The open-source lightweight SQL-studio that you deserve. Built with Tauri + Rust + React
 
 ## Features
 
@@ -34,12 +34,12 @@ bun run tauri build
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `bun run tauri dev` | Start development server |
-| `bun run tauri build` | Build production app |
-| `bun run lint` | Run linter (oxlint) |
-| `bun run fmt` | Format code (oxfmt) |
+| Command               | Description              |
+| --------------------- | ------------------------ |
+| `bun run tauri dev`   | Start development server |
+| `bun run tauri build` | Build production app     |
+| `bun run lint`        | Run linter (oxlint)      |
+| `bun run fmt`         | Format code (oxfmt)      |
 
 ## Sponsoring
 
