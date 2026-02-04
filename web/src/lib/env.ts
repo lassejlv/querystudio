@@ -12,6 +12,7 @@ const envSchema = z.object({
   POLAR_EARLY_BIRD_DISCOUNT: z.string(),
   POLAR_ORGANIZATION_ID: z.string(),
   POLAR_MONTHLY_ID: z.string(),
+  POLAR_ANNUALLY_ID: z.string(),
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   TURNSTILE_SECRET_KEY: z.string(),

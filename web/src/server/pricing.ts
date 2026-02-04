@@ -27,6 +27,19 @@ const pricing = {
         ai: 'byok',
       },
     },
+    proAnnually: {
+      name: 'Pro',
+      price: 49.99,
+      licenseType: 'annually',
+      features: {
+        maxConnections: Infinity,
+        dialects: ['all'],
+        sqlRunner: true,
+        autoComplete: true,
+        personalUseOnly: false,
+        ai: 'byok',
+      },
+    },
     pro: {
       name: 'Onetime-purchase',
       price: 39.99,

@@ -5,6 +5,8 @@ import { Download, Check } from 'lucide-react'
 import { getPricing } from '@/server/pricing'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import * as React from 'react'
 
 export const Route = createFileRoute('/pricing')({
   component: PricingPage,
@@ -13,6 +15,7 @@ export const Route = createFileRoute('/pricing')({
 
 function PricingPage() {
   const pricing = Route.useLoaderData()
+  const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'annually'>('monthly')
 
   return (
     <div className='min-h-screen bg-background flex flex-col'>
@@ -22,6 +25,15 @@ function PricingPage() {
         <div className='max-w-2xl mx-auto text-center mb-16'>
           <h1 className='text-4xl md:text-5xl font-bold tracking-tight'>Pricing that you can overcome</h1>
           <p className='mt-4 text-muted-foreground text-lg'>Free for personal use. Monthly or one-time options for professionals.</p>
+        </div>
+
+        <div className='flex justify-center mb-8'>
+          <Tabs value={billingCycle} onValueChange={(v) => setBillingCycle(v as 'monthly' | 'annually')}>
+            <TabsList>
+              <TabsTrigger value='monthly'>Monthly</TabsTrigger>
+              <TabsTrigger value='annually'>Annually</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         <div className='grid md:grid-cols-3 gap-8 max-w-5xl mx-auto'>
@@ -67,56 +79,109 @@ function PricingPage() {
             </CardFooter>
           </Card>
 
-          <Card className='flex flex-col border-primary relative'>
-            <div className='absolute top-0 right-0 p-3'>
-              <Badge variant='default' className='text-xs'>
-                Popular
-              </Badge>
-            </div>
+          {billingCycle === 'monthly' ? (
+            <Card className='flex flex-col border-primary relative'>
+              <div className='absolute top-0 right-0 p-3'>
+                <Badge variant='default' className='text-xs'>
+                  Popular
+                </Badge>
+              </div>
 
-            <CardHeader>
-              <div className='flex items-center justify-between'>
-                <CardTitle className='text-xl'>{pricing.tiers.proMonthly.name}</CardTitle>
+              <CardHeader>
+                <div className='flex items-center justify-between'>
+                  <CardTitle className='text-xl'>{pricing.tiers.proMonthly.name}</CardTitle>
+                </div>
+                <CardDescription>For professionals and commercial use</CardDescription>
+              </CardHeader>
+              <CardContent className='flex-1'>
+                <div className='flex items-baseline gap-2 mb-2'>
+                  <span className='text-4xl font-bold'>${pricing.tiers.proMonthly.price}</span>
+                  <span className='text-muted-foreground text-sm'>/month</span>
+                </div>
+                <p className='text-sm text-muted-foreground mb-4'>3 days free trial</p>
+                <ul className='space-y-3 text-sm'>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span className='font-medium'>Commercial use allowed</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span className='font-medium'>Unlimited Connections</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span className='font-medium'>Priority Support</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span>Everything in Free</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span>Continuous updates</span>
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button asChild className='w-full'>
+                  <Link to='/dashboard/billing' search={{ upgrade: true, plan: 'monthly' }}>
+                    Get Pro Monthly
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          ) : (
+            <Card className='flex flex-col border-primary relative'>
+              <div className='absolute top-0 right-0 p-3'>
+                <Badge variant='default' className='text-xs'>
+                  Popular
+                </Badge>
               </div>
-              <CardDescription>For professionals and commercial use</CardDescription>
-            </CardHeader>
-            <CardContent className='flex-1'>
-              <div className='flex items-baseline gap-2 mb-2'>
-                <span className='text-4xl font-bold'>${pricing.tiers.proMonthly.price}</span>
-                <span className='text-muted-foreground text-sm'>/month</span>
-              </div>
-              <p className='text-sm text-muted-foreground mb-4'>3 days free trial</p>
-              <ul className='space-y-3 text-sm'>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span className='font-medium'>Commercial use allowed</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span className='font-medium'>Unlimited Connections</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span className='font-medium'>Priority Support</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Everything in Free</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Continuous updates</span>
-                </li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button asChild className='w-full'>
-                <Link to='/dashboard/billing' search={{ upgrade: true, plan: 'monthly' }}>
-                  Get Pro Monthly
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
+
+              <CardHeader>
+                <div className='flex items-center justify-between'>
+                  <CardTitle className='text-xl'>{pricing.tiers.proAnnually.name}</CardTitle>
+                </div>
+                <CardDescription>For professionals and commercial use</CardDescription>
+              </CardHeader>
+              <CardContent className='flex-1'>
+                <div className='flex items-baseline gap-2 mb-2'>
+                  <span className='text-4xl font-bold'>${pricing.tiers.proAnnually.price}</span>
+                  <span className='text-muted-foreground text-sm'>/year</span>
+                </div>
+                <p className='text-sm text-muted-foreground mb-4'>Save ${(pricing.tiers.proMonthly.price * 12 - pricing.tiers.proAnnually.price).toFixed(2)}/year</p>
+                <ul className='space-y-3 text-sm'>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span className='font-medium'>Commercial use allowed</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span className='font-medium'>Unlimited Connections</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span className='font-medium'>Priority Support</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span>Everything in Free</span>
+                  </li>
+                  <li className='flex items-center gap-2'>
+                    <Check className='h-4 w-4 text-green-500' />
+                    <span>Continuous updates</span>
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button asChild className='w-full'>
+                  <Link to='/dashboard/billing' search={{ upgrade: true, plan: 'annually' }}>
+                    Get Pro Annually
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
 
           <Card className='flex flex-col relative'>
             <div className='absolute top-0 right-0 p-3'>

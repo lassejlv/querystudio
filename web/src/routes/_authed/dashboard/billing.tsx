@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authed/dashboard/billing")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       upgrade: search.upgrade as boolean | undefined,
-      plan: search.plan as 'monthly' | 'onetime' | undefined,
+      plan: search.plan as 'monthly' | 'annually' | 'onetime' | undefined,
     };
   },
   loader: async () => {
@@ -27,7 +27,7 @@ function BillingPage() {
   const search = useSearch({ from: "/_authed/dashboard/billing" });
 
   const createCheckoutMutation = useMutation({
-    mutationFn: async (plan: 'monthly' | 'onetime') => {
+    mutationFn: async (plan: 'monthly' | 'annually' | 'onetime') => {
       return await createCheckout({ data: { plan } });
     },
     onSuccess: (data) => {
@@ -40,8 +40,8 @@ function BillingPage() {
 
   useEffect(() => {
     if (search.upgrade && search.plan && !user.isPro) {
-      const plan = search.plan as 'monthly' | 'onetime';
-      if (plan === 'monthly' || plan === 'onetime') {
+      const plan = search.plan as 'monthly' | 'annually' | 'onetime';
+      if (plan === 'monthly' || plan === 'annually' || plan === 'onetime') {
         createCheckoutMutation.mutate(plan);
       }
     }
