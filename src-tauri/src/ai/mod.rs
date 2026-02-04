@@ -159,5 +159,12 @@ pub async fn ai_chat(
     })
 }
 
+#[tauri::command]
+pub async fn ai_fetch_openrouter_models(api_key: String) -> Result<Vec<ModelInfo>, String> {
+    providers::openrouter::fetch_models(&api_key)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 pub use agent::AgentMessage;
 pub use providers::{AIModel, ModelInfo};

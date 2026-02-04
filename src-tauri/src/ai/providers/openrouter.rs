@@ -1,20 +1,25 @@
+use super::openai::{
+    convert_message, convert_tool, parse_finish_reason, OpenAIMessage, OpenAIRequest,
+    OpenAIResponse, OpenAIStreamResponse, OpenAITool,
+};
 use super::{
-    AIModel, AIProvider, AIProviderError, AIProviderType, ChatMessage, ChatResponse, ChatRole,
-    FinishReason, StreamChunk, ToolCall, ToolDefinition,
+    AIModel, AIProvider, AIProviderError, AIProviderType, ChatMessage, ChatResponse, FinishReason,
+    ModelInfo, StreamChunk, ToolCall, ToolDefinition,
 };
 use async_trait::async_trait;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio::sync::mpsc;
 
-const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
+const OPENROUTER_API_URL: &str = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_MODELS_URL: &str = "https://openrouter.ai/api/v1/models";
 
-pub struct OpenAIProvider {
+pub struct OpenRouterProvider {
     client: Client,
     api_key: String,
 }
 
-impl OpenAIProvider {
+impl OpenRouterProvider {
     pub fn new(api_key: String) -> Self {
         Self {
             client: Client::new(),
@@ -23,172 +28,10 @@ impl OpenAIProvider {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub(crate) struct OpenAIRequest {
-    pub model: String,
-    pub messages: Vec<OpenAIMessage>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub tools: Vec<OpenAITool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_choice: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stream: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct OpenAIMessage {
-    pub role: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<Vec<OpenAIToolCall>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_call_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct OpenAIToolCall {
-    pub id: String,
-    #[serde(rename = "type")]
-    pub call_type: String,
-    pub function: OpenAIFunctionCall,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct OpenAIFunctionCall {
-    pub name: String,
-    pub arguments: String,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct OpenAITool {
-    #[serde(rename = "type")]
-    pub tool_type: String,
-    pub function: OpenAIFunctionDef,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct OpenAIFunctionDef {
-    pub name: String,
-    pub description: String,
-    pub parameters: serde_json::Value,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIResponse {
-    pub choices: Vec<OpenAIChoice>,
-    #[serde(default)]
-    pub error: Option<OpenAIError>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIChoice {
-    pub message: OpenAIMessage,
-    pub finish_reason: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIError {
-    pub message: String,
-    #[serde(rename = "type")]
-    pub error_type: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIStreamResponse {
-    pub choices: Vec<OpenAIStreamChoice>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIStreamChoice {
-    pub delta: OpenAIStreamDelta,
-    pub finish_reason: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIStreamDelta {
-    #[serde(default)]
-    pub content: Option<String>,
-    #[serde(default)]
-    pub tool_calls: Option<Vec<OpenAIStreamToolCall>>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIStreamToolCall {
-    pub index: usize,
-    #[serde(default)]
-    pub id: Option<String>,
-    #[serde(default)]
-    pub function: Option<OpenAIStreamFunction>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct OpenAIStreamFunction {
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub arguments: Option<String>,
-}
-
-pub(crate) fn convert_role(role: &ChatRole) -> String {
-    match role {
-        ChatRole::System => "system".to_string(),
-        ChatRole::User => "user".to_string(),
-        ChatRole::Assistant => "assistant".to_string(),
-        ChatRole::Tool => "tool".to_string(),
-    }
-}
-
-pub(crate) fn convert_message(msg: &ChatMessage) -> OpenAIMessage {
-    OpenAIMessage {
-        role: convert_role(&msg.role),
-        content: msg.content.clone(),
-        tool_calls: msg.tool_calls.as_ref().map(|calls| {
-            calls
-                .iter()
-                .map(|tc| OpenAIToolCall {
-                    id: tc.id.clone(),
-                    call_type: "function".to_string(),
-                    function: OpenAIFunctionCall {
-                        name: tc.name.clone(),
-                        arguments: tc.arguments.clone(),
-                    },
-                })
-                .collect()
-        }),
-        tool_call_id: msg.tool_call_id.clone(),
-    }
-}
-
-pub(crate) fn convert_tool(tool: &ToolDefinition) -> OpenAITool {
-    OpenAITool {
-        tool_type: "function".to_string(),
-        function: OpenAIFunctionDef {
-            name: tool.name.clone(),
-            description: tool.description.clone(),
-            parameters: serde_json::json!({
-                "type": tool.parameters.param_type,
-                "properties": tool.parameters.properties,
-                "required": tool.parameters.required,
-            }),
-        },
-    }
-}
-
-pub(crate) fn parse_finish_reason(reason: Option<&str>) -> FinishReason {
-    match reason {
-        Some("stop") => FinishReason::Stop,
-        Some("tool_calls") => FinishReason::ToolCalls,
-        Some("length") => FinishReason::Length,
-        Some("content_filter") => FinishReason::ContentFilter,
-        _ => FinishReason::Unknown,
-    }
-}
-
 #[async_trait]
-impl AIProvider for OpenAIProvider {
+impl AIProvider for OpenRouterProvider {
     fn provider_type(&self) -> AIProviderType {
-        AIProviderType::OpenAI
+        AIProviderType::OpenRouter
     }
 
     async fn chat(
@@ -201,7 +44,7 @@ impl AIProvider for OpenAIProvider {
         let openai_tools: Vec<OpenAITool> = tools.iter().map(convert_tool).collect();
 
         let request = OpenAIRequest {
-            model: model.to_string(),
+            model: model.api_model_id(),
             messages: openai_messages,
             tools: openai_tools,
             tool_choice: if tools.is_empty() {
@@ -214,9 +57,11 @@ impl AIProvider for OpenAIProvider {
 
         let response = self
             .client
-            .post(OPENAI_API_URL)
+            .post(OPENROUTER_API_URL)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://querystudio.app")
+            .header("X-Title", "QueryStudio")
             .json(&request)
             .send()
             .await
@@ -298,18 +143,11 @@ impl AIProvider for OpenAIProvider {
         messages: Vec<ChatMessage>,
         tools: &[ToolDefinition],
     ) -> Result<mpsc::Receiver<StreamChunk>, AIProviderError> {
-        println!("[OpenAI] chat_stream called with model: {}", model);
-        println!(
-            "[OpenAI] messages count: {}, tools count: {}",
-            messages.len(),
-            tools.len()
-        );
-
         let openai_messages: Vec<OpenAIMessage> = messages.iter().map(convert_message).collect();
         let openai_tools: Vec<OpenAITool> = tools.iter().map(convert_tool).collect();
 
         let request = OpenAIRequest {
-            model: model.to_string(),
+            model: model.api_model_id(),
             messages: openai_messages,
             tools: openai_tools,
             tool_choice: if tools.is_empty() {
@@ -320,26 +158,22 @@ impl AIProvider for OpenAIProvider {
             stream: Some(true),
         };
 
-        println!("[OpenAI] Sending request to {}", OPENAI_API_URL);
         let response = self
             .client
-            .post(OPENAI_API_URL)
+            .post(OPENROUTER_API_URL)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://querystudio.app")
+            .header("X-Title", "QueryStudio")
             .json(&request)
             .send()
             .await
-            .map_err(|e| {
-                println!("[OpenAI] Request failed: {}", e);
-                AIProviderError::new(format!("Request failed: {}", e)).retryable()
-            })?;
+            .map_err(|e| AIProviderError::new(format!("Request failed: {}", e)).retryable())?;
 
         let status = response.status();
-        println!("[OpenAI] Response status: {}", status);
 
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
-            println!("[OpenAI] Error body: {}", body);
             if let Ok(error_response) = serde_json::from_str::<serde_json::Value>(&body) {
                 if let Some(error) = error_response.get("error") {
                     let message = error
@@ -355,31 +189,20 @@ impl AIProvider for OpenAIProvider {
             )));
         }
 
-        println!("[OpenAI] Response successful, setting up stream");
-
         let (tx, rx) = mpsc::channel(100);
 
         let mut stream = response.bytes_stream();
-        println!("[OpenAI] Spawning stream processing task");
         tokio::spawn(async move {
             use futures_util::StreamExt;
 
-            println!("[OpenAI] Stream processing task started");
             let mut buffer = String::new();
             let mut current_tool_calls: std::collections::HashMap<usize, (String, String, String)> =
                 std::collections::HashMap::new();
 
-            let mut chunk_count = 0;
             while let Some(chunk_result) = stream.next().await {
-                chunk_count += 1;
                 match chunk_result {
                     Ok(chunk) => {
                         let chunk_str = String::from_utf8_lossy(&chunk);
-                        println!(
-                            "[OpenAI] Received chunk #{}: {} bytes",
-                            chunk_count,
-                            chunk.len()
-                        );
                         buffer.push_str(&chunk_str);
 
                         while let Some(pos) = buffer.find("\n\n") {
@@ -389,7 +212,6 @@ impl AIProvider for OpenAIProvider {
                             for line in event.lines() {
                                 if let Some(data) = line.strip_prefix("data: ") {
                                     if data == "[DONE]" {
-                                        println!("[OpenAI] Received [DONE] marker");
                                         let _ = tx
                                             .send(StreamChunk::Done {
                                                 finish_reason: FinishReason::Stop,
@@ -455,19 +277,11 @@ impl AIProvider for OpenAIProvider {
                                             }
 
                                             if let Some(reason) = choice.finish_reason {
-                                                println!(
-                                                    "[OpenAI] Finish reason received: {}",
-                                                    reason
-                                                );
-                                                let parsed_reason =
-                                                    parse_finish_reason(Some(&reason));
-                                                println!(
-                                                    "[OpenAI] Parsed finish reason: {:?}",
-                                                    parsed_reason
-                                                );
                                                 let _ = tx
                                                     .send(StreamChunk::Done {
-                                                        finish_reason: parsed_reason,
+                                                        finish_reason: parse_finish_reason(Some(
+                                                            &reason,
+                                                        )),
                                                     })
                                                     .await;
                                             }
@@ -478,19 +292,80 @@ impl AIProvider for OpenAIProvider {
                         }
                     }
                     Err(e) => {
-                        println!("[OpenAI] Stream error: {}", e);
                         let _ = tx.send(StreamChunk::Error(e.to_string())).await;
                         return;
                     }
                 }
             }
-            println!(
-                "[OpenAI] Stream processing task finished after {} chunks",
-                chunk_count
-            );
         });
 
-        println!("[OpenAI] Returning receiver");
         Ok(rx)
     }
+}
+
+// ============================================================================
+// Model Fetching
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+struct OpenRouterModelsResponse {
+    data: Vec<OpenRouterModelEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenRouterModelEntry {
+    id: String,
+    name: String,
+    architecture: Option<OpenRouterArchitecture>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenRouterArchitecture {
+    output_modalities: Option<Vec<String>>,
+}
+
+/// Fetches available models from the OpenRouter API.
+/// Returns them as `ModelInfo` with the `openrouter/` prefix on the id.
+pub async fn fetch_models(api_key: &str) -> Result<Vec<ModelInfo>, AIProviderError> {
+    let client = Client::new();
+    let response = client
+        .get(OPENROUTER_MODELS_URL)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .send()
+        .await
+        .map_err(|e| AIProviderError::new(format!("Failed to fetch models: {}", e)))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        return Err(AIProviderError::new(format!(
+            "Failed to fetch models ({}): {}",
+            status, body
+        )));
+    }
+
+    let models_response: OpenRouterModelsResponse = response
+        .json()
+        .await
+        .map_err(|e| AIProviderError::new(format!("Failed to parse models response: {}", e)))?;
+
+    let models = models_response
+        .data
+        .into_iter()
+        .filter(|m| {
+            // Only include models that support text output
+            m.architecture
+                .as_ref()
+                .and_then(|a| a.output_modalities.as_ref())
+                .map(|mods| mods.iter().any(|m| m == "text"))
+                .unwrap_or(true) // include if no architecture info
+        })
+        .map(|m| ModelInfo {
+            id: format!("openrouter/{}", m.id),
+            name: m.name,
+            provider: AIProviderType::OpenRouter,
+        })
+        .collect();
+
+    Ok(models)
 }
