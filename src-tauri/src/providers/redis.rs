@@ -24,6 +24,7 @@ pub struct PubSubMessage {
 }
 
 /// Redis server information
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ServerInfo {
     pub version: String,
@@ -38,6 +39,7 @@ pub struct ServerInfo {
 }
 
 /// Key information with metadata
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct KeyInfo {
     pub key: String,
@@ -48,6 +50,7 @@ pub struct KeyInfo {
 }
 
 /// Transaction result
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TransactionResult {
     pub results: Vec<serde_json::Value>,
@@ -55,6 +58,7 @@ pub struct TransactionResult {
 }
 
 /// Pipeline result
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct PipelineResult {
     pub results: Vec<serde_json::Value>,
@@ -65,15 +69,20 @@ pub struct RedisProvider {
     conn: RedisConnection,
     #[allow(dead_code)]
     client: Option<Client>,
+    #[allow(dead_code)]
     cluster_client: Option<redis::cluster::ClusterClient>,
     /// Pub/Sub sender channel
+    #[allow(dead_code)]
     pubsub_tx: Arc<RwLock<Option<tokio::sync::mpsc::Sender<PubSubMessage>>>>,
     /// Active subscriptions
+    #[allow(dead_code)]
     subscriptions: Arc<RwLock<Vec<String>>>,
     /// Is cluster mode
+    #[allow(dead_code)]
     is_cluster: bool,
 }
 
+#[allow(dead_code)]
 impl RedisProvider {
     pub async fn connect(params: ConnectionParams) -> Result<Self, ProviderError> {
         match params {
