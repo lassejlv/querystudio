@@ -77,6 +77,9 @@ export const api = {
 
   aiChatStream: (request: ChatRequest) => invoke<void>("ai_chat_stream", { request }),
 
+  aiFetchOpenRouterModels: (apiKey: string) =>
+    invoke<AIModelInfo[]>("ai_fetch_openrouter_models", { apiKey }),
+
   // User status API (synced from auth session)
   setUserProStatus: (isPro: boolean) => invoke<void>("set_user_pro_status", { isPro }),
 

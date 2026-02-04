@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Copy,
   Check,
+  ChevronsUpDown,
   PlayCircle,
   History,
   RotateCcw,
@@ -30,13 +31,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,37 +59,40 @@ import {
   saveChatHistory,
   createChatSession,
   generateSessionTitle,
-  getModelProvider,
 } from "@/lib/ai-agent";
+import { api } from "@/lib/api";
+import type { AIModelInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const OPENAI_API_KEY_STORAGE_KEY = "querystudio_openai_api_key";
 const ANTHROPIC_API_KEY_STORAGE_KEY = "querystudio_anthropic_api_key";
 const GOOGLE_API_KEY_STORAGE_KEY = "querystudio_google_api_key";
+const OPENROUTER_API_KEY_STORAGE_KEY = "querystudio_openrouter_api_key";
 const SELECTED_MODEL_KEY = "querystudio_selected_model";
+
+function getProviderForModel(model: ModelId, allModels: AIModelInfo[]): string {
+  return allModels.find((m) => m.id === model)?.provider ?? "openai";
+}
 
 function getApiKeyForModel(
   model: ModelId,
-  openaiKey: string,
-  anthropicKey: string,
-  googleKey: string,
+  allModels: AIModelInfo[],
+  keys: { openai: string; anthropic: string; google: string; openrouter: string },
 ): string {
-  const provider = getModelProvider(model);
-  if (provider === "anthropic") return anthropicKey;
-  if (provider === "google") return googleKey;
-  return openaiKey;
+  const provider = getProviderForModel(model, allModels);
+  if (provider === "anthropic") return keys.anthropic;
+  if (provider === "google") return keys.google;
+  if (provider === "openrouter") return keys.openrouter;
+  return keys.openai;
 }
 
 function isModelAvailable(
   model: ModelId,
-  openaiKey: string,
-  anthropicKey: string,
-  googleKey: string,
+  allModels: AIModelInfo[],
+  keys: { openai: string; anthropic: string; google: string; openrouter: string },
 ): boolean {
-  const provider = getModelProvider(model);
-  if (provider === "anthropic") return !!anthropicKey.trim();
-  if (provider === "google") return !!googleKey.trim();
-  return !!openaiKey.trim();
+  const key = getApiKeyForModel(model, allModels, keys);
+  return !!key.trim();
 }
 
 // ============================================================================
@@ -333,25 +339,51 @@ export const AIChat = memo(function AIChat() {
   const [googleApiKey, setGoogleApiKey] = useState(
     () => localStorage.getItem(GOOGLE_API_KEY_STORAGE_KEY) || "",
   );
+  const [openrouterApiKey, setOpenrouterApiKey] = useState(
+    () => localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || "",
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [tempOpenaiKey, setTempOpenaiKey] = useState("");
   const [tempAnthropicKey, setTempAnthropicKey] = useState("");
   const [tempGoogleKey, setTempGoogleKey] = useState("");
+  const [tempOpenrouterKey, setTempOpenrouterKey] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => {
-    const saved = localStorage.getItem(SELECTED_MODEL_KEY);
-    if (saved && AI_MODELS.some((m) => m.id === saved)) {
-      return saved as ModelId;
-    }
-    return "gpt-5";
+    return localStorage.getItem(SELECTED_MODEL_KEY) || "gpt-5";
   });
+  const [openrouterModels, setOpenrouterModels] = useState<AIModelInfo[]>([]);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
 
-  // Clean up invalid model from localStorage on mount
+  // Fetch OpenRouter models when API key changes
   useEffect(() => {
-    const saved = localStorage.getItem(SELECTED_MODEL_KEY);
-    if (saved && !AI_MODELS.some((m) => m.id === saved)) {
-      localStorage.removeItem(SELECTED_MODEL_KEY);
+    if (!openrouterApiKey.trim()) {
+      setOpenrouterModels([]);
+      return;
     }
-  }, []);
+    let cancelled = false;
+    api.aiFetchOpenRouterModels(openrouterApiKey).then(
+      (models) => {
+        if (!cancelled) setOpenrouterModels(models);
+      },
+      () => {
+        if (!cancelled) setOpenrouterModels([]);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [openrouterApiKey]);
+
+  const allModels = useMemo(() => [...AI_MODELS, ...openrouterModels], [openrouterModels]);
+
+  const apiKeys = useMemo(
+    () => ({
+      openai: openaiApiKey,
+      anthropic: anthropicApiKey,
+      google: googleApiKey,
+      openrouter: openrouterApiKey,
+    }),
+    [openaiApiKey, anthropicApiKey, googleApiKey, openrouterApiKey],
+  );
 
   const agentRef = useRef<AIAgent | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -399,12 +431,7 @@ export const AIChat = memo(function AIChat() {
   }, [connection?.id, currentSessionId, setLastSession]);
 
   // Get the current API key based on selected model
-  const currentApiKey = getApiKeyForModel(
-    selectedModel,
-    openaiApiKey,
-    anthropicApiKey,
-    googleApiKey,
-  );
+  const currentApiKey = getApiKeyForModel(selectedModel, allModels, apiKeys);
 
   // Initialize agent
   useEffect(() => {
@@ -447,9 +474,11 @@ export const AIChat = memo(function AIChat() {
     setOpenaiApiKey(tempOpenaiKey);
     setAnthropicApiKey(tempAnthropicKey);
     setGoogleApiKey(tempGoogleKey);
+    setOpenrouterApiKey(tempOpenrouterKey);
     localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, tempOpenaiKey);
     localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, tempAnthropicKey);
     localStorage.setItem(GOOGLE_API_KEY_STORAGE_KEY, tempGoogleKey);
+    localStorage.setItem(OPENROUTER_API_KEY_STORAGE_KEY, tempOpenrouterKey);
     setShowSettings(false);
   };
 
@@ -472,7 +501,7 @@ export const AIChat = memo(function AIChat() {
     setMessages(session.messages);
 
     // Migrate old model values to gpt-5
-    const validModel = AI_MODELS.some((m) => m.id === session.model)
+    const validModel = allModels.some((m) => m.id === session.model)
       ? (session.model as ModelId)
       : "gpt-5";
     setSelectedModel(validModel);
@@ -726,7 +755,12 @@ export const AIChat = memo(function AIChat() {
   }
 
   // Check if user has ANY API key configured
-  const hasAnyApiKey = !!(openaiApiKey.trim() || anthropicApiKey.trim() || googleApiKey.trim());
+  const hasAnyApiKey = !!(
+    apiKeys.openai.trim() ||
+    apiKeys.anthropic.trim() ||
+    apiKeys.google.trim() ||
+    apiKeys.openrouter.trim()
+  );
 
   if (!hasAnyApiKey) {
     return (
@@ -735,8 +769,8 @@ export const AIChat = memo(function AIChat() {
           <div className="space-y-2">
             <p className="text-lg font-medium text-foreground">API Key Required</p>
             <p className="text-sm text-muted-foreground">
-              To use AI features, you need to provide at least one API key (OpenAI, Anthropic, or
-              Google). Your keys are stored locally.
+              To use AI features, you need to provide at least one API key (OpenAI, Google, or
+              OpenRouter). Your keys are stored locally.
             </p>
           </div>
           <Button
@@ -744,6 +778,7 @@ export const AIChat = memo(function AIChat() {
               setTempOpenaiKey(openaiApiKey);
               setTempAnthropicKey(anthropicApiKey);
               setTempGoogleKey(googleApiKey);
+              setTempOpenrouterKey(openrouterApiKey);
               setShowSettings(true);
             }}
           >
@@ -756,7 +791,7 @@ export const AIChat = memo(function AIChat() {
               <DialogHeader>
                 <DialogTitle>API Keys</DialogTitle>
                 <DialogDescription>
-                  Enter your API keys to enable Querybuddy. You can use OpenAI, Anthropic, Google,
+                  Enter your API keys to enable Querybuddy. You can use OpenAI, Google, OpenRouter,
                   or any combination.
                 </DialogDescription>
               </DialogHeader>
@@ -783,6 +818,19 @@ export const AIChat = memo(function AIChat() {
                   />
                   <p className="text-xs text-muted-foreground">For Gemini models</p>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="openrouterKey">OpenRouter API Key</Label>
+                  <Input
+                    id="openrouterKey"
+                    type="password"
+                    placeholder="sk-or-..."
+                    value={tempOpenrouterKey}
+                    onChange={(e) => setTempOpenrouterKey(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For OpenRouter models (Claude, DeepSeek, etc.)
+                  </p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -791,7 +839,10 @@ export const AIChat = memo(function AIChat() {
                 <Button
                   onClick={handleSaveApiKeys}
                   disabled={
-                    !tempOpenaiKey.trim() && !tempAnthropicKey.trim() && !tempGoogleKey.trim()
+                    !tempOpenaiKey.trim() &&
+                    !tempAnthropicKey.trim() &&
+                    !tempGoogleKey.trim() &&
+                    !tempOpenrouterKey.trim()
                   }
                 >
                   Save
@@ -894,6 +945,7 @@ export const AIChat = memo(function AIChat() {
               setTempOpenaiKey(openaiApiKey);
               setTempAnthropicKey(anthropicApiKey);
               setTempGoogleKey(googleApiKey);
+              setTempOpenrouterKey(openrouterApiKey);
               setShowSettings(true);
             }}
           >
@@ -996,36 +1048,55 @@ export const AIChat = memo(function AIChat() {
           </div>
 
           <div className="flex items-center justify-between">
-            <Select value={selectedModel} onValueChange={handleModelChange}>
-              <SelectTrigger className="h-8 w-48 text-xs rounded-xl">
-                <SelectValue placeholder="GPT-5" />
-              </SelectTrigger>
-              <SelectContent>
-                {AI_MODELS.map((model) => {
-                  const available = isModelAvailable(
-                    model.id,
-                    openaiApiKey,
-                    anthropicApiKey,
-                    googleApiKey,
-                  );
-                  return (
-                    <SelectItem
-                      key={model.id}
-                      value={model.id}
-                      disabled={!available}
-                      className={!available ? "opacity-50" : ""}
-                    >
-                      {model.name}
-                      {!available && (
-                        <span className="ml-2 text-[10px] text-muted-foreground">
-                          (no key)
-                        </span>
-                      )}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+            <Popover open={modelPickerOpen} onOpenChange={setModelPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={modelPickerOpen}
+                  className="h-8 w-64 justify-between text-xs rounded-xl"
+                >
+                  <span className="truncate">
+                    {allModels.find((m) => m.id === selectedModel)?.name ?? selectedModel}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search models..." className="h-9" />
+                  <CommandList className="max-h-64">
+                    <CommandEmpty>No models found.</CommandEmpty>
+                    <CommandGroup>
+                      {allModels
+                        .filter((model) => isModelAvailable(model.id, allModels, apiKeys))
+                        .map((model) => (
+                          <CommandItem
+                            key={model.id}
+                            value={`${model.name} ${model.provider}`}
+                            onSelect={() => {
+                              handleModelChange(model.id);
+                              setModelPickerOpen(false);
+                            }}
+                            className="text-xs"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-3 w-3",
+                                selectedModel === model.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            <span className="truncate">
+                              {model.name}
+                              <span className="ml-1 text-muted-foreground">({model.provider})</span>
+                            </span>
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <span className="text-xs text-muted-foreground">↵ to send</span>
           </div>
         </form>
@@ -1061,6 +1132,19 @@ export const AIChat = memo(function AIChat() {
               />
               <p className="text-xs text-muted-foreground">For Gemini models</p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="openrouterKey2">OpenRouter API Key</Label>
+              <Input
+                id="openrouterKey2"
+                type="password"
+                placeholder="sk-or-..."
+                value={tempOpenrouterKey}
+                onChange={(e) => setTempOpenrouterKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                For OpenRouter models (Claude, DeepSeek, etc.)
+              </p>
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -1068,7 +1152,12 @@ export const AIChat = memo(function AIChat() {
             </Button>
             <Button
               onClick={handleSaveApiKeys}
-              disabled={!tempOpenaiKey.trim() && !tempAnthropicKey.trim() && !tempGoogleKey.trim()}
+              disabled={
+                !tempOpenaiKey.trim() &&
+                !tempAnthropicKey.trim() &&
+                !tempGoogleKey.trim() &&
+                !tempOpenrouterKey.trim()
+              }
             >
               Save
             </Button>

@@ -1,5 +1,6 @@
 pub mod gemini;
 pub mod openai;
+pub mod openrouter;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,7 @@ pub enum AIProviderType {
     #[default]
     OpenAI,
     Google,
+    OpenRouter,
 }
 
 impl fmt::Display for AIProviderType {
@@ -18,31 +20,30 @@ impl fmt::Display for AIProviderType {
         match self {
             AIProviderType::OpenAI => write!(f, "OpenAI"),
             AIProviderType::Google => write!(f, "Google"),
+            AIProviderType::OpenRouter => write!(f, "OpenRouter"),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum AIModel {
     #[default]
-    #[serde(rename = "gpt-5")]
     Gpt5,
-    #[serde(rename = "gpt-5-mini")]
     Gpt5Mini,
-    #[serde(rename = "gemini-3-flash-preview")]
     Gemini3Flash,
-    #[serde(rename = "gemini-3-pro-preview")]
     Gemini3Pro,
+    /// Dynamic OpenRouter model — holds the raw model slug (e.g. "anthropic/claude-sonnet-4")
+    OpenRouter(String),
 }
 
 impl AIModel {
-    pub fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> String {
         match self {
-            AIModel::Gpt5 => "gpt-5",
-            AIModel::Gpt5Mini => "gpt-5-mini",
-            AIModel::Gemini3Flash => "gemini-3-flash-preview",
-            AIModel::Gemini3Pro => "gemini-3-pro-preview",
+            AIModel::Gpt5 => "gpt-5".to_string(),
+            AIModel::Gpt5Mini => "gpt-5-mini".to_string(),
+            AIModel::Gemini3Flash => "gemini-3-flash-preview".to_string(),
+            AIModel::Gemini3Pro => "gemini-3-pro-preview".to_string(),
+            AIModel::OpenRouter(slug) => format!("openrouter/{}", slug),
         }
     }
 
@@ -50,16 +51,16 @@ impl AIModel {
         match self {
             AIModel::Gpt5 | AIModel::Gpt5Mini => AIProviderType::OpenAI,
             AIModel::Gemini3Flash | AIModel::Gemini3Pro => AIProviderType::Google,
+            AIModel::OpenRouter(_) => AIProviderType::OpenRouter,
         }
     }
 
-    #[allow(dead_code)]
-    pub fn display_name(&self) -> &'static str {
+    /// Returns the raw model slug sent to the provider API.
+    /// For OpenRouter, this strips the "openrouter/" prefix.
+    pub fn api_model_id(&self) -> String {
         match self {
-            AIModel::Gpt5 => "GPT-5",
-            AIModel::Gpt5Mini => "GPT-5 Mini",
-            AIModel::Gemini3Flash => "Gemini 3 Flash",
-            AIModel::Gemini3Pro => "Gemini 3 Pro",
+            AIModel::OpenRouter(slug) => slug.clone(),
+            other => other.as_str(),
         }
     }
 }
@@ -79,8 +80,25 @@ impl std::str::FromStr for AIModel {
             "gpt-5-mini" => Ok(AIModel::Gpt5Mini),
             "gemini-3-flash-preview" => Ok(AIModel::Gemini3Flash),
             "gemini-3-pro-preview" => Ok(AIModel::Gemini3Pro),
+            s if s.starts_with("openrouter/") => {
+                let slug = s.strip_prefix("openrouter/").unwrap().to_string();
+                Ok(AIModel::OpenRouter(slug))
+            }
             _ => Err(AIProviderError::new(format!("Unknown model: {}", s))),
         }
+    }
+}
+
+impl Serialize for AIModel {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for AIModel {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
 
@@ -275,37 +293,41 @@ pub fn create_ai_provider(
             let provider = gemini::GeminiProvider::new(api_key);
             Ok(Box::new(provider))
         }
+        AIProviderType::OpenRouter => {
+            let provider = openrouter::OpenRouterProvider::new(api_key);
+            Ok(Box::new(provider))
+        }
     }
 }
 
 pub fn get_available_models() -> Vec<ModelInfo> {
     vec![
         ModelInfo {
-            id: AIModel::Gpt5,
+            id: "gpt-5".to_string(),
             name: "GPT-5".to_string(),
             provider: AIProviderType::OpenAI,
         },
         ModelInfo {
-            id: AIModel::Gpt5Mini,
+            id: "gpt-5-mini".to_string(),
             name: "GPT-5 Mini".to_string(),
             provider: AIProviderType::OpenAI,
         },
         ModelInfo {
-            id: AIModel::Gemini3Flash,
+            id: "gemini-3-flash-preview".to_string(),
             name: "Gemini 3 Flash".to_string(),
             provider: AIProviderType::Google,
         },
         ModelInfo {
-            id: AIModel::Gemini3Pro,
+            id: "gemini-3-pro-preview".to_string(),
             name: "Gemini 3 Pro".to_string(),
             provider: AIProviderType::Google,
         },
     ]
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelInfo {
-    pub id: AIModel,
+    pub id: String,
     pub name: String,
     pub provider: AIProviderType,
 }

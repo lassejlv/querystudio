@@ -6,7 +6,7 @@ mod storage;
 mod terminal;
 mod user_state;
 
-use ai::{ai_chat, ai_chat_stream, ai_get_models, ai_validate_key};
+use ai::{ai_chat, ai_chat_stream, ai_fetch_openrouter_models, ai_get_models, ai_validate_key};
 use database::{test_connection, ConnectionConfig, ConnectionManager};
 use debug::{get_process_stats, DebugState};
 use providers::{ColumnInfo, QueryResult, TableInfo};
@@ -389,6 +389,7 @@ pub fn run() {
             ai_validate_key,
             ai_chat,
             ai_chat_stream,
+            ai_fetch_openrouter_models,
             // User state commands
             set_user_pro_status,
             get_user_status,
