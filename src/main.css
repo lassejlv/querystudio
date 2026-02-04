@@ -165,3 +165,65 @@
 .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
   background: var(--foreground);
 }
+
+/* AI Chat streaming cursor animation */
+@keyframes blink-cursor {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 2px;
+  background-color: hsl(var(--primary));
+  border-radius: 1px;
+  vertical-align: text-bottom;
+  animation: blink-cursor 0.8s steps(1) infinite;
+}
+
+.streaming-text {
+  animation: fade-in 0.15s ease-out;
+}
+
+/* Typing indicator dots */
+@keyframes typing-dot {
+  0%, 20% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+  80%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+}
+
+.typing-dot {
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}

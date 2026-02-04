@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import { useLayoutStore } from "@/lib/layout-store";
+import { motion } from "framer-motion";
 import {
   Send,
   Bot,
@@ -23,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -193,6 +193,87 @@ const InlineCode = memo(function InlineCode({ children }: { children: React.Reac
 });
 
 // ============================================================================
+// Streaming Text Component with Typewriter Effect
+// ============================================================================
+
+interface StreamingTextProps {
+  content: string;
+  isStreaming: boolean;
+  markdownComponents: Record<string, React.ComponentType<{ children?: React.ReactNode; className?: string }>>;
+}
+
+const StreamingText = memo(function StreamingText({
+  content,
+  isStreaming,
+  markdownComponents,
+}: StreamingTextProps) {
+  const [displayedLength, setDisplayedLength] = useState(content.length);
+  const prevContentRef = useRef(content);
+  const animationRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // If content grew, animate the new characters
+    if (content.length > prevContentRef.current.length && isStreaming) {
+      const startLength = prevContentRef.current.length;
+      const targetLength = content.length;
+      const charsToAnimate = targetLength - startLength;
+      
+      // Animate faster for larger chunks, slower for small ones
+      const charsPerFrame = Math.max(1, Math.ceil(charsToAnimate / 8));
+      let currentLength = startLength;
+
+      const animate = () => {
+        currentLength = Math.min(currentLength + charsPerFrame, targetLength);
+        setDisplayedLength(currentLength);
+        
+        if (currentLength < targetLength) {
+          animationRef.current = requestAnimationFrame(animate);
+        }
+      };
+
+      // Cancel any existing animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
+    } else if (!isStreaming) {
+      // When streaming stops, show full content immediately
+      setDisplayedLength(content.length);
+    }
+
+    prevContentRef.current = content;
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [content, isStreaming]);
+
+  // Reset when content resets (new message)
+  useEffect(() => {
+    if (content.length < displayedLength) {
+      setDisplayedLength(content.length);
+      prevContentRef.current = content;
+    }
+  }, [content, displayedLength]);
+
+  const displayedContent = content.slice(0, displayedLength);
+
+  return (
+    <div className="text-sm leading-relaxed">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {displayedContent}
+      </ReactMarkdown>
+      {isStreaming && (
+        <span className="streaming-cursor" />
+      )}
+    </div>
+  );
+});
+
+// ============================================================================
 // Memoized Message Component
 // ============================================================================
 
@@ -211,6 +292,7 @@ const MessageBubble = memo(function MessageBubble({
   // This prevents React from seeing different component trees during streaming
   const markdownComponents = useMemo(
     () => ({
+      // Code blocks
       code({ className, children, ...props }: { className?: string; children?: React.ReactNode }) {
         const isBlock = className?.includes("language-") || String(children).includes("\n");
         if (isBlock) {
@@ -225,52 +307,128 @@ const MessageBubble = memo(function MessageBubble({
       pre({ children }: { children?: React.ReactNode }) {
         return <>{children}</>;
       },
+      // Headings
+      h1({ children }: { children?: React.ReactNode }) {
+        return <h1 className="text-lg font-semibold text-foreground mt-4 mb-2 first:mt-0">{children}</h1>;
+      },
+      h2({ children }: { children?: React.ReactNode }) {
+        return <h2 className="text-base font-semibold text-foreground mt-3 mb-1.5 first:mt-0">{children}</h2>;
+      },
+      h3({ children }: { children?: React.ReactNode }) {
+        return <h3 className="text-sm font-semibold text-foreground mt-2.5 mb-1 first:mt-0">{children}</h3>;
+      },
+      h4({ children }: { children?: React.ReactNode }) {
+        return <h4 className="text-sm font-medium text-foreground mt-2 mb-1 first:mt-0">{children}</h4>;
+      },
+      // Paragraphs
+      p({ children }: { children?: React.ReactNode }) {
+        return <p className="my-1.5 leading-relaxed first:mt-0 last:mb-0">{children}</p>;
+      },
+      // Lists
+      ul({ children }: { children?: React.ReactNode }) {
+        return <ul className="my-1.5 ml-4 list-disc space-y-0.5 marker:text-muted-foreground">{children}</ul>;
+      },
+      ol({ children }: { children?: React.ReactNode }) {
+        return <ol className="my-1.5 ml-4 list-decimal space-y-0.5 marker:text-muted-foreground">{children}</ol>;
+      },
+      li({ children }: { children?: React.ReactNode }) {
+        return <li className="pl-1">{children}</li>;
+      },
+      // Blockquotes
+      blockquote({ children }: { children?: React.ReactNode }) {
+        return (
+          <blockquote className="my-2 border-l-2 border-primary/50 pl-3 text-muted-foreground italic">
+            {children}
+          </blockquote>
+        );
+      },
+      // Links
+      a({ href, children }: { href?: string; children?: React.ReactNode }) {
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
+          >
+            {children}
+          </a>
+        );
+      },
+      // Strong/Bold
+      strong({ children }: { children?: React.ReactNode }) {
+        return <strong className="font-semibold text-foreground">{children}</strong>;
+      },
+      // Emphasis/Italic
+      em({ children }: { children?: React.ReactNode }) {
+        return <em className="italic">{children}</em>;
+      },
+      // Horizontal rule
+      hr() {
+        return <hr className="my-3 border-border/50" />;
+      },
+      // Tables
       table({ children }: { children?: React.ReactNode }) {
         return (
-          <div className="overflow-x-auto my-1.5 rounded-md border border-border/50">
+          <div className="overflow-x-auto my-2 rounded-md border border-border/50">
             <table className="min-w-full text-xs">{children}</table>
           </div>
         );
       },
+      thead({ children }: { children?: React.ReactNode }) {
+        return <thead className="bg-muted/40">{children}</thead>;
+      },
+      tbody({ children }: { children?: React.ReactNode }) {
+        return <tbody className="divide-y divide-border/30">{children}</tbody>;
+      },
+      tr({ children }: { children?: React.ReactNode }) {
+        return <tr className="hover:bg-muted/20 transition-colors">{children}</tr>;
+      },
       th({ children }: { children?: React.ReactNode }) {
         return (
-          <th className="bg-muted/40 px-2 py-1 text-left font-medium text-foreground border-b border-border/50 text-xs">
+          <th className="px-2.5 py-1.5 text-left font-medium text-foreground border-b border-border/50 text-xs">
             {children}
           </th>
         );
       },
       td({ children }: { children?: React.ReactNode }) {
-        return <td className="px-2 py-1 border-b border-border/30 text-xs">{children}</td>;
+        return <td className="px-2.5 py-1.5 text-xs">{children}</td>;
       },
     }),
     [onAppendToRunner],
   );
 
   return (
-    <div className={cn("flex gap-2", isUser && "justify-end")}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className={cn("flex gap-2", isUser && "justify-end")}
+    >
       <div
         className={cn(
           "max-w-[90%] rounded-xl px-3 py-2 text-sm",
           isUser ? "bg-primary text-primary-foreground" : "bg-transparent text-foreground",
         )}
       >
-        {/* Loading state */}
+        {/* Loading state - waiting for first content */}
         {message.isLoading && !message.content ? (
           <div className="space-y-1.5">
             {message.toolCalls?.length ? (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Wrench className="h-3 w-3 animate-pulse" />
+                <Wrench className="h-3 w-3 animate-spin" />
                 <span>{message.toolCalls[message.toolCalls.length - 1].name}...</span>
               </div>
-            ) : null}
-            <div className="space-y-1">
-              <Skeleton className="h-3 w-40" />
-              <Skeleton className="h-3 w-28" />
-              <Skeleton className="h-3 w-20" />
-            </div>
+            ) : (
+              <div className="flex items-center gap-1 py-1">
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+              </div>
+            )}
           </div>
         ) : message.isLoading && message.content ? (
-          // Streaming state
+          // Streaming state with typewriter effect
           <>
             {message.toolCalls && message.toolCalls.length > 0 && (
               <div className="mb-1.5 flex flex-wrap gap-1">
@@ -285,12 +443,11 @@ const MessageBubble = memo(function MessageBubble({
                 ))}
               </div>
             )}
-            <div className="prose prose-sm prose-invert max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0 prose-table:my-1.5 prose-headings:my-1 prose-hr:hidden">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                {message.content}
-              </ReactMarkdown>
-              <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
-            </div>
+            <StreamingText
+              content={message.content}
+              isStreaming={true}
+              markdownComponents={markdownComponents}
+            />
           </>
         ) : (
           // Complete state
@@ -309,7 +466,7 @@ const MessageBubble = memo(function MessageBubble({
               </div>
             )}
             {message.content ? (
-              <div className="prose prose-sm prose-invert max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0 prose-table:my-1.5 prose-headings:my-1 prose-hr:hidden">
+              <div className="text-sm leading-relaxed">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {message.content}
                 </ReactMarkdown>
@@ -318,7 +475,7 @@ const MessageBubble = memo(function MessageBubble({
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 });
 
