@@ -1,3 +1,4 @@
+use log::{debug, error, info};
 use querystudio_ai::providers;
 use querystudio_ai::{AIModel, AIProviderError, Agent, AgentMessage, ModelInfo};
 use serde::{Deserialize, Serialize};
@@ -49,21 +50,15 @@ pub async fn ai_chat_stream(
     db_state: State<'_, Arc<ConnectionManager>>,
     request: ChatRequest,
 ) -> Result<(), String> {
-    println!(
-        "[AI] ai_chat_stream called with session_id: {}",
-        request.session_id
-    );
-    println!(
-        "[AI] model: {}, connection_id: {}, db_type: {:?}",
-        request.model, request.connection_id, request.db_type
+    info!(
+        "AI stream [session={}] model={} conn={} db={:?}",
+        request.session_id, request.model, request.connection_id, request.db_type
     );
 
     let model: AIModel = request.model.parse().map_err(|e: AIProviderError| {
-        println!("[AI] Failed to parse model: {}", e);
+        error!("AI model parse failed: {}", e);
         e.to_string()
     })?;
-
-    println!("[AI] Creating agent...");
 
     let mut agent = Agent::new(
         request.api_key.clone(),
@@ -73,46 +68,42 @@ pub async fn ai_chat_stream(
         model,
     )
     .map_err(|e| {
-        println!("[AI] Failed to create agent: {}", e);
+        error!("AI agent creation failed: {}", e);
         e.to_string()
     })?;
 
-    println!("[AI] Agent created successfully");
-
     if !request.history.is_empty() {
-        println!("[AI] Loading {} history messages", request.history.len());
+        debug!("AI loading {} history messages", request.history.len());
         agent.load_messages(request.history);
     }
 
-    println!(
-        "[AI] Starting chat_stream with message: {}",
-        request.message
+    debug!(
+        "AI chat_stream starting: {}",
+        request.message.chars().take(100).collect::<String>()
     );
 
     let mut rx = agent.chat_stream(request.message).await.map_err(|e| {
-        println!("[AI] chat_stream failed: {}", e);
+        error!("AI chat_stream failed: {}", e);
         e.to_string()
     })?;
 
-    println!("[AI] chat_stream started, receiver obtained");
-
     let event_name = format!("ai-stream-{}", request.session_id);
-    println!("[AI] Will emit events to: {}", event_name);
+    let session_id = request.session_id.clone();
 
     tokio::spawn(async move {
         let mut event_count = 0;
         while let Some(event) = rx.recv().await {
             event_count += 1;
-            println!("[AI] Emitting event #{}: {:?}", event_count, event);
-            let result = app_handle.emit(&event_name, &event);
-            if let Err(e) = result {
-                println!("[AI] Failed to emit event: {}", e);
+            if let Err(e) = app_handle.emit(&event_name, &event) {
+                error!("AI emit failed [session={}]: {}", session_id, e);
             }
         }
-        println!("[AI] Stream ended after {} events", event_count);
+        info!(
+            "AI stream done [session={}]: {} events",
+            session_id, event_count
+        );
     });
 
-    println!("[AI] ai_chat_stream returning Ok(())");
     Ok(())
 }
 

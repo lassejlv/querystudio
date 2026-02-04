@@ -1,0 +1,42 @@
+[package]
+name = "querystudio-providers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+
+# Postgres
+tokio-postgres = { version = "0.7", features = [
+  "with-serde_json-1",
+  "with-uuid-1",
+  "with-chrono-0_4",
+] }
+postgres-native-tls = "0.5"
+native-tls = "0.2"
+
+# MySQL
+mysql_async = "0.34"
+
+# SQLite
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Redis
+redis = { version = "0.27", features = [
+  "tokio-comp",
+  "connection-manager",
+  "tokio-native-tls-comp",
+  "cluster-async",
+] }
+
+# MongoDB
+mongodb = "3"
+futures-util = "0.3"
+
+# Shared
+uuid = { version = "1", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"

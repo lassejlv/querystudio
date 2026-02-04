@@ -1,5 +1,6 @@
-use super::{
-    async_trait, ColumnInfo, ConnectionParams, DatabaseProvider, DatabaseType, ProviderError,
+use async_trait::async_trait;
+use crate::{
+    ColumnInfo, ConnectionParams, DatabaseProvider, DatabaseType, ProviderError,
     QueryResult, TableInfo,
 };
 use redis::{
@@ -699,15 +700,15 @@ impl RedisProvider {
 
         match upper_type.as_str() {
             "STRING" => {
-                let val_str = value.as_str().ok_or_else(|| {
-                    ProviderError::new("String value must be a string")
-                })?;
+                let val_str = value
+                    .as_str()
+                    .ok_or_else(|| ProviderError::new("String value must be a string"))?;
                 let _: () = conn.set(key, val_str).await.map_err(Self::format_error)?;
             }
             "HASH" => {
-                let obj = value.as_object().ok_or_else(|| {
-                    ProviderError::new("Hash value must be a JSON object")
-                })?;
+                let obj = value
+                    .as_object()
+                    .ok_or_else(|| ProviderError::new("Hash value must be a JSON object"))?;
                 if obj.is_empty() {
                     return Err(ProviderError::new("Hash value cannot be empty"));
                 }
@@ -720,9 +721,9 @@ impl RedisProvider {
                 let _: () = cmd.query_async(conn).await.map_err(Self::format_error)?;
             }
             "LIST" => {
-                let arr = value.as_array().ok_or_else(|| {
-                    ProviderError::new("List value must be a JSON array")
-                })?;
+                let arr = value
+                    .as_array()
+                    .ok_or_else(|| ProviderError::new("List value must be a JSON array"))?;
                 if arr.is_empty() {
                     return Err(ProviderError::new("List value cannot be empty"));
                 }
@@ -734,9 +735,9 @@ impl RedisProvider {
                 let _: () = cmd.query_async(conn).await.map_err(Self::format_error)?;
             }
             "SET" => {
-                let arr = value.as_array().ok_or_else(|| {
-                    ProviderError::new("Set value must be a JSON array")
-                })?;
+                let arr = value
+                    .as_array()
+                    .ok_or_else(|| ProviderError::new("Set value must be a JSON array"))?;
                 if arr.is_empty() {
                     return Err(ProviderError::new("Set value cannot be empty"));
                 }
@@ -766,7 +767,9 @@ impl RedisProvider {
                     let score = obj.get("score").ok_or_else(|| {
                         ProviderError::new("ZSet items must have a 'score' field")
                     })?;
-                    let score_f64 = score.as_f64().or_else(|| score.as_i64().map(|i| i as f64))
+                    let score_f64 = score
+                        .as_f64()
+                        .or_else(|| score.as_i64().map(|i| i as f64))
                         .ok_or_else(|| ProviderError::new("Score must be a number"))?;
                     cmd.arg(score_f64);
                     cmd.arg(member.to_string());
@@ -794,7 +797,10 @@ impl RedisProvider {
         // Set TTL if provided
         if let Some(ttl_seconds) = ttl {
             if ttl_seconds > 0 {
-                let _: () = conn.expire(key, ttl_seconds).await.map_err(Self::format_error)?;
+                let _: () = conn
+                    .expire(key, ttl_seconds)
+                    .await
+                    .map_err(Self::format_error)?;
             }
         }
 

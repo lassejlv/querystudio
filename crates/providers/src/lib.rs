@@ -150,7 +150,6 @@ impl ConnectionParams {
             ),
         }
     }
-
 }
 
 #[async_trait]

@@ -1,8 +1,9 @@
-use super::{
-    async_trait, ColumnInfo, ConnectionParams, DatabaseProvider, DatabaseType, ProviderError,
+use async_trait::async_trait;
+use crate::{
+    ColumnInfo, ConnectionParams, DatabaseProvider, DatabaseType, ProviderError,
     QueryResult, TableInfo,
 };
-use rusqlite::{Connection, types::Value};
+use rusqlite::{types::Value, Connection};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 

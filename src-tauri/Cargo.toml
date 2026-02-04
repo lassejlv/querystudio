@@ -20,27 +20,18 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["macos-private-api"] }
 tauri-plugin-opener = "2"
+tauri-plugin-log = { version = "2", features = ["colored"] }
+log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-tokio-postgres = { version = "0.7", features = [
-  "with-serde_json-1",
-  "with-uuid-1",
-  "with-chrono-0_4",
-] }
-postgres-native-tls = "0.5"
-native-tls = "0.2"
-mysql_async = "0.34"
 async-trait = "0.1"
-base64 = "0.22"
 uuid = { version = "1", features = ["serde", "v4"] }
-chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1"
 parking_lot = "0.12"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 futures-util = "0.3"
 machine-uid = "0.5"
-rusqlite = { version = "0.31", features = ["bundled"] }
 hostname = "0.4"
 tauri-plugin-process = "2"
 portable-pty = "0.8"
@@ -48,14 +39,8 @@ sysinfo = "0.30"
 tauri-plugin-deep-link = "2"
 tauri-plugin-http = "2"
 tauri-plugin-os = "2"
-redis = { version = "0.27", features = [
-  "tokio-comp",
-  "connection-manager",
-  "tokio-native-tls-comp",
-  "cluster-async",
-] }
-mongodb = "3"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+querystudio-providers = { path = "../crates/providers" }
 querystudio-ai = { path = "../crates/ai" }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

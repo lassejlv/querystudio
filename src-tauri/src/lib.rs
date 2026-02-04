@@ -1,7 +1,6 @@
 mod ai_commands;
 mod database;
 mod debug;
-mod providers;
 mod storage;
 mod terminal;
 mod user_state;
@@ -12,7 +11,8 @@ use ai_commands::{
 };
 use database::{test_connection, ConnectionConfig, ConnectionManager};
 use debug::{get_process_stats, DebugState};
-use providers::{ColumnInfo, QueryResult, TableInfo};
+use log::{debug, error, info, warn};
+use querystudio_providers::{ColumnInfo, QueryResult, TableInfo};
 use std::sync::Arc;
 use storage::CONNECTIONS_DB;
 use tauri::{
@@ -38,12 +38,17 @@ async fn connect(
     id: String,
     config: ConnectionConfig,
 ) -> Result<(), String> {
+    info!("Connecting to {:?} [id={}]", config.db_type, id);
+
     let is_pro = user_state.is_pro().await;
     let max_connections = user_state.get_max_connections().await;
-
     let current_connections = state.connection_count();
 
     if current_connections >= max_connections {
+        warn!(
+            "Connection limit reached: {}/{} (pro={})",
+            current_connections, max_connections, is_pro
+        );
         return Err(format!(
             "Connection limit reached. {} allows {} connections. {}",
             if is_pro { "Your plan" } else { "Free tier" },
@@ -60,17 +65,41 @@ async fn connect(
         ));
     }
 
-    state.connect(id, config).await
+    let result = state.connect(id.clone(), config).await;
+    match &result {
+        Ok(_) => info!(
+            "Connected [id={}] (active={})",
+            id,
+            state.connection_count()
+        ),
+        Err(e) => error!("Connection failed [id={}]: {}", id, e),
+    }
+    result
 }
 
 #[tauri::command]
 async fn disconnect(state: State<'_, DbState>, id: String) -> Result<(), String> {
-    state.disconnect(&id)
+    info!("Disconnecting [id={}]", id);
+    let result = state.disconnect(&id);
+    if result.is_ok() {
+        info!(
+            "Disconnected [id={}] (active={})",
+            id,
+            state.connection_count()
+        );
+    }
+    result
 }
 
 #[tauri::command]
 async fn test_connection_handler(config: ConnectionConfig) -> Result<(), String> {
-    test_connection(config).await
+    debug!("Testing connection to {:?}", config.db_type);
+    let result = test_connection(config).await;
+    match &result {
+        Ok(_) => debug!("Test connection succeeded"),
+        Err(e) => debug!("Test connection failed: {}", e),
+    }
+    result
 }
 
 #[tauri::command]
@@ -113,7 +142,24 @@ async fn execute_query(
     connection_id: String,
     query: String,
 ) -> Result<QueryResult, String> {
-    state.execute_query(&connection_id, &query).await
+    let start = std::time::Instant::now();
+    debug!(
+        "Executing query [conn={}]: {}",
+        connection_id,
+        query.chars().take(200).collect::<String>()
+    );
+    let result = state.execute_query(&connection_id, &query).await;
+    let elapsed = start.elapsed();
+    match &result {
+        Ok(r) => info!(
+            "Query OK [conn={}]: {} rows in {:.1}ms",
+            connection_id,
+            r.row_count,
+            elapsed.as_secs_f64() * 1000.0
+        ),
+        Err(e) => error!("Query failed [conn={}]: {}", connection_id, e),
+    }
+    result
 }
 
 #[tauri::command]
@@ -193,6 +239,12 @@ pub fn run() {
     let terminal_state: TerminalState = Arc::new(TerminalManager::new());
     let debug_state = Arc::new(DebugState::new());
 
+    let log_plugin = tauri_plugin_log::Builder::new()
+        .level(log::LevelFilter::Info)
+        .level_for("querystudio", log::LevelFilter::Debug)
+        .level_for("querystudio_lib", log::LevelFilter::Debug)
+        .build();
+
     // Define SQLite migrations for connections storage
     let migrations = vec![Migration {
         version: 1,
@@ -214,6 +266,7 @@ pub fn run() {
     }];
 
     tauri::Builder::default()
+        .plugin(log_plugin)
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(CONNECTIONS_DB, migrations)
@@ -229,6 +282,15 @@ pub fn run() {
         .manage(terminal_state)
         .manage(debug_state)
         .setup(|app| {
+            info!("――――――――――――――――――――――――――――――――――――");
+            info!("  QueryStudio v{}", env!("CARGO_PKG_VERSION"));
+            info!("  git: {} ({})", env!("QS_GIT_HASH"), env!("QS_GIT_BRANCH"));
+            info!("  built: {}", env!("QS_BUILD_TIMESTAMP"));
+            info!("  rustc: {}", env!("QS_RUSTC_VERSION"));
+            info!("  profile: {}", env!("QS_BUILD_PROFILE"));
+            info!("  os: {} {}", std::env::consts::OS, std::env::consts::ARCH);
+            info!("――――――――――――――――――――――――――――――――――――");
+
             // Initialize user state manager
             let user_state_manager = create_user_state_manager();
             let user_state: UserState_ = Arc::new(user_state_manager);

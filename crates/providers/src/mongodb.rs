@@ -1,5 +1,6 @@
-use super::{
-    async_trait, ColumnInfo, ConnectionParams, DatabaseProvider, DatabaseType, ProviderError,
+use async_trait::async_trait;
+use crate::{
+    ColumnInfo, ConnectionParams, DatabaseProvider, DatabaseType, ProviderError,
     QueryResult, TableInfo,
 };
 use mongodb::{

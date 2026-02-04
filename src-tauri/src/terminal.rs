@@ -1,3 +1,4 @@
+use log::{error, info};
 use parking_lot::Mutex;
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use std::collections::HashMap;
@@ -111,7 +112,7 @@ impl TerminalManager {
                         let _ = app.emit(&format!("terminal-output-{}", terminal_id), data);
                     }
                     Err(e) => {
-                        eprintln!("Error reading from pty: {}", e);
+                        error!("PTY read error [id={}]: {}", terminal_id, e);
                         let _ = app.emit(&format!("terminal-closed-{}", terminal_id), ());
                         break;
                     }
@@ -125,6 +126,7 @@ impl TerminalManager {
         };
 
         self.ptys.lock().insert(id.clone(), instance);
+        info!("Terminal created [id={}] ({}x{})", id, cols, rows);
 
         Ok(id)
     }
@@ -167,6 +169,7 @@ impl TerminalManager {
     pub fn close_pty(&self, id: &str) -> Result<(), String> {
         let mut ptys = self.ptys.lock();
         ptys.remove(id);
+        info!("Terminal closed [id={}]", id);
         Ok(())
     }
 }
