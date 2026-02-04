@@ -80,6 +80,9 @@ export const api = {
   aiFetchOpenRouterModels: (apiKey: string) =>
     invoke<AIModelInfo[]>("ai_fetch_openrouter_models", { apiKey }),
 
+  aiFetchVercelModels: (apiKey: string) =>
+    invoke<AIModelInfo[]>("ai_fetch_vercel_models", { apiKey }),
+
   // User status API (synced from auth session)
   setUserProStatus: (isPro: boolean) => invoke<void>("set_user_pro_status", { isPro }),
 

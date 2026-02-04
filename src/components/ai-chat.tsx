@@ -68,6 +68,7 @@ const OPENAI_API_KEY_STORAGE_KEY = "querystudio_openai_api_key";
 const ANTHROPIC_API_KEY_STORAGE_KEY = "querystudio_anthropic_api_key";
 const GOOGLE_API_KEY_STORAGE_KEY = "querystudio_google_api_key";
 const OPENROUTER_API_KEY_STORAGE_KEY = "querystudio_openrouter_api_key";
+const VERCEL_API_KEY_STORAGE_KEY = "querystudio_vercel_api_key";
 const SELECTED_MODEL_KEY = "querystudio_selected_model";
 
 function getProviderForModel(model: ModelId, allModels: AIModelInfo[]): string {
@@ -77,19 +78,20 @@ function getProviderForModel(model: ModelId, allModels: AIModelInfo[]): string {
 function getApiKeyForModel(
   model: ModelId,
   allModels: AIModelInfo[],
-  keys: { openai: string; anthropic: string; google: string; openrouter: string },
+  keys: { openai: string; anthropic: string; google: string; openrouter: string; vercel: string },
 ): string {
   const provider = getProviderForModel(model, allModels);
   if (provider === "anthropic") return keys.anthropic;
   if (provider === "google") return keys.google;
   if (provider === "openrouter") return keys.openrouter;
+  if (provider === "vercel") return keys.vercel;
   return keys.openai;
 }
 
 function isModelAvailable(
   model: ModelId,
   allModels: AIModelInfo[],
-  keys: { openai: string; anthropic: string; google: string; openrouter: string },
+  keys: { openai: string; anthropic: string; google: string; openrouter: string; vercel: string },
 ): boolean {
   const key = getApiKeyForModel(model, allModels, keys);
   return !!key.trim();
@@ -342,15 +344,20 @@ export const AIChat = memo(function AIChat() {
   const [openrouterApiKey, setOpenrouterApiKey] = useState(
     () => localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || "",
   );
+  const [vercelApiKey, setVercelApiKey] = useState(
+    () => localStorage.getItem(VERCEL_API_KEY_STORAGE_KEY) || "",
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [tempOpenaiKey, setTempOpenaiKey] = useState("");
   const [tempAnthropicKey, setTempAnthropicKey] = useState("");
   const [tempGoogleKey, setTempGoogleKey] = useState("");
   const [tempOpenrouterKey, setTempOpenrouterKey] = useState("");
+  const [tempVercelKey, setTempVercelKey] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => {
     return localStorage.getItem(SELECTED_MODEL_KEY) || "gpt-5";
   });
   const [openrouterModels, setOpenrouterModels] = useState<AIModelInfo[]>([]);
+  const [vercelModels, setVercelModels] = useState<AIModelInfo[]>([]);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
 
   // Fetch OpenRouter models when API key changes
@@ -373,7 +380,30 @@ export const AIChat = memo(function AIChat() {
     };
   }, [openrouterApiKey]);
 
-  const allModels = useMemo(() => [...AI_MODELS, ...openrouterModels], [openrouterModels]);
+  // Fetch Vercel models when API key changes
+  useEffect(() => {
+    if (!vercelApiKey.trim()) {
+      setVercelModels([]);
+      return;
+    }
+    let cancelled = false;
+    api.aiFetchVercelModels(vercelApiKey).then(
+      (models) => {
+        if (!cancelled) setVercelModels(models);
+      },
+      () => {
+        if (!cancelled) setVercelModels([]);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [vercelApiKey]);
+
+  const allModels = useMemo(
+    () => [...AI_MODELS, ...openrouterModels, ...vercelModels],
+    [openrouterModels, vercelModels],
+  );
 
   const apiKeys = useMemo(
     () => ({
@@ -381,8 +411,9 @@ export const AIChat = memo(function AIChat() {
       anthropic: anthropicApiKey,
       google: googleApiKey,
       openrouter: openrouterApiKey,
+      vercel: vercelApiKey,
     }),
-    [openaiApiKey, anthropicApiKey, googleApiKey, openrouterApiKey],
+    [openaiApiKey, anthropicApiKey, googleApiKey, openrouterApiKey, vercelApiKey],
   );
 
   const agentRef = useRef<AIAgent | null>(null);
@@ -475,10 +506,12 @@ export const AIChat = memo(function AIChat() {
     setAnthropicApiKey(tempAnthropicKey);
     setGoogleApiKey(tempGoogleKey);
     setOpenrouterApiKey(tempOpenrouterKey);
+    setVercelApiKey(tempVercelKey);
     localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, tempOpenaiKey);
     localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, tempAnthropicKey);
     localStorage.setItem(GOOGLE_API_KEY_STORAGE_KEY, tempGoogleKey);
     localStorage.setItem(OPENROUTER_API_KEY_STORAGE_KEY, tempOpenrouterKey);
+    localStorage.setItem(VERCEL_API_KEY_STORAGE_KEY, tempVercelKey);
     setShowSettings(false);
   };
 
@@ -759,7 +792,8 @@ export const AIChat = memo(function AIChat() {
     apiKeys.openai.trim() ||
     apiKeys.anthropic.trim() ||
     apiKeys.google.trim() ||
-    apiKeys.openrouter.trim()
+    apiKeys.openrouter.trim() ||
+    apiKeys.vercel.trim()
   );
 
   if (!hasAnyApiKey) {
@@ -779,6 +813,7 @@ export const AIChat = memo(function AIChat() {
               setTempAnthropicKey(anthropicApiKey);
               setTempGoogleKey(googleApiKey);
               setTempOpenrouterKey(openrouterApiKey);
+              setTempVercelKey(vercelApiKey);
               setShowSettings(true);
             }}
           >
@@ -792,7 +827,7 @@ export const AIChat = memo(function AIChat() {
                 <DialogTitle>API Keys</DialogTitle>
                 <DialogDescription>
                   Enter your API keys to enable Querybuddy. You can use OpenAI, Google, OpenRouter,
-                  or any combination.
+                  Vercel AI Gateway, or any combination.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -831,6 +866,17 @@ export const AIChat = memo(function AIChat() {
                     For OpenRouter models (Claude, DeepSeek, etc.)
                   </p>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vercelKey">Vercel AI Gateway Key</Label>
+                  <Input
+                    id="vercelKey"
+                    type="password"
+                    placeholder="sk-..."
+                    value={tempVercelKey}
+                    onChange={(e) => setTempVercelKey(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">For Vercel AI Gateway models</p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -842,7 +888,8 @@ export const AIChat = memo(function AIChat() {
                     !tempOpenaiKey.trim() &&
                     !tempAnthropicKey.trim() &&
                     !tempGoogleKey.trim() &&
-                    !tempOpenrouterKey.trim()
+                    !tempOpenrouterKey.trim() &&
+                    !tempVercelKey.trim()
                   }
                 >
                   Save
@@ -946,6 +993,7 @@ export const AIChat = memo(function AIChat() {
               setTempAnthropicKey(anthropicApiKey);
               setTempGoogleKey(googleApiKey);
               setTempOpenrouterKey(openrouterApiKey);
+              setTempVercelKey(vercelApiKey);
               setShowSettings(true);
             }}
           >
@@ -1145,6 +1193,17 @@ export const AIChat = memo(function AIChat() {
                 For OpenRouter models (Claude, DeepSeek, etc.)
               </p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="vercelKey2">Vercel AI Gateway Key</Label>
+              <Input
+                id="vercelKey2"
+                type="password"
+                placeholder="sk-..."
+                value={tempVercelKey}
+                onChange={(e) => setTempVercelKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">For Vercel AI Gateway models</p>
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -1156,7 +1215,8 @@ export const AIChat = memo(function AIChat() {
                 !tempOpenaiKey.trim() &&
                 !tempAnthropicKey.trim() &&
                 !tempGoogleKey.trim() &&
-                !tempOpenrouterKey.trim()
+                !tempOpenrouterKey.trim() &&
+                !tempVercelKey.trim()
               }
             >
               Save

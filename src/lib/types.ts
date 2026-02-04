@@ -61,7 +61,7 @@ export interface QueryResult {
 // AI Types
 // ============================================================================
 
-export type AIProviderType = "openai" | "anthropic" | "google" | "openrouter";
+export type AIProviderType = "openai" | "anthropic" | "google" | "openrouter" | "vercel";
 
 export type AIModelId = string;
 

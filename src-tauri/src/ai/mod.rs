@@ -166,5 +166,12 @@ pub async fn ai_fetch_openrouter_models(api_key: String) -> Result<Vec<ModelInfo
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn ai_fetch_vercel_models(api_key: String) -> Result<Vec<ModelInfo>, String> {
+    providers::vercel::fetch_models(&api_key)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 pub use agent::AgentMessage;
 pub use providers::{AIModel, ModelInfo};

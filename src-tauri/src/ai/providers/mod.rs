@@ -1,6 +1,7 @@
 pub mod gemini;
 pub mod openai;
 pub mod openrouter;
+pub mod vercel;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,7 @@ pub enum AIProviderType {
     OpenAI,
     Google,
     OpenRouter,
+    Vercel,
 }
 
 impl fmt::Display for AIProviderType {
@@ -21,6 +23,7 @@ impl fmt::Display for AIProviderType {
             AIProviderType::OpenAI => write!(f, "OpenAI"),
             AIProviderType::Google => write!(f, "Google"),
             AIProviderType::OpenRouter => write!(f, "OpenRouter"),
+            AIProviderType::Vercel => write!(f, "Vercel"),
         }
     }
 }
@@ -34,6 +37,8 @@ pub enum AIModel {
     Gemini3Pro,
     /// Dynamic OpenRouter model — holds the raw model slug (e.g. "anthropic/claude-sonnet-4")
     OpenRouter(String),
+    /// Dynamic Vercel AI Gateway model — holds the raw model slug (e.g. "anthropic/claude-sonnet-4.5")
+    Vercel(String),
 }
 
 impl AIModel {
@@ -44,6 +49,7 @@ impl AIModel {
             AIModel::Gemini3Flash => "gemini-3-flash-preview".to_string(),
             AIModel::Gemini3Pro => "gemini-3-pro-preview".to_string(),
             AIModel::OpenRouter(slug) => format!("openrouter/{}", slug),
+            AIModel::Vercel(slug) => format!("vercel/{}", slug),
         }
     }
 
@@ -52,14 +58,15 @@ impl AIModel {
             AIModel::Gpt5 | AIModel::Gpt5Mini => AIProviderType::OpenAI,
             AIModel::Gemini3Flash | AIModel::Gemini3Pro => AIProviderType::Google,
             AIModel::OpenRouter(_) => AIProviderType::OpenRouter,
+            AIModel::Vercel(_) => AIProviderType::Vercel,
         }
     }
 
     /// Returns the raw model slug sent to the provider API.
-    /// For OpenRouter, this strips the "openrouter/" prefix.
+    /// For gateway providers, this strips the prefix (e.g. "openrouter/" or "vercel/").
     pub fn api_model_id(&self) -> String {
         match self {
-            AIModel::OpenRouter(slug) => slug.clone(),
+            AIModel::OpenRouter(slug) | AIModel::Vercel(slug) => slug.clone(),
             other => other.as_str(),
         }
     }
@@ -83,6 +90,10 @@ impl std::str::FromStr for AIModel {
             s if s.starts_with("openrouter/") => {
                 let slug = s.strip_prefix("openrouter/").unwrap().to_string();
                 Ok(AIModel::OpenRouter(slug))
+            }
+            s if s.starts_with("vercel/") => {
+                let slug = s.strip_prefix("vercel/").unwrap().to_string();
+                Ok(AIModel::Vercel(slug))
             }
             _ => Err(AIProviderError::new(format!("Unknown model: {}", s))),
         }
@@ -295,6 +306,10 @@ pub fn create_ai_provider(
         }
         AIProviderType::OpenRouter => {
             let provider = openrouter::OpenRouterProvider::new(api_key);
+            Ok(Box::new(provider))
+        }
+        AIProviderType::Vercel => {
+            let provider = vercel::VercelProvider::new(api_key);
             Ok(Box::new(provider))
         }
     }
