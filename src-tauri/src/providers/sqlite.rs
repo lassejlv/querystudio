@@ -76,6 +76,10 @@ impl DatabaseProvider for SqliteProvider {
         DatabaseType::Sqlite
     }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn list_tables(&self) -> Result<Vec<TableInfo>, ProviderError> {
         let conn = self.conn.lock().await;
 

@@ -164,6 +164,20 @@ async fn delete_document(
 }
 
 #[tauri::command]
+async fn create_redis_key(
+    state: State<'_, DbState>,
+    connection_id: String,
+    key: String,
+    key_type: String,
+    value: serde_json::Value,
+    ttl: Option<i64>,
+) -> Result<(), String> {
+    state
+        .create_redis_key(&connection_id, &key, &key_type, value, ttl)
+        .await
+}
+
+#[tauri::command]
 fn get_connection_count(state: State<'_, DbState>) -> usize {
     state.connection_count()
 }
@@ -387,6 +401,8 @@ pub fn run() {
             insert_document,
             update_document,
             delete_document,
+            // Redis commands
+            create_redis_key,
             // AI commands
             ai_get_models,
             ai_validate_key,

@@ -60,6 +60,22 @@ export const api = {
   deleteDocument: (connectionId: string, collection: string, filter: string) =>
     invoke<number>("delete_document", { connectionId, collection, filter }),
 
+  // Redis key operations
+  createRedisKey: (
+    connectionId: string,
+    key: string,
+    keyType: string,
+    value: unknown,
+    ttl?: number | null,
+  ) =>
+    invoke<void>("create_redis_key", {
+      connectionId,
+      key,
+      keyType,
+      value,
+      ttl,
+    }),
+
   // Storage operations - now using SQLite via storage module
   getSavedConnections: () => storage.getSavedConnections(),
 

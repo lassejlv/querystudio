@@ -85,6 +85,10 @@ impl DatabaseProvider for MysqlProvider {
         DatabaseType::Mysql
     }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn list_tables(&self) -> Result<Vec<TableInfo>, ProviderError> {
         let mut conn = self.get_conn().await?;
 

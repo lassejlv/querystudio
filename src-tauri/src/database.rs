@@ -152,6 +152,36 @@ impl ConnectionManager {
             .await
             .map_err(|e| e.to_string())
     }
+
+    pub async fn create_redis_key(
+        &self,
+        connection_id: &str,
+        key: &str,
+        key_type: &str,
+        value: serde_json::Value,
+        ttl: Option<i64>,
+    ) -> Result<(), String> {
+        use crate::providers::redis::RedisProvider;
+        use crate::providers::DatabaseType;
+
+        let provider = self.get_provider(connection_id)?;
+
+        // Check if this is a Redis connection
+        if provider.database_type() != DatabaseType::Redis {
+            return Err("create_redis_key is only supported for Redis connections".to_string());
+        }
+
+        // Cast to RedisProvider - this is safe because we checked the type
+        let redis_provider = provider
+            .as_any()
+            .downcast_ref::<RedisProvider>()
+            .ok_or_else(|| "Failed to cast provider to RedisProvider".to_string())?;
+
+        redis_provider
+            .create_key(key, key_type, value, ttl)
+            .await
+            .map_err(|e| e.to_string())
+    }
 }
 
 pub async fn test_connection(config: ConnectionConfig) -> Result<(), String> {

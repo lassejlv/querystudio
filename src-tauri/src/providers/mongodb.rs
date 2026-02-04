@@ -265,6 +265,10 @@ impl DatabaseProvider for MongoDbProvider {
         DatabaseType::Mongodb
     }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn list_tables(&self) -> Result<Vec<TableInfo>, ProviderError> {
         let db = self.get_database();
 

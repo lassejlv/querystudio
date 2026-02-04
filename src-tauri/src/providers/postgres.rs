@@ -141,6 +141,10 @@ impl DatabaseProvider for PostgresProvider {
         DatabaseType::Postgres
     }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn list_tables(&self) -> Result<Vec<TableInfo>, ProviderError> {
         let rows = self
             .client

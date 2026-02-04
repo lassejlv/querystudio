@@ -665,6 +665,142 @@ impl RedisProvider {
         }
     }
 
+    /// Create a new key with the specified type and value
+    pub async fn create_key(
+        &self,
+        key: &str,
+        key_type: &str,
+        value: serde_json::Value,
+        ttl: Option<i64>,
+    ) -> Result<(), ProviderError> {
+        match &self.conn {
+            RedisConnection::Single(conn) => {
+                let mut c = conn.lock().await;
+                Self::create_key_internal(&mut *c, key, key_type, value, ttl).await
+            }
+            RedisConnection::Cluster(conn) => {
+                let mut c = conn.lock().await;
+                Self::create_key_internal(&mut *c, key, key_type, value, ttl).await
+            }
+        }
+    }
+
+    async fn create_key_internal<C>(
+        conn: &mut C,
+        key: &str,
+        key_type: &str,
+        value: serde_json::Value,
+        ttl: Option<i64>,
+    ) -> Result<(), ProviderError>
+    where
+        C: AsyncCommands + Send,
+    {
+        let upper_type = key_type.to_uppercase();
+
+        match upper_type.as_str() {
+            "STRING" => {
+                let val_str = value.as_str().ok_or_else(|| {
+                    ProviderError::new("String value must be a string")
+                })?;
+                let _: () = conn.set(key, val_str).await.map_err(Self::format_error)?;
+            }
+            "HASH" => {
+                let obj = value.as_object().ok_or_else(|| {
+                    ProviderError::new("Hash value must be a JSON object")
+                })?;
+                if obj.is_empty() {
+                    return Err(ProviderError::new("Hash value cannot be empty"));
+                }
+                let mut cmd = redis::cmd("HSET");
+                cmd.arg(key);
+                for (k, v) in obj {
+                    cmd.arg(k);
+                    cmd.arg(v.to_string());
+                }
+                let _: () = cmd.query_async(conn).await.map_err(Self::format_error)?;
+            }
+            "LIST" => {
+                let arr = value.as_array().ok_or_else(|| {
+                    ProviderError::new("List value must be a JSON array")
+                })?;
+                if arr.is_empty() {
+                    return Err(ProviderError::new("List value cannot be empty"));
+                }
+                let mut cmd = redis::cmd("RPUSH");
+                cmd.arg(key);
+                for v in arr {
+                    cmd.arg(v.to_string());
+                }
+                let _: () = cmd.query_async(conn).await.map_err(Self::format_error)?;
+            }
+            "SET" => {
+                let arr = value.as_array().ok_or_else(|| {
+                    ProviderError::new("Set value must be a JSON array")
+                })?;
+                if arr.is_empty() {
+                    return Err(ProviderError::new("Set value cannot be empty"));
+                }
+                let mut cmd = redis::cmd("SADD");
+                cmd.arg(key);
+                for v in arr {
+                    cmd.arg(v.to_string());
+                }
+                let _: () = cmd.query_async(conn).await.map_err(Self::format_error)?;
+            }
+            "ZSET" => {
+                let arr = value.as_array().ok_or_else(|| {
+                    ProviderError::new("ZSet value must be a JSON array of {member, score} objects")
+                })?;
+                if arr.is_empty() {
+                    return Err(ProviderError::new("ZSet value cannot be empty"));
+                }
+                let mut cmd = redis::cmd("ZADD");
+                cmd.arg(key);
+                for item in arr {
+                    let obj = item.as_object().ok_or_else(|| {
+                        ProviderError::new("ZSet items must be objects with 'member' and 'score'")
+                    })?;
+                    let member = obj.get("member").ok_or_else(|| {
+                        ProviderError::new("ZSet items must have a 'member' field")
+                    })?;
+                    let score = obj.get("score").ok_or_else(|| {
+                        ProviderError::new("ZSet items must have a 'score' field")
+                    })?;
+                    let score_f64 = score.as_f64().or_else(|| score.as_i64().map(|i| i as f64))
+                        .ok_or_else(|| ProviderError::new("Score must be a number"))?;
+                    cmd.arg(score_f64);
+                    cmd.arg(member.to_string());
+                }
+                let _: () = cmd.query_async(conn).await.map_err(Self::format_error)?;
+            }
+            "JSON" => {
+                let json_str = value.to_string();
+                let _: () = redis::cmd("JSON.SET")
+                    .arg(key)
+                    .arg("$")
+                    .arg(json_str)
+                    .query_async(conn)
+                    .await
+                    .map_err(Self::format_error)?;
+            }
+            _ => {
+                return Err(ProviderError::new(format!(
+                    "Unsupported key type: {}. Supported types: string, hash, list, set, zset, json",
+                    key_type
+                )));
+            }
+        }
+
+        // Set TTL if provided
+        if let Some(ttl_seconds) = ttl {
+            if ttl_seconds > 0 {
+                let _: () = conn.expire(key, ttl_seconds).await.map_err(Self::format_error)?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Get server information
     pub async fn get_server_info(&self) -> Result<ServerInfo, ProviderError> {
         let info_str = self.get_info_section("server").await?;
@@ -1088,6 +1224,10 @@ fn format_command_result(result: redis::Value) -> Result<QueryResult, ProviderEr
 impl DatabaseProvider for RedisProvider {
     fn database_type(&self) -> DatabaseType {
         DatabaseType::Redis
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 
     async fn list_tables(&self) -> Result<Vec<TableInfo>, ProviderError> {

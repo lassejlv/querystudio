@@ -6,6 +6,7 @@ pub mod sqlite;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::any::Any;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -154,8 +155,9 @@ impl ConnectionParams {
 
 #[async_trait]
 #[allow(dead_code)]
-pub trait DatabaseProvider: Send + Sync {
+pub trait DatabaseProvider: Send + Sync + Any {
     fn database_type(&self) -> DatabaseType;
+    fn as_any(&self) -> &dyn Any;
     async fn list_tables(&self) -> Result<Vec<TableInfo>, ProviderError>;
     async fn get_table_columns(
         &self,

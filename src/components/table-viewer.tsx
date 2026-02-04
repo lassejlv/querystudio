@@ -40,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AddRowSheet } from "@/components/add-row-sheet";
 import { EditRowSheet } from "@/components/edit-row-sheet";
+import { AddRedisKeyDialog } from "@/components/add-redis-key-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConnectionStore } from "@/lib/store";
 import { quoteIdentifier, quoteTableRef } from "@/lib/utils";
@@ -91,6 +92,7 @@ export const TableViewer = memo(function TableViewer({
   const [editRowData, setEditRowData] = useState<Record<string, unknown> | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteRowData, setDeleteRowData] = useState<Record<string, unknown> | null>(null);
+  const [addRedisKeyOpen, setAddRedisKeyOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const {
@@ -290,7 +292,15 @@ export const TableViewer = memo(function TableViewer({
             <RefreshCw className={cn("mr-1 h-4 w-4", isRefreshing && "animate-spin")} />
             Refresh
           </Button>
-          {connection?.db_type !== "redis" && (
+          {connection?.db_type === "redis" ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setAddRedisKeyOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add Key
+              </Button>
+              <div className="mx-2 h-4 w-px bg-secondary" />
+            </>
+          ) : (
             <>
               <Button variant="outline" size="sm" onClick={() => setAddRowOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" />
@@ -478,6 +488,12 @@ export const TableViewer = memo(function TableViewer({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <AddRedisKeyDialog
+            connectionId={connectionId}
+            open={addRedisKeyOpen}
+            onOpenChange={setAddRedisKeyOpen}
+            onSuccess={handleRefresh}
+          />
         </>
       )}
     </div>
