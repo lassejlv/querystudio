@@ -8,6 +8,7 @@ import onedarkTheme from "../themes/onedark.json";
 import githubDarkTheme from "../themes/github-dark.json";
 import rosePineTheme from "../themes/rose-pine.json";
 import catppuccinTheme from "../themes/catppuccin.json";
+import vesperTheme from "../themes/vesper.json";
 
 // Built-in themes
 const BUILTIN_THEMES: Record<string, Theme> = {
@@ -18,6 +19,7 @@ const BUILTIN_THEMES: Record<string, Theme> = {
   "github-dark": githubDarkTheme as Theme,
   "rose-pine": rosePineTheme as Theme,
   catppuccin: catppuccinTheme as Theme,
+  vesper: vesperTheme as Theme,
 };
 
 interface ThemeState extends ThemeRegistry {
