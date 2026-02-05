@@ -38,6 +38,7 @@ function pickSettings(state: SettingsStoreState): AppSettings {
     sidebarCollapsed: state.sidebarCollapsed,
     statusBarVisible: state.statusBarVisible,
     autoReconnect: state.autoReconnect,
+    multiConnectionsEnabled: state.multiConnectionsEnabled,
     experimentalTerminal: state.experimentalTerminal,
     experimentalPlugins: state.experimentalPlugins,
     debugMode: state.debugMode,

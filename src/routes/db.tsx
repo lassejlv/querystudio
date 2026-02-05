@@ -22,6 +22,7 @@ import {
   PanelLeft,
   Settings,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -58,6 +59,7 @@ function DatabaseStudio() {
   const statusBarVisible = useAIQueryStore((s) => s.statusBarVisible);
 
   const experimentalTerminal = useAIQueryStore((s) => s.experimentalTerminal);
+  const multiConnectionsEnabled = useAIQueryStore((s) => s.multiConnectionsEnabled);
 
   const debugMode = useAIQueryStore((s) => s.debugMode);
 
@@ -254,6 +256,18 @@ function DatabaseStudio() {
           className="flex items-center h-full gap-1 pr-2"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
+          {!multiConnectionsEnabled && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => setConnectionPaletteOpen(true)}
+              title="Switch connection"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
@@ -280,7 +294,9 @@ function DatabaseStudio() {
         </div>
       </div>
 
-      <ConnectionTabs onAddConnection={() => setConnectionPaletteOpen(true)} />
+      {multiConnectionsEnabled && (
+        <ConnectionTabs onAddConnection={() => setConnectionPaletteOpen(true)} />
+      )}
 
       <ConnectionPalette
         open={connectionPaletteOpen}

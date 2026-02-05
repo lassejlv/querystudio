@@ -180,6 +180,10 @@ interface AIQueryState {
   autoReconnect: boolean;
   setAutoReconnect: (enabled: boolean) => void;
 
+  // Allow opening multiple connections at the same time (persisted)
+  multiConnectionsEnabled: boolean;
+  setMultiConnectionsEnabled: (enabled: boolean) => void;
+
   // Experimental features (persisted)
   experimentalTerminal: boolean;
   setExperimentalTerminal: (enabled: boolean) => void;
@@ -255,6 +259,12 @@ export const useAIQueryStore = create<AIQueryState>()((set, get) => ({
     void useSettingsStore.getState().updateSettings({ autoReconnect: enabled });
   },
 
+  multiConnectionsEnabled: useSettingsStore.getState().multiConnectionsEnabled,
+  setMultiConnectionsEnabled: (enabled: boolean) => {
+    set({ multiConnectionsEnabled: enabled });
+    void useSettingsStore.getState().updateSettings({ multiConnectionsEnabled: enabled });
+  },
+
   experimentalTerminal: useSettingsStore.getState().experimentalTerminal,
   setExperimentalTerminal: (enabled: boolean) => {
     set({ experimentalTerminal: enabled });
@@ -283,6 +293,7 @@ useSettingsStore.subscribe((state) => {
     sidebarCollapsed: state.sidebarCollapsed,
     statusBarVisible: state.statusBarVisible,
     autoReconnect: state.autoReconnect,
+    multiConnectionsEnabled: state.multiConnectionsEnabled,
     experimentalTerminal: state.experimentalTerminal,
     experimentalPlugins: state.experimentalPlugins,
     debugMode: state.debugMode,

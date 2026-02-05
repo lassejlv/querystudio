@@ -10,6 +10,7 @@ interface RustAppSettings {
   sidebar_collapsed: boolean;
   status_bar_visible: boolean;
   auto_reconnect: boolean;
+  multi_connections_enabled: boolean;
   experimental_terminal: boolean;
   experimental_plugins: boolean;
   debug_mode: boolean;
@@ -28,6 +29,7 @@ function fromRustSettings(settings: RustAppSettings): AppSettings {
     sidebarCollapsed: settings.sidebar_collapsed,
     statusBarVisible: settings.status_bar_visible,
     autoReconnect: settings.auto_reconnect,
+    multiConnectionsEnabled: settings.multi_connections_enabled,
     experimentalTerminal: settings.experimental_terminal,
     experimentalPlugins: settings.experimental_plugins,
     debugMode: settings.debug_mode,
@@ -46,6 +48,7 @@ function toRustSettings(settings: AppSettings): RustAppSettings {
     sidebar_collapsed: normalized.sidebarCollapsed,
     status_bar_visible: normalized.statusBarVisible,
     auto_reconnect: normalized.autoReconnect,
+    multi_connections_enabled: normalized.multiConnectionsEnabled,
     experimental_terminal: normalized.experimentalTerminal,
     experimental_plugins: normalized.experimentalPlugins,
     debug_mode: normalized.debugMode,
@@ -64,6 +67,9 @@ function patchToRust(patch: Partial<AppSettings>): Partial<RustAppSettings> {
   if (patch.sidebarCollapsed !== undefined) rustPatch.sidebar_collapsed = patch.sidebarCollapsed;
   if (patch.statusBarVisible !== undefined) rustPatch.status_bar_visible = patch.statusBarVisible;
   if (patch.autoReconnect !== undefined) rustPatch.auto_reconnect = patch.autoReconnect;
+  if (patch.multiConnectionsEnabled !== undefined) {
+    rustPatch.multi_connections_enabled = patch.multiConnectionsEnabled;
+  }
   if (patch.experimentalTerminal !== undefined) {
     rustPatch.experimental_terminal = patch.experimentalTerminal;
   }

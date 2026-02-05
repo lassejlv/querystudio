@@ -9,6 +9,7 @@ export interface AppSettings {
   sidebarCollapsed: boolean;
   statusBarVisible: boolean;
   autoReconnect: boolean;
+  multiConnectionsEnabled: boolean;
   experimentalTerminal: boolean;
   experimentalPlugins: boolean;
   debugMode: boolean;
@@ -24,6 +25,7 @@ export const defaultAppSettings: AppSettings = {
   sidebarCollapsed: false,
   statusBarVisible: true,
   autoReconnect: true,
+  multiConnectionsEnabled: true,
   experimentalTerminal: false,
   experimentalPlugins: false,
   debugMode: false,
