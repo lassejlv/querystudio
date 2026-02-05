@@ -140,13 +140,13 @@ function DesktopAuthPage() {
 
             {showManualOption && deepLinkUrl && (
               <>
-                <div className="rounded-md bg-muted p-3">
+                <div className="w-full max-w-full rounded-md bg-muted p-3">
                   <p className="text-xs text-muted-foreground mb-2">
                     Copy this URL and paste it in QueryStudio using the command palette (⌘K → "Paste
                     Auth URL"):
                   </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs bg-background rounded px-2 py-1.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <code className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-background px-2 py-1.5 text-xs">
                       {deepLinkUrl}
                     </code>
                     <Button

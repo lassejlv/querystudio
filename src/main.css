@@ -119,6 +119,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: "IBM Plex Serif", Georgia, Cambria, "Times New Roman", Times, serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Global cursor pointer for interactive elements */
