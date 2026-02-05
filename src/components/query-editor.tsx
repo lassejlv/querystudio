@@ -26,6 +26,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useConnectionStore, useAIQueryStore, useQueryHistoryStore } from "@/lib/store";
+import { useThemeStore } from "@/lib/theme-store";
 import { REDIS_COMMANDS } from "@/lib/redis-commands";
 import { useLayoutStore } from "@/lib/layout-store";
 import { useShallow } from "zustand/react/shallow";
@@ -39,10 +40,30 @@ const MIN_EDITOR_HEIGHT = 100;
 const MAX_EDITOR_HEIGHT = 600;
 const DEFAULT_EDITOR_HEIGHT = 200;
 const EDITOR_HEIGHT_KEY = "querystudio_editor_height";
+const MONACO_THEME_NAME = "querystudio-active-theme";
 
 import type { TabContentProps } from "@/lib/tab-sdk";
 
 interface QueryEditorProps extends TabContentProps {}
+
+function normalizeColorForMonaco(input: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  const probe = document.createElement("span");
+  probe.style.color = input;
+  document.body.appendChild(probe);
+  const computed = getComputedStyle(probe).color;
+  document.body.removeChild(probe);
+
+  const match = computed.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (!match) return fallback;
+  const [r, g, b] = [match[1], match[2], match[3]].map((n) => Number.parseInt(n, 10));
+  return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function withAlpha(hexColor: string, alphaHex: string): string {
+  if (!hexColor.startsWith("#") || hexColor.length !== 7) return hexColor;
+  return `${hexColor}${alphaHex}`;
+}
 
 export const QueryEditor = memo(function QueryEditor({
   tabId,
@@ -55,6 +76,9 @@ export const QueryEditor = memo(function QueryEditor({
   const tables = useConnectionStore((s) => s.tables);
   const isRedis = connection?.db_type === "redis";
   const isMongodb = connection?.db_type === "mongodb";
+  const activeTheme = useThemeStore(
+    (state) => state.themes[state.activeTheme] ?? state.themes.dark,
+  );
 
   // Fetch columns for all tables (for autocomplete)
   const { data: allColumns } = useAllTableColumns(connectionId, tables);
@@ -123,6 +147,40 @@ export const QueryEditor = memo(function QueryEditor({
   }, [setCursorPosition]);
 
   const executeQueryMutation = useExecuteQuery(connectionId);
+
+  const applyMonacoTheme = useCallback(() => {
+    if (!monacoRef.current) return;
+
+    const background = normalizeColorForMonaco(activeTheme.colors.card, "#1e1e1e");
+    const foreground = normalizeColorForMonaco(activeTheme.colors.foreground, "#d4d4d4");
+    const lineHighlightBase = normalizeColorForMonaco(activeTheme.colors.accent, "#264f78");
+    const selectionBase = normalizeColorForMonaco(activeTheme.colors.primary, "#264f78");
+    const border = normalizeColorForMonaco(activeTheme.colors.border, "#3c3c3c");
+    const cursor = normalizeColorForMonaco(activeTheme.colors.primary, "#aeafad");
+    const lineHighlight = withAlpha(lineHighlightBase, "22");
+    const selection = withAlpha(selectionBase, "44");
+
+    monacoRef.current.editor.defineTheme(MONACO_THEME_NAME, {
+      base: activeTheme.isDark ? "vs-dark" : "vs",
+      inherit: true,
+      rules: [],
+      colors: {
+        "editor.background": background,
+        "editorGutter.background": background,
+        "editor.foreground": foreground,
+        "editorLineNumber.foreground": foreground,
+        "editorLineNumber.activeForeground": foreground,
+        "editor.lineHighlightBackground": lineHighlight,
+        "editor.selectionBackground": selection,
+        "editor.inactiveSelectionBackground": withAlpha(selectionBase, "22"),
+        "minimap.background": background,
+        "editorCursor.foreground": cursor,
+        "editorWidget.border": border,
+      },
+    });
+
+    monacoRef.current.editor.setTheme(MONACO_THEME_NAME);
+  }, [activeTheme]);
 
   // Load query content and results from tab when tab changes
   // Note: tabData is used here but we only want to run this on tab switch,
@@ -234,6 +292,10 @@ export const QueryEditor = memo(function QueryEditor({
     // which reads from tables state
   }, [tables]);
 
+  useEffect(() => {
+    applyMonacoTheme();
+  }, [applyMonacoTheme]);
+
   // Split query into individual statements
   const splitQueries = (input: string): string[] => {
     if (isRedis) {
@@ -335,6 +397,7 @@ export const QueryEditor = memo(function QueryEditor({
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    applyMonacoTheme();
 
     // Track cursor position for status bar
     const updateCursorPosition = () => {
@@ -559,7 +622,7 @@ export const QueryEditor = memo(function QueryEditor({
             value={query}
             onChange={(value) => setQuery(value || "")}
             onMount={handleEditorMount}
-            theme="vs-dark"
+            theme={MONACO_THEME_NAME}
             options={{
               minimap: { enabled: false },
               fontSize: 14,

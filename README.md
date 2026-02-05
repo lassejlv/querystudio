@@ -50,6 +50,7 @@ bun run dev
 ## Settings File
 
 QueryStudio persists app configuration in a single `settings.json` file in the Tauri AppConfig directory.
+Chat sessions are stored locally in `chats/<chat-id>.json` with metadata in `chats/index.json` in the same directory.
 
 - macOS: `~/Library/Application Support/<bundle-id>/settings.json`
 - Windows: `%AppData%\\<bundle-id>\\settings.json`

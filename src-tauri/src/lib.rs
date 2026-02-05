@@ -1,4 +1,5 @@
 mod ai_commands;
+mod chat_storage;
 mod database;
 mod debug;
 mod settings;
@@ -10,6 +11,7 @@ use ai_commands::{
     ai_chat, ai_chat_stream, ai_fetch_openrouter_models, ai_fetch_vercel_models, ai_get_models,
     ai_validate_key,
 };
+use chat_storage::{get_chat_history, set_chat_history};
 use database::{test_connection, ConnectionConfig, ConnectionManager};
 use debug::{get_process_stats, DebugState};
 use log::{debug, error, info, warn};
@@ -501,6 +503,9 @@ pub fn run() {
             set_settings,
             patch_settings,
             reset_settings,
+            // Chat history commands
+            get_chat_history,
+            set_chat_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

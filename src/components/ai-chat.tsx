@@ -284,6 +284,16 @@ interface MessageBubbleProps {
   onAppendToRunner: (code: string) => void;
 }
 
+const ToolThinkingSkeleton = memo(function ToolThinkingSkeleton() {
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="h-2 w-40 rounded bg-muted/60 animate-pulse" />
+      <div className="h-2 w-56 rounded bg-muted/50 animate-pulse" />
+      <div className="h-2 w-32 rounded bg-muted/40 animate-pulse" />
+    </div>
+  );
+});
+
 const MessageBubble = memo(function MessageBubble({
   message,
   onAppendToRunner,
@@ -437,9 +447,12 @@ const MessageBubble = memo(function MessageBubble({
         {message.isLoading && !message.content ? (
           <div className="space-y-1.5">
             {message.toolCalls?.length ? (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader className="h-3 w-3 animate-spin" />
-                <span>{message.toolCalls[message.toolCalls.length - 1].name}...</span>
+              <div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Loader className="h-3 w-3 animate-spin" />
+                  <span>{message.toolCalls[message.toolCalls.length - 1].name}...</span>
+                </div>
+                <ToolThinkingSkeleton />
               </div>
             ) : (
               <div className="flex items-center gap-1 py-1">
@@ -623,20 +636,32 @@ export const AIChat = memo(function AIChat() {
 
   // Load chat history on mount
   useEffect(() => {
-    const history = loadChatHistory();
-    setSessions(history);
+    let cancelled = false;
 
-    if (connection?.id) {
-      const lastSessionId = getLastSession(connection.id);
-      if (lastSessionId) {
-        const lastSession = history.find((s) => s.id === lastSessionId);
-        if (lastSession) {
-          setCurrentSessionId(lastSessionId);
-          setMessages(lastSession.messages);
-          setSelectedModel(lastSession.model as ModelId);
+    const run = async () => {
+      const history = await loadChatHistory();
+      if (cancelled) return;
+
+      setSessions(history);
+
+      if (connection?.id) {
+        const lastSessionId = getLastSession(connection.id);
+        if (lastSessionId) {
+          const lastSession = history.find((s) => s.id === lastSessionId);
+          if (lastSession) {
+            setCurrentSessionId(lastSessionId);
+            setMessages(lastSession.messages);
+            setSelectedModel(lastSession.model as ModelId);
+          }
         }
       }
-    }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [connection?.id, getLastSession]);
 
   // Save current session ID when it changes
@@ -705,7 +730,7 @@ export const AIChat = memo(function AIChat() {
     const session = createChatSession(connection.id, selectedModel, connection.db_type);
     const newSessions = [...sessions, session];
     setSessions(newSessions);
-    saveChatHistory(newSessions);
+    void saveChatHistory(newSessions);
     setCurrentSessionId(session.id);
     setMessages([]);
     agentRef.current?.clearHistory();
@@ -735,7 +760,7 @@ export const AIChat = memo(function AIChat() {
     e.stopPropagation();
     const newSessions = sessions.filter((s) => s.id !== sessionId);
     setSessions(newSessions);
-    saveChatHistory(newSessions);
+    void saveChatHistory(newSessions);
 
     if (currentSessionId === sessionId) {
       setCurrentSessionId(null);
@@ -752,7 +777,7 @@ export const AIChat = memo(function AIChat() {
           : s,
       );
       setSessions(newSessions);
-      saveChatHistory(newSessions);
+      void saveChatHistory(newSessions);
     }
     setMessages([]);
     agentRef.current?.clearHistory();
@@ -768,7 +793,7 @@ export const AIChat = memo(function AIChat() {
         s.id === currentSessionId ? { ...s, model, updatedAt: Date.now() } : s,
       );
       setSessions(newSessions);
-      saveChatHistory(newSessions);
+      void saveChatHistory(newSessions);
     }
   };
 
@@ -797,7 +822,7 @@ export const AIChat = memo(function AIChat() {
     }
 
     setSessions(newSessions);
-    saveChatHistory(newSessions);
+    void saveChatHistory(newSessions);
   };
 
   // Handler for appending code to the query runner
