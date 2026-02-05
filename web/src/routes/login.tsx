@@ -27,12 +27,20 @@ function LoginPage() {
 
   const canSubmit = Boolean(captchaToken) && !isLoading;
 
-  const loginGithub = () => {
+  const loginGithub = async () => {
     if (!captchaToken) {
       toast.error("Please complete the captcha");
       return;
     }
-    return authClient.signIn.social({ provider: "github" });
+    
+    const { error } = await authClient.signIn.social({
+      provider: "github",
+      callbackURL: `${window.location.origin}/dashboard`,
+    });
+    
+    if (error) {
+      toast.error(error.message || "Failed to sign in with GitHub");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

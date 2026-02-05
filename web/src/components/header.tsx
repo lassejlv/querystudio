@@ -66,6 +66,12 @@ export function Header() {
             Download
           </Link>
           <Link
+            to="/changelog"
+            className={`text-sm ${currentPath === "/changelog" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Changelog
+          </Link>
+          <Link
             to="/pricing"
             className={`text-sm ${currentPath === "/pricing" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >

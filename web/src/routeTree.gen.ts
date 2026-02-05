@@ -16,6 +16,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DownloadRouteImport } from './routes/download'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthDesktopRouteImport } from './routes/auth/desktop'
@@ -62,6 +63,11 @@ const LoginRoute = LoginRouteImport.update({
 const DownloadRoute = DownloadRouteImport.update({
   id: '/download',
   path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedRoute = AuthedRouteImport.update({
@@ -126,6 +132,7 @@ const AuthedDashboardAccountRoute = AuthedDashboardAccountRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/changelog': typeof ChangelogRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/changelog'
     | '/download'
     | '/login'
     | '/pricing'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/changelog'
     | '/download'
     | '/login'
     | '/pricing'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/changelog'
     | '/download'
     | '/login'
     | '/pricing'
@@ -251,6 +263,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  ChangelogRoute: typeof ChangelogRoute
   DownloadRoute: typeof DownloadRoute
   LoginRoute: typeof LoginRoute
   PricingRoute: typeof PricingRoute
@@ -313,6 +326,13 @@ declare module '@tanstack/react-router' {
       path: '/download'
       fullPath: '/download'
       preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed': {
@@ -436,6 +456,7 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  ChangelogRoute: ChangelogRoute,
   DownloadRoute: DownloadRoute,
   LoginRoute: LoginRoute,
   PricingRoute: PricingRoute,
