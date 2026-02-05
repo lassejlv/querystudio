@@ -1,76 +1,58 @@
 # QueryStudio
 
-<p align="center">
-  <img src="app-icon.png" alt="QueryStudio Icon" width="120" height="120">
-</p>
+Lightweight, open-source SQL studio built with Tauri, Rust, and React.
 
-<p align="center">
-  <strong>The open-source, lightweight SQL studio you deserve.</strong><br>
-  Built with Tauri, Rust, and React 19.
-</p>
+## What it does
 
----
+- Connects to PostgreSQL, MySQL, SQLite, Redis, and MongoDB
+- Lets you write and run queries in a modern editor
+- Includes an AI assistant (QueryBuddy) for natural language to SQL
+- Supports plugins (experimental)
+- Runs on macOS, Windows, and Linux
 
-## 🚀 Features
+## Stack
 
-- **Multi-DB Support**: PostgreSQL, MySQL, SQLite, Redis, and MongoDB.
-- **AI Assistant (QueryBuddy)**: Natural language to SQL using OpenAI, Gemini, or OpenRouter.
-- **Modern Editor**: Syntax highlighting, autocomplete, and results export.
-- **Built-in Terminal**: Full PTY terminal using your default shell.
-- **Plugin System**: Experimental support for custom SQL formatters and data generators.
-- **Cross-Platform**: Runs on macOS, Windows, and Linux.
+- Frontend: React 19, Tailwind CSS 4, TanStack Router/Query, Zustand
+- Desktop backend: Rust with Tauri v2
+- Build/runtime: Bun, Vite
+- Web app: Nitro, Hono, Drizzle ORM, Better Auth
 
-## 🛠️ Tech Stack
+## Setup
 
-- **Frontend**: React 19, Tailwind CSS 4, TanStack Router/Query, Zustand.
-- **Backend**: Rust (Tauri v2) with native database drivers.
-- **Runtime/Build**: Bun, Vite.
-- **Web App**: Nitro, Hono, Drizzle ORM, Better Auth.
+Prerequisites:
 
-## 🏁 Getting Started
-
-### Prerequisites
 - [Bun](https://bun.sh/)
 - [Rust](https://www.rust-lang.org/)
 
-### Quick Start (Desktop App)
-```bash
-# Install dependencies
-bun install
+Desktop app:
 
-# Start development mode
+```bash
+bun install
 bun run tauri dev
 ```
 
-### Web App
+Web app:
+
 ```bash
 cd web
 bun install
 bun run dev
 ```
 
-## 📜 Available Scripts
+## Common commands
 
-| Command | Action |
-|---------|--------|
-| `bun run dev` | Start Vite dev server |
-| `bun run tauri dev` | Start Tauri development app |
-| `bun run tauri build` | Build production desktop app |
-| `bun run lint` | Run linter (oxlint) |
-| `bun run fmt` | Format code (oxfmt) |
+- `bun run dev` - Start desktop Vite dev server
+- `bun run tauri dev` - Start Tauri desktop app
+- `bun run tauri build` - Build desktop app
+- `bun run lint` - Run oxlint
+- `bun run fmt` - Format with oxfmt
 
-## 🤝 Contributing
+## Contributing
 
-1. Fork the repo and create your branch.
-2. Ensure your code passes `bun run lint` and `bun run fmt`.
-3. Open a Pull Request.
+1. Create a branch.
+2. Run `bun run lint` and `bun run fmt`.
+3. Open a pull request.
 
-## 📄 License
+## License
 
-[MIT](LICENSE) - Free for personal use.
-
----
-
-<p align="center">
-  Support development via <a href="https://github.com/sponsors/lassejlv">GitHub Sponsors</a>
-</p>
+[GNU AGPL v3](LICENSE)
