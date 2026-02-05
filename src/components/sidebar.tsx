@@ -257,7 +257,7 @@ export const Sidebar = memo(function Sidebar() {
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 overflow-hidden">
           <div className="p-2">
             <AnimatePresence>
               {Object.entries(groupedTables).map(([schema, schemaTables], schemaIdx) => (
