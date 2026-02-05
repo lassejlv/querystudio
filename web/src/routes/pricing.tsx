@@ -1,285 +1,266 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Header } from '@/components/header'
-import { Button } from '@/components/ui/button'
-import { Download, Check } from 'lucide-react'
-import { getPricing } from '@/server/pricing'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import * as React from 'react'
+import { Header } from '@/components/header'
+import { PageTransition } from '@/components/page-transition'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Download, Check } from 'lucide-react'
+import { animate, useReducedMotion } from 'framer-motion'
+import { getPricing } from '@/server/pricing'
 
 export const Route = createFileRoute('/pricing')({
   component: PricingPage,
   loader: () => getPricing(),
 })
 
+function formatPrice(value: number) {
+  if (Number.isInteger(value)) {
+    return String(Math.round(value))
+  }
+  return value.toFixed(2).replace(/\.00$/, '')
+}
+
+function AnimatedPrice({ value }: { value: number }) {
+  const shouldReduceMotion = useReducedMotion()
+  const [displayValue, setDisplayValue] = React.useState(value)
+  const previousValueRef = React.useRef(value)
+
+  React.useEffect(() => {
+    if (shouldReduceMotion) {
+      setDisplayValue(value)
+      previousValueRef.current = value
+      return
+    }
+
+    const controls = animate(previousValueRef.current, value, {
+      duration: 0.35,
+      ease: 'easeOut',
+      onUpdate: (latest) => {
+        setDisplayValue(latest)
+      },
+    })
+
+    previousValueRef.current = value
+
+    return () => {
+      controls.stop()
+    }
+  }, [value, shouldReduceMotion])
+
+  return <span className='text-4xl font-semibold'>${formatPrice(displayValue)}</span>
+}
+
 function PricingPage() {
-  const pricing = Route.useLoaderData()
+  const pricing = Route.useLoaderData() as Awaited<ReturnType<typeof getPricing>>
   const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'annually'>('monthly')
+  const currentProTier = billingCycle === 'monthly' ? pricing.tiers.proMonthly : pricing.tiers.proAnnually
 
   return (
     <div className='min-h-screen bg-background flex flex-col'>
       <Header />
 
-      <main className='flex-1 container mx-auto px-4 py-16 md:py-24'>
-        <div className='max-w-2xl mx-auto text-center mb-16'>
-          <h1 className='text-4xl md:text-5xl font-bold tracking-tight'>Pricing that you can overcome</h1>
-          <p className='mt-4 text-muted-foreground text-lg'>Free for personal use. Monthly or one-time options for professionals.</p>
-        </div>
+      <PageTransition>
+        <main className='flex-1'>
+          <section className='container mx-auto px-4 pt-20 md:pt-28 pb-10'>
+            <div className='max-w-2xl'>
+              <div className='inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground bg-background/80'>Simple pricing</div>
+              <h1 className='mt-6 text-4xl md:text-6xl font-semibold tracking-tight text-foreground leading-[1.05]'>
+                Pricing that works
+                <br />
+                <span className='text-foreground/70'>with your work</span>
+              </h1>
+              <p className='mt-5 text-lg text-muted-foreground max-w-xl'>Free for personal use. Flexible options for everyone.</p>
+            </div>
 
-        <div className='flex justify-center mb-8'>
-          <Tabs value={billingCycle} onValueChange={(v) => setBillingCycle(v as 'monthly' | 'annually')}>
-            <TabsList>
-              <TabsTrigger value='monthly'>Monthly</TabsTrigger>
-              <TabsTrigger value='annually'>Annually</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+            <div className='mt-10'>
+              <Tabs value={billingCycle} onValueChange={(v) => setBillingCycle(v as 'monthly' | 'annually')}>
+                <TabsList className='rounded-full'>
+                  <TabsTrigger value='monthly'>Monthly</TabsTrigger>
+                  <TabsTrigger value='annually'>Annually</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </section>
 
-        <div className='grid md:grid-cols-3 gap-8 max-w-5xl mx-auto'>
-          <Card className='flex flex-col'>
-            <CardHeader>
-              <div className='flex items-center justify-between'>
-                <CardTitle className='text-xl'>{pricing.tiers.free.name}</CardTitle>
-              </div>
-              <CardDescription>Perfect for hobbyists and students</CardDescription>
-            </CardHeader>
-            <CardContent className='flex-1'>
-              <div className='text-4xl font-bold mb-6'>$0</div>
-              <ul className='space-y-3 text-sm'>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Personal use only</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>{pricing.tiers.free.features.maxConnections} Saved Connections</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>All database dialects (1 connection per dialect)</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>AI Assistant (BYOK)</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Local-first & Secure</span>
-                </li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button asChild className='w-full' variant='outline'>
-                <Link to='/download'>
-                  <Download className='h-4 w-4 mr-2' />
-                  Download Free
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
+          <section className='container mx-auto px-4 pb-20'>
+            <div className='grid gap-6 md:grid-cols-3'>
+              <Card className='flex flex-col rounded-3xl hover:shadow-md hover:-translate-y-0.5'>
+                <CardHeader>
+                  <CardTitle className='text-lg'>{pricing.tiers.free.name}</CardTitle>
+                  <CardDescription>Perfect for hobbyists and students</CardDescription>
+                </CardHeader>
+                <CardContent className='flex-1'>
+                  <div className='text-4xl font-semibold mb-6'>$0</div>
+                  <ul className='space-y-3 text-sm text-muted-foreground'>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Personal use only
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      {pricing.tiers.free.features.maxConnections} saved connections
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      All database dialects (1 connection per dialect)
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      AI assistant (BYOK)
+                    </li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className='w-full rounded-full' variant='outline'>
+                    <Link to='/download'>
+                      <Download className='h-4 w-4 mr-2' />
+                      Download Free
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
 
-          {billingCycle === 'monthly' ? (
-            <Card className='flex flex-col border-primary relative'>
-              <div className='absolute top-0 right-0 p-3'>
-                <Badge variant='default' className='text-xs'>
-                  Popular
-                </Badge>
-              </div>
-
-              <CardHeader>
-                <div className='flex items-center justify-between'>
-                  <CardTitle className='text-xl'>{pricing.tiers.proMonthly.name}</CardTitle>
+              <Card className='flex flex-col rounded-3xl border-primary/60 relative hover:shadow-md hover:-translate-y-0.5'>
+                <div className='absolute top-4 right-4'>
+                  <Badge variant='default' className='text-xs'>
+                    Popular
+                  </Badge>
                 </div>
-                <CardDescription>For professionals and commercial use</CardDescription>
-              </CardHeader>
-              <CardContent className='flex-1'>
-                <div className='flex items-baseline gap-2 mb-2'>
-                  <span className='text-4xl font-bold'>${pricing.tiers.proMonthly.price}</span>
-                  <span className='text-muted-foreground text-sm'>/month</span>
+                <CardHeader>
+                  <CardTitle className='text-lg'>{currentProTier.name}</CardTitle>
+                  <CardDescription>For professionals and commercial use</CardDescription>
+                </CardHeader>
+                <CardContent className='flex-1'>
+                  <div className='flex items-baseline gap-2 mb-2'>
+                    <AnimatedPrice value={Number(currentProTier.price)} />
+                    <span className='text-muted-foreground text-sm'>{billingCycle === 'monthly' ? '/month' : '/year'}</span>
+                  </div>
+                  <p className='text-sm text-muted-foreground mb-5'>{billingCycle === 'monthly' ? '3 days free trial' : 'Save 2 months'}</p>
+                  <ul className='space-y-3 text-sm text-muted-foreground'>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Commercial use allowed
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Unlimited connections
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Priority support
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Everything in Free
+                    </li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className='w-full rounded-full'>
+                    <Link to='/dashboard/billing' search={{ upgrade: true, plan: billingCycle }}>
+                      {billingCycle === 'monthly' ? 'Get Pro Monthly' : 'Get Pro Annually'}
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              <Card className='flex flex-col rounded-3xl relative hover:shadow-md hover:-translate-y-0.5'>
+                <div className='absolute top-4 right-4'>
+                  <Badge variant='secondary' className='text-xs'>
+                    Early Bird
+                  </Badge>
                 </div>
-                <p className='text-sm text-muted-foreground mb-4'>3 days free trial</p>
-                <ul className='space-y-3 text-sm'>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span className='font-medium'>Commercial use allowed</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span className='font-medium'>Unlimited Connections</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span className='font-medium'>Priority Support</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span>Everything in Free</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span>Continuous updates</span>
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button asChild className='w-full'>
-                  <Link to='/dashboard/billing' search={{ upgrade: true, plan: 'monthly' }}>
-                    Get Pro Monthly
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          ) : (
-            <Card className='flex flex-col border-primary relative'>
-              <div className='absolute top-0 right-0 p-3'>
-                <Badge variant='default' className='text-xs'>
-                  Popular
-                </Badge>
+                <CardHeader>
+                  <CardTitle className='text-lg'>{pricing.tiers.pro.name}</CardTitle>
+                  <CardDescription>One-time purchase, lifetime access</CardDescription>
+                </CardHeader>
+                <CardContent className='flex-1'>
+                  <div className='flex items-baseline gap-2 mb-6'>
+                    <span className='text-4xl font-semibold'>${pricing.tiers.pro.earlyBirdPrice}</span>
+                    <span className='text-muted-foreground line-through text-sm'>${pricing.tiers.pro.price}</span>
+                    <span className='text-muted-foreground text-sm ml-1'>one-time</span>
+                  </div>
+                  <ul className='space-y-3 text-sm text-muted-foreground'>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Commercial use allowed
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Unlimited connections
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Priority support
+                    </li>
+                    <li className='flex items-center gap-2'>
+                      <Check className='h-4 w-4 text-emerald-500' />
+                      Lifetime updates
+                    </li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className='w-full rounded-full' variant='outline'>
+                    <Link to='/dashboard/billing' search={{ upgrade: true, plan: 'onetime' }}>
+                      Get Pro One-time
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </section>
+
+          <section className='border-t'>
+            <div className='container mx-auto px-4 py-16'>
+              <div className='max-w-3xl'>
+                <h2 className='text-2xl md:text-3xl font-semibold'>Frequently asked</h2>
+                <p className='mt-3 text-muted-foreground'>Short answers to common questions.</p>
               </div>
 
-              <CardHeader>
-                <div className='flex items-center justify-between'>
-                  <CardTitle className='text-xl'>{pricing.tiers.proAnnually.name}</CardTitle>
+              <div className='mt-8 grid gap-8 md:grid-cols-2'>
+                <div>
+                  <h3 className='font-medium'>What does BYOK mean?</h3>
+                  <p className='mt-2 text-sm text-muted-foreground'>Bring Your Own Key. You provide your own API key for OpenAI or Anthropic to use the AI features.</p>
                 </div>
-                <CardDescription>For professionals and commercial use</CardDescription>
-              </CardHeader>
-              <CardContent className='flex-1'>
-                <div className='flex items-baseline gap-2 mb-2'>
-                  <span className='text-4xl font-bold'>${pricing.tiers.proAnnually.price}</span>
-                  <span className='text-muted-foreground text-sm'>/year</span>
+                <div>
+                  <h3 className='font-medium'>What is the difference between monthly and one-time?</h3>
+                  <p className='mt-2 text-sm text-muted-foreground'>Monthly is a subscription with continuous updates. One-time is a single payment for lifetime access.</p>
                 </div>
-                <p className='text-sm text-muted-foreground mb-4'>Save 2 months</p>
-                <ul className='space-y-3 text-sm'>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span className='font-medium'>Commercial use allowed</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span className='font-medium'>Unlimited Connections</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span className='font-medium'>Priority Support</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span>Everything in Free</span>
-                  </li>
-                  <li className='flex items-center gap-2'>
-                    <Check className='h-4 w-4 text-green-500' />
-                    <span>Continuous updates</span>
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button asChild className='w-full'>
-                  <Link to='/dashboard/billing' search={{ upgrade: true, plan: 'annually' }}>
-                    Get Pro Annually
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          )}
-
-          <Card className='flex flex-col relative'>
-            <div className='absolute top-0 right-0 p-3'>
-              <Badge variant='secondary' className='text-xs'>
-                Early Bird
-              </Badge>
-            </div>
-
-            <CardHeader>
-              <div className='flex items-center justify-between'>
-                <CardTitle className='text-xl'>{pricing.tiers.pro.name}</CardTitle>
+                <div>
+                  <h3 className='font-medium'>Can I upgrade or switch plans later?</h3>
+                  <p className='mt-2 text-sm text-muted-foreground'>Yes. Start free and upgrade anytime. You can switch between monthly and one-time plans from your dashboard.</p>
+                </div>
+                <div>
+                  <h3 className='font-medium'>Do you offer refunds?</h3>
+                  <p className='mt-2 text-sm text-muted-foreground'>Yes. One-time purchases can be refunded within 14 days. Monthly subscriptions can be canceled anytime.</p>
+                </div>
               </div>
-              <CardDescription>One-time purchase, lifetime access</CardDescription>
-            </CardHeader>
-            <CardContent className='flex-1'>
-              <div className='flex items-baseline gap-2 mb-6'>
-                <span className='text-4xl font-bold'>${pricing.tiers.pro.earlyBirdPrice}</span>
-                <span className='text-muted-foreground line-through text-sm'>${pricing.tiers.pro.price}</span>
-                <span className='text-muted-foreground text-sm ml-1'>one-time</span>
-              </div>
-              <ul className='space-y-3 text-sm'>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Commercial use allowed</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Unlimited Connections</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Priority Support</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span>Everything in Free</span>
-                </li>
-                <li className='flex items-center gap-2'>
-                  <Check className='h-4 w-4 text-green-500' />
-                  <span className='font-medium text-primary'>Lifetime updates</span>
-                </li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button asChild className='w-full' variant='outline'>
-                <Link to='/dashboard/billing' search={{ upgrade: true, plan: 'onetime' }}>
-                  Get Pro One-time
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
+            </div>
+          </section>
+        </main>
+      </PageTransition>
 
-        <div className='mt-24 max-w-3xl mx-auto'>
-          <h2 className='text-2xl font-semibold text-center mb-12'>Frequently Asked Questions</h2>
-          <div className='grid gap-8 md:grid-cols-2'>
-            <div className='p-4'>
-              <h3 className='font-medium mb-2'>What does BYOK mean?</h3>
-              <p className='text-sm text-muted-foreground'>Bring Your Own Key. You provide your own API key for OpenAI or Anthropic to use the AI features. We don't mark up AI costs.</p>
+      <footer className='border-t'>
+        <div className='container mx-auto px-4 py-10'>
+          <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-6'>
+            <div className='flex items-center gap-3'>
+              <img src='https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png' alt='QueryStudio' className='h-6 w-6' />
+              <span className='font-medium'>QueryStudio</span>
             </div>
-            <div className='p-4'>
-              <h3 className='font-medium mb-2'>What's the difference between monthly and one-time?</h3>
-              <p className='text-sm text-muted-foreground'>
-                Monthly is a subscription at $4.99/month with 3 days free trial and continuous updates. One-time is a single payment of $19.99 (early bird) for lifetime access and updates. Both have
-                the same features.
-              </p>
-            </div>
-            <div className='p-4'>
-              <h3 className='font-medium mb-2'>Can I upgrade or switch plans later?</h3>
-              <p className='text-sm text-muted-foreground'>Yes. Start with the Free version and upgrade to Pro anytime. You can also switch between monthly and one-time plans from your dashboard.</p>
-            </div>
-            <div className='p-4'>
-              <h3 className='font-medium mb-2'>Do you offer refunds?</h3>
-              <p className='text-sm text-muted-foreground'>
-                Yes. For one-time purchases, email us within 14 days for a full refund. For monthly subscriptions, you can cancel anytime and keep access until the end of your billing period.
-              </p>
-            </div>
+            <nav className='flex items-center gap-8'>
+              <Link to='/download' className='text-sm text-muted-foreground hover:text-foreground'>
+                Download
+              </Link>
+              <Link to='/pricing' className='text-sm text-muted-foreground hover:text-foreground'>
+                Pricing
+              </Link>
+              <Link to='/login' className='text-sm text-muted-foreground hover:text-foreground'>
+                Login
+              </Link>
+            </nav>
           </div>
-        </div>
-      </main>
-
-      <footer className='border-t py-8 mt-12'>
-        <div className='container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4'>
-          <div className='flex items-center gap-2'>
-            <img src='https://assets-cdn.querystudio.dev/QueryStudioIconNoBG.png' alt='QueryStudio' className='h-5 w-5' />
-            <span className='text-sm text-muted-foreground'>QueryStudio</span>
-          </div>
-          <nav className='flex items-center gap-6'>
-            <Link to='/download' className='text-sm text-muted-foreground hover:text-foreground'>
-              Download
-            </Link>
-            <Link to='/pricing' className='text-sm text-muted-foreground hover:text-foreground'>
-              Pricing
-            </Link>
-            <Link to='/login' className='text-sm text-muted-foreground hover:text-foreground'>
-              Login
-            </Link>
-          </nav>
         </div>
       </footer>
     </div>

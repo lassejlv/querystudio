@@ -14,8 +14,6 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
-import { Route as NewPricingpageRouteImport } from './routes/new-pricingpage'
-import { Route as NewHomepageRouteImport } from './routes/new-homepage'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as ChangelogRouteImport } from './routes/changelog'
@@ -55,16 +53,6 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewPricingpageRoute = NewPricingpageRouteImport.update({
-  id: '/new-pricingpage',
-  path: '/new-pricingpage',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewHomepageRoute = NewHomepageRouteImport.update({
-  id: '/new-homepage',
-  path: '/new-homepage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -147,8 +135,6 @@ export interface FileRoutesByFullPath {
   '/changelog': typeof ChangelogRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
-  '/new-homepage': typeof NewHomepageRoute
-  '/new-pricingpage': typeof NewPricingpageRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
@@ -170,8 +156,6 @@ export interface FileRoutesByTo {
   '/changelog': typeof ChangelogRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
-  '/new-homepage': typeof NewHomepageRoute
-  '/new-pricingpage': typeof NewPricingpageRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
@@ -194,8 +178,6 @@ export interface FileRoutesById {
   '/changelog': typeof ChangelogRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
-  '/new-homepage': typeof NewHomepageRoute
-  '/new-pricingpage': typeof NewPricingpageRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
@@ -219,8 +201,6 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/download'
     | '/login'
-    | '/new-homepage'
-    | '/new-pricingpage'
     | '/pricing'
     | '/privacy'
     | '/signup'
@@ -242,8 +222,6 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/download'
     | '/login'
-    | '/new-homepage'
-    | '/new-pricingpage'
     | '/pricing'
     | '/privacy'
     | '/signup'
@@ -265,8 +243,6 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/download'
     | '/login'
-    | '/new-homepage'
-    | '/new-pricingpage'
     | '/pricing'
     | '/privacy'
     | '/signup'
@@ -290,8 +266,6 @@ export interface RootRouteChildren {
   ChangelogRoute: typeof ChangelogRoute
   DownloadRoute: typeof DownloadRoute
   LoginRoute: typeof LoginRoute
-  NewHomepageRoute: typeof NewHomepageRoute
-  NewPricingpageRoute: typeof NewPricingpageRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   SignupRoute: typeof SignupRoute
@@ -338,20 +312,6 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/new-pricingpage': {
-      id: '/new-pricingpage'
-      path: '/new-pricingpage'
-      fullPath: '/new-pricingpage'
-      preLoaderRoute: typeof NewPricingpageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/new-homepage': {
-      id: '/new-homepage'
-      path: '/new-homepage'
-      fullPath: '/new-homepage'
-      preLoaderRoute: typeof NewHomepageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -499,8 +459,6 @@ const rootRouteChildren: RootRouteChildren = {
   ChangelogRoute: ChangelogRoute,
   DownloadRoute: DownloadRoute,
   LoginRoute: LoginRoute,
-  NewHomepageRoute: NewHomepageRoute,
-  NewPricingpageRoute: NewPricingpageRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   SignupRoute: SignupRoute,

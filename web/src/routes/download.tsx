@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Header } from '@/components/header'
+import { PageTransition } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, Download, Apple } from 'lucide-react'
+import { ExternalLink, Download, Apple, Monitor, Terminal } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useEffect, useState } from 'react'
 import { redis } from 'bun'
@@ -144,6 +145,24 @@ function getArchLabel(arch: FormattedAsset['arch']) {
   }
 }
 
+function getAssetLabel(asset: FormattedAsset): string {
+  const lower = asset.name.toLowerCase()
+
+  if (asset.platform === 'windows') {
+    if (lower.endsWith('.exe')) return 'Installer (.exe)'
+    if (lower.endsWith('.msi')) return 'MSI package'
+  }
+
+  if (asset.platform === 'linux') {
+    if (lower.endsWith('.deb')) return 'Debian/Ubuntu (.deb)'
+    if (lower.endsWith('.rpm')) return 'Fedora/RHEL (.rpm)'
+    if (lower.endsWith('.appimage')) return 'AppImage'
+  }
+
+  const archLabel = getArchLabel(asset.arch)
+  return archLabel || asset.name
+}
+
 function DownloadPage() {
   const release = Route.useLoaderData()
   const [userPlatform, setUserPlatform] = useState<'macos' | 'windows' | 'linux' | null>(null)
@@ -159,22 +178,24 @@ function DownloadPage() {
     return (
       <div className='min-h-screen bg-background'>
         <Header />
-        <main className='container mx-auto px-4 py-16'>
-          <div className='max-w-xl mx-auto text-center'>
-            <div className='w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center'>
-              <Download className='w-8 h-8 text-muted-foreground' />
+        <PageTransition>
+          <main className='container mx-auto px-4 py-16'>
+            <div className='max-w-xl mx-auto text-center'>
+              <div className='w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center'>
+                <Download className='w-8 h-8 text-muted-foreground' />
+              </div>
+              <h1 className='text-2xl font-semibold mb-2'>Download</h1>
+              <p className='mt-2 text-muted-foreground'>No releases available yet.</p>
+              <div className='mt-6'>
+                <Button variant='outline' asChild>
+                  <Link to='/' className='inline-flex items-center gap-2'>
+                    Back to home
+                  </Link>
+                </Button>
+              </div>
             </div>
-            <h1 className='text-2xl font-semibold mb-2'>Download</h1>
-            <p className='mt-2 text-muted-foreground'>No releases available yet.</p>
-            <div className='mt-6'>
-              <Button variant='outline' asChild>
-                <Link to='/' className='inline-flex items-center gap-2'>
-                  Back to home
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </main>
+          </main>
+        </PageTransition>
       </div>
     )
   }
@@ -182,137 +203,129 @@ function DownloadPage() {
   const macosAssets = release.assets.filter((a) => a.platform === 'macos' && !isSignatureFile(a.name))
   const windowsAssets = release.assets.filter((a) => a.platform === 'windows' && !isSignatureFile(a.name))
   const linuxAssets = release.assets.filter((a) => a.platform === 'linux' && !isSignatureFile(a.name))
+  const platformAssets = {
+    macos: macosAssets,
+    windows: windowsAssets,
+    linux: linuxAssets,
+  } as const
+
+  const platformPreferredAsset = userPlatform ? platformAssets[userPlatform].find((a) => a.arch === 'universal') || platformAssets[userPlatform][0] : undefined
+  const featuredAsset = platformPreferredAsset || macosAssets[0] || windowsAssets[0] || linuxAssets[0]
+
+  const cards = [
+    { key: 'macos' as const, title: 'macOS', subtitle: '10.15+', Icon: Apple, assets: macosAssets },
+    {
+      key: 'windows' as const,
+      title: 'Windows',
+      subtitle: '10+',
+      Icon: Monitor,
+      assets: windowsAssets,
+    },
+    {
+      key: 'linux' as const,
+      title: 'Linux',
+      subtitle: 'Various distros',
+      Icon: Terminal,
+      assets: linuxAssets,
+    },
+  ]
 
   return (
     <div className='min-h-screen bg-background'>
       <Header />
 
-      <main className='container mx-auto px-4 py-16 max-w-5xl'>
-        <div className='text-center mb-16'>
-          <h1 className='text-4xl md:text-5xl font-bold mb-4'>Download QueryStudio</h1>
-          <p className='text-xl text-muted-foreground'>
-            Version <span className='font-mono text-primary'>{release.version}</span> ·{' '}
-            <time dateTime={release.publishedAt}>
-              {new Date(release.publishedAt).toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </time>
-          </p>
-        </div>
+      <PageTransition>
+        <main className='container mx-auto px-4 py-16 max-w-5xl'>
+          <div className='mb-12 rounded-2xl border bg-card/50 p-8 md:p-10'>
+            <p className='text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground mb-3'>Download</p>
+            <h1 className='text-3xl md:text-4xl font-semibold mb-3'>QueryStudio {release.version}</h1>
+            <p className='text-sm md:text-base text-muted-foreground'>
+              Published{' '}
+              <time dateTime={release.publishedAt}>
+                {new Date(release.publishedAt).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </time>
+            </p>
 
-        <div className='grid md:grid-cols-3 gap-6 mb-12'>
-          <div className={`p-6 rounded-2xl border bg-card ${userPlatform === 'macos' ? 'ring-2 ring-primary' : ''}`}>
-            <div className='flex items-center justify-between mb-6'>
-              <div className='flex items-center gap-3'>
-                <div>
-                  <h2 className='font-semibold text-lg'>macOS</h2>
-                  <p className='text-sm text-muted-foreground'>10.15 or later</p>
-                </div>
-              </div>
-              {userPlatform === 'macos' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full'>Your platform</span>}
-            </div>
-
-            {macosAssets.length > 0 ? (
-              <div className='space-y-2'>
-                {macosAssets.map((asset) => (
-                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted'>
-                    <div className='flex items-center gap-3'>
-                      <Download className='w-4 h-4 text-muted-foreground' />
-                      <span className='font-medium'>{getArchLabel(asset.arch)}</span>
-                    </div>
-                    <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
+            <div className='mt-6 flex flex-wrap items-center gap-3'>
+              {featuredAsset && (
+                <Button asChild size='lg'>
+                  <a href={featuredAsset.downloadUrl} download className='inline-flex items-center gap-2'>
+                    <Download className='w-4 h-4' />
+                    {userPlatform ? `Download for ${userPlatform === 'macos' ? 'macOS' : userPlatform === 'windows' ? 'Windows' : 'Linux'}` : 'Download latest'}
                   </a>
-                ))}
-              </div>
-            ) : (
-              <p className='text-sm text-muted-foreground py-4'>Coming soon</p>
-            )}
+                </Button>
+              )}
+              <Button variant='outline' asChild>
+                <Link to='/changelog' className='inline-flex items-center gap-2'>
+                  View changelog
+                </Link>
+              </Button>
+            </div>
           </div>
 
-          <div className={`p-6 rounded-2xl border bg-card ${userPlatform === 'windows' ? 'ring-2 ring-primary' : ''}`}>
-            <div className='flex items-center justify-between mb-6'>
-              <div className='flex items-center gap-3'>
-                <div>
-                  <h2 className='font-semibold text-lg'>Windows</h2>
-                  <p className='text-sm text-muted-foreground'>10 or later</p>
-                </div>
-              </div>
-              {userPlatform === 'windows' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full'>Your platform</span>}
-            </div>
-
-            {windowsAssets.length > 0 ? (
-              <div className='space-y-2'>
-                {windowsAssets.map((asset) => (
-                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted'>
+          <div className='grid md:grid-cols-3 gap-5 mb-12'>
+            {cards.map(({ key, title, subtitle, Icon, assets }) => {
+              const isUserPlatform = userPlatform === key
+              return (
+                <section key={key} className={`rounded-2xl border bg-card p-5 ${isUserPlatform ? 'border-primary/40 bg-primary/[0.04]' : ''}`}>
+                  <div className='mb-4 flex items-start justify-between gap-3'>
                     <div className='flex items-center gap-3'>
-                      <Download className='w-4 h-4 text-muted-foreground' />
-                      <span className='font-medium'>{asset.name.endsWith('.exe') ? 'Installer' : asset.name.endsWith('.msi') ? 'MSI' : getArchLabel(asset.arch)}</span>
+                      <div className='rounded-lg border bg-background p-2'>
+                        <Icon className='h-4 w-4 text-muted-foreground' />
+                      </div>
+                      <div>
+                        <h2 className='font-medium'>{title}</h2>
+                        <p className='text-xs text-muted-foreground'>{subtitle}</p>
+                      </div>
                     </div>
-                    <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className='text-sm text-muted-foreground py-4'>Coming soon</p>
-            )}
-          </div>
+                    {isUserPlatform && <span className='rounded-full bg-primary px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground'>Recommended</span>}
+                  </div>
 
-          <div className={`p-6 rounded-2xl border bg-card ${userPlatform === 'linux' ? 'ring-2 ring-primary' : ''}`}>
-            <div className='flex items-center justify-between mb-6'>
-              <div className='flex items-center gap-3'>
-                <div>
-                  <h2 className='font-semibold text-lg'>Linux</h2>
-                  <p className='text-sm text-muted-foreground'>Various distros</p>
-                </div>
-              </div>
-              {userPlatform === 'linux' && <span className='text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full'>Your platform</span>}
-            </div>
-
-            {linuxAssets.length > 0 ? (
-              <div className='space-y-2'>
-                {linuxAssets.map((asset) => (
-                  <a key={asset.name} href={asset.downloadUrl} download className='flex items-center justify-between py-3 px-4 -mx-4 rounded-lg hover:bg-muted'>
-                    <div className='flex items-center gap-3'>
-                      <Download className='w-4 h-4 text-muted-foreground' />
-                      <span className='font-medium'>
-                        {asset.name.endsWith('.deb') ? 'Debian/Ubuntu' : asset.name.endsWith('.rpm') ? 'Fedora/RHEL' : asset.name.endsWith('.AppImage') ? 'AppImage' : getArchLabel(asset.arch)}
-                      </span>
+                  {assets.length > 0 ? (
+                    <div className='space-y-1'>
+                      {assets.map((asset) => (
+                        <a key={asset.name} href={asset.downloadUrl} download className='group flex items-center justify-between rounded-lg px-3 py-2 hover:bg-muted'>
+                          <span className='truncate pr-2 text-sm font-medium'>{getAssetLabel(asset)}</span>
+                          <span className='shrink-0 text-xs text-muted-foreground group-hover:text-foreground'>{formatBytes(asset.size)}</span>
+                        </a>
+                      ))}
                     </div>
-                    <span className='text-sm text-muted-foreground'>{formatBytes(asset.size)}</span>
-                  </a>
-                ))}
+                  ) : (
+                    <p className='py-3 text-sm text-muted-foreground'>No build available yet.</p>
+                  )}
+                </section>
+              )
+            })}
+          </div>
+
+          <div className='rounded-2xl border bg-muted/30 p-6 md:p-8'>
+            <div className='grid gap-8 md:grid-cols-2'>
+              <div>
+                <h3 className='font-semibold mb-3 flex items-center gap-2'>
+                  <Apple className='w-5 h-5' />
+                  macOS Note
+                </h3>
+                <p className='text-sm text-muted-foreground leading-relaxed'>The app isn't signed yet. Right-click and select "Open" on first launch to bypass Gatekeeper.</p>
+                <a href={donateUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm mt-3 hover:underline text-primary'>
+                  Support signing <ExternalLink className='h-3 w-3' />
+                </a>
               </div>
-            ) : (
-              <p className='text-sm text-muted-foreground py-4'>Coming soon</p>
-            )}
-          </div>
-        </div>
 
-        <div className='p-8 rounded-2xl bg-muted/30 border'>
-          <div className='grid md:grid-cols-2 gap-8'>
-            <div>
-              <h3 className='font-semibold mb-3 flex items-center gap-2'>
-                <Apple className='w-5 h-5' />
-                macOS Note
-              </h3>
-              <p className='text-sm text-muted-foreground leading-relaxed'>The app isn't signed yet. Right-click and select "Open" on first launch to bypass Gatekeeper.</p>
-              <a href={donateUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm mt-3 hover:underline text-primary'>
-                Support signing <ExternalLink className='h-3 w-3' />
-              </a>
-            </div>
-
-            <div>
-              <h3 className='font-semibold mb-3'>Release Notes</h3>
-              <p className='text-sm text-muted-foreground leading-relaxed mb-3'>View the full changelog and release notes on GitHub.</p>
-              <a href={release.htmlUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm hover:underline text-primary'>
-                View on GitHub <ExternalLink className='h-3 w-3' />
-              </a>
+              <div>
+                <h3 className='font-semibold mb-3'>Release Notes</h3>
+                <p className='text-sm text-muted-foreground leading-relaxed mb-3'>View the full changelog and release notes on GitHub.</p>
+                <a href={release.htmlUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-sm hover:underline text-primary'>
+                  View on GitHub <ExternalLink className='h-3 w-3' />
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </PageTransition>
     </div>
   )
 }

@@ -69,6 +69,7 @@
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
     "embla-carousel-react": "^8.6.0",
+    "framer-motion": "^12.33.0",
     "hono": "^4.11.7",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.562.0",
