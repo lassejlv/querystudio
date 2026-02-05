@@ -23,7 +23,13 @@ import { useThemeImport } from "@/lib/use-theme-import";
 import { Upload, Trash2 } from "lucide-react";
 
 export function ThemeSelector() {
-  const { getAllThemes, activeTheme: activeThemeId, themes: themeStore, setActiveTheme, removeCustomTheme } = useThemeStore();
+  const {
+    getAllThemes,
+    activeTheme: activeThemeId,
+    themes: themeStore,
+    setActiveTheme,
+    removeCustomTheme,
+  } = useThemeStore();
 
   const { importThemeFromJson, importAndApplyTheme } = useThemeImport();
 

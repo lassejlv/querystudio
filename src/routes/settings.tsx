@@ -6,7 +6,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAIQueryStore } from "@/lib/store";
 import { ThemeSelector } from "@/components/theme-selector";
 import { toast } from "sonner";
 import { authClient, signInWithGithub } from "@/lib/auth-client";
@@ -14,6 +13,8 @@ import { CommandPalette } from "@/components/command-palette";
 import { PluginSettings } from "@/components/plugin-settings";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
+import { useConnectionStore, useAIQueryStore } from "@/lib/store";
+import { useDisconnect } from "@/lib/hooks";
 import type { SavedConnection } from "@/lib/types";
 
 export const Route = createFileRoute("/settings")({
@@ -234,10 +235,32 @@ function AccountSettings() {
 function GeneralSettings() {
   const autoReconnect = useAIQueryStore((s) => s.autoReconnect);
   const setAutoReconnect = useAIQueryStore((s) => s.setAutoReconnect);
+  const multiConnectionsEnabled = useAIQueryStore((s) => s.multiConnectionsEnabled);
+  const setMultiConnectionsEnabled = useAIQueryStore((s) => s.setMultiConnectionsEnabled);
   const sidebarCollapsed = useAIQueryStore((s) => s.sidebarCollapsed);
   const setSidebarCollapsed = useAIQueryStore((s) => s.setSidebarCollapsed);
   const debugMode = useAIQueryStore((s) => s.debugMode);
   const setDebugMode = useAIQueryStore((s) => s.setDebugMode);
+  const activeConnections = useConnectionStore((s) => s.activeConnections);
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
+  const disconnect = useDisconnect();
+
+  const handleMultiConnectionsChange = async (enabled: boolean) => {
+    setMultiConnectionsEnabled(enabled);
+    if (enabled) return;
+
+    const connectionsToClose = activeConnections.filter(
+      (connection) => connection.id !== activeConnectionId,
+    );
+
+    for (const connection of connectionsToClose) {
+      try {
+        await disconnect.mutateAsync(connection.id);
+      } catch {
+        toast.error(`Failed to disconnect ${connection.name}`);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -262,6 +285,19 @@ function GeneralSettings() {
 
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Interface</h3>
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base">Multiple Connections</Label>
+            <p className="text-sm text-muted-foreground">
+              Keep more than one database connection open with connection tabs
+            </p>
+          </div>
+          <Switch
+            checked={multiConnectionsEnabled}
+            onCheckedChange={handleMultiConnectionsChange}
+          />
+        </div>
+
         <div className="flex items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Collapse Sidebar</Label>

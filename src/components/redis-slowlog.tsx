@@ -86,19 +86,10 @@ export function RedisSlowLog({ connectionId }: RedisSlowLogProps) {
               max="1000"
             />
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={fetchSlowLog}
-            disabled={loading}
-          >
+          <Button variant="outline" size="icon" onClick={fetchSlowLog} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleReset}
-          >
+          <Button variant="outline" size="icon" onClick={handleReset}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -107,9 +98,7 @@ export function RedisSlowLog({ connectionId }: RedisSlowLogProps) {
       <ScrollArea className="flex-1">
         <div className="p-4">
           {entries.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              No slow log entries found
-            </div>
+            <div className="text-center text-muted-foreground py-8">No slow log entries found</div>
           ) : (
             <div className="space-y-2">
               {entries.map((entry) => (
@@ -119,9 +108,7 @@ export function RedisSlowLog({ connectionId }: RedisSlowLogProps) {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-muted-foreground">
-                        #{entry.id}
-                      </span>
+                      <span className="text-xs font-mono text-muted-foreground">#{entry.id}</span>
                       <span className="text-xs text-muted-foreground">
                         {formatTimestamp(entry.timestamp)}
                       </span>
@@ -131,8 +118,8 @@ export function RedisSlowLog({ connectionId }: RedisSlowLogProps) {
                         entry.duration > 100000
                           ? "text-red-500"
                           : entry.duration > 10000
-                          ? "text-yellow-500"
-                          : "text-green-500"
+                            ? "text-yellow-500"
+                            : "text-green-500"
                       }`}
                     >
                       {formatDuration(entry.duration)}

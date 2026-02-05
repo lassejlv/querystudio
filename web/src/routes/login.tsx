@@ -32,12 +32,12 @@ function LoginPage() {
       toast.error("Please complete the captcha");
       return;
     }
-    
+
     const { error } = await authClient.signIn.social({
       provider: "github",
       callbackURL: `${window.location.origin}/dashboard`,
     });
-    
+
     if (error) {
       toast.error(error.message || "Failed to sign in with GitHub");
     }
@@ -136,7 +136,12 @@ function LoginPage() {
               </div>
             </div>
 
-            <Button variant="outline" className="w-full" onClick={loginGithub} disabled={!canSubmit}>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={loginGithub}
+              disabled={!canSubmit}
+            >
               Github
               {lastMethod === "github" && <Badge className="ml-2">Last used</Badge>}
             </Button>

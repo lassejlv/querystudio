@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConnect, useCanConnect } from "@/lib/hooks";
+import { useAIQueryStore } from "@/lib/store";
 import { toast } from "sonner";
 import type { SavedConnection } from "@/lib/types";
 import { useNavigate } from "@tanstack/react-router";
@@ -31,6 +32,8 @@ export function PasswordPromptDialog({
   const connect = useConnect();
   const connectingRef = useRef(false);
   const { canConnect, maxConnections } = useCanConnect();
+  const multiConnectionsEnabled = useAIQueryStore((s) => s.multiConnectionsEnabled);
+  const canAttemptConnection = canConnect || !multiConnectionsEnabled;
 
   // Auto-connect for connection strings or SQLite (password optional)
   useEffect(() => {
@@ -39,7 +42,7 @@ export function PasswordPromptDialog({
     const isSqlite = connection.db_type === "sqlite";
     if (!isConnectionString && !isSqlite) return;
     if (connectingRef.current) return;
-    if (!canConnect) {
+    if (!canAttemptConnection) {
       toast.error(`Connection limit reached. Free tier allows ${maxConnections} connections.`);
       onOpenChange(false);
       return;
@@ -77,14 +80,14 @@ export function PasswordPromptDialog({
       .finally(() => {
         connectingRef.current = false;
       });
-  }, [connection, open, canConnect, maxConnections]);
+  }, [connection, open, canAttemptConnection, maxConnections]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!connection) return;
     if ("connection_string" in connection.config) return;
 
-    if (!canConnect) {
+    if (!canAttemptConnection) {
       toast.error(`Connection limit reached. Free tier allows ${maxConnections} connections.`);
       return;
     }
@@ -143,7 +146,7 @@ export function PasswordPromptDialog({
         </DialogHeader>
 
         {/* Connection Limit Warning */}
-        {!canConnect && (
+        {!canAttemptConnection && (
           <div className="flex items-start gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
             <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
             <div className="flex-1 space-y-2">
@@ -177,14 +180,14 @@ export function PasswordPromptDialog({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoFocus
-              disabled={!canConnect}
+              disabled={!canAttemptConnection}
             />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={connect.isPending || !canConnect}>
+            <Button type="submit" disabled={connect.isPending || !canAttemptConnection}>
               {connect.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Connect
             </Button>

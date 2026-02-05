@@ -1,6 +1,8 @@
 mod ai_commands;
+mod chat_storage;
 mod database;
 mod debug;
+mod settings;
 mod storage;
 mod terminal;
 mod user_state;
@@ -9,10 +11,12 @@ use ai_commands::{
     ai_chat, ai_chat_stream, ai_fetch_openrouter_models, ai_fetch_vercel_models, ai_get_models,
     ai_validate_key,
 };
+use chat_storage::{get_chat_history, set_chat_history};
 use database::{test_connection, ConnectionConfig, ConnectionManager};
 use debug::{get_process_stats, DebugState};
 use log::{debug, error, info, warn};
 use querystudio_providers::{ColumnInfo, QueryResult, TableInfo};
+use settings::{get_settings, load_settings, patch_settings, reset_settings, set_settings};
 use std::sync::Arc;
 use storage::CONNECTIONS_DB;
 use tauri::{
@@ -296,6 +300,14 @@ pub fn run() {
             let user_state: UserState_ = Arc::new(user_state_manager);
             app.manage(user_state);
 
+            // Ensure settings.json exists on startup.
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::block_on(async move {
+                if let Err(error) = load_settings(&app_handle).await {
+                    warn!("Failed to initialize settings.json: {error}");
+                }
+            });
+
             // Create the menu
             let app_menu = Submenu::with_items(
                 app,
@@ -486,6 +498,14 @@ pub fn run() {
             get_process_stats,
             // App info commands
             get_app_version,
+            // Settings commands
+            get_settings,
+            set_settings,
+            patch_settings,
+            reset_settings,
+            // Chat history commands
+            get_chat_history,
+            set_chat_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -71,7 +71,7 @@ export const Sidebar = memo(function Sidebar() {
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
   const getActiveConnection = useConnectionStore((s) => s.getActiveConnection);
   const connection = getActiveConnection();
-  
+
   // Use shallow comparison to minimize re-renders
   const { tables, selectedTable } = useConnectionStore(
     useShallow((s) => ({

@@ -1,16 +1,16 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
 body {
   @apply m-0;
-  font-family: 'IBM Plex Serif', Georgia, Cambria, 'Times New Roman', Times, serif;
+  font-family: "IBM Plex Serif", Georgia, Cambria, "Times New Roman", Times, serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 :root {
@@ -136,15 +136,15 @@ code {
 
   /* Global cursor pointer for interactive elements */
   button,
-  [role='button'],
-  [role='tab'],
-  [role='menuitem'],
-  [role='option'],
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
   a,
   label[for],
   select,
   summary,
-  [tabindex]:not([tabindex='-1']) {
+  [tabindex]:not([tabindex="-1"]) {
     cursor: pointer;
   }
 }
@@ -274,7 +274,9 @@ code {
 
 /* Grid pattern background */
 .grid-pattern {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
@@ -303,7 +305,7 @@ code {
 }
 
 .card-shine::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;

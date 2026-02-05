@@ -23,7 +23,7 @@ export function ConnectionTabs({ onAddConnection }: ConnectionTabsProps) {
 
   const handleCloseConnection = async (connectionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     try {
       await disconnect.mutateAsync(connectionId);
       removeConnection(connectionId);
@@ -100,7 +100,7 @@ export function ConnectionTabs({ onAddConnection }: ConnectionTabsProps) {
       <div className="flex items-center flex-1 overflow-x-auto scrollbar-hide">
         {activeConnections.map((connection) => {
           const isActive = connection.id === activeConnectionId;
-          
+
           return (
             <button
               key={connection.id}
@@ -109,7 +109,7 @@ export function ConnectionTabs({ onAddConnection }: ConnectionTabsProps) {
                 "group flex items-center gap-2 px-4 py-2 text-sm border-r border-border min-w-[120px] max-w-[200px] transition-colors",
                 isActive
                   ? "bg-background text-foreground border-b-2 border-b-primary -mb-[1px]"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               <Database className="h-4 w-4 shrink-0" />
@@ -118,7 +118,7 @@ export function ConnectionTabs({ onAddConnection }: ConnectionTabsProps) {
                 onClick={(e) => handleCloseConnection(connection.id, e)}
                 className={cn(
                   "opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted-foreground/20 transition-opacity",
-                  isActive && "opacity-100"
+                  isActive && "opacity-100",
                 )}
               >
                 <X className="h-3 w-3" />
@@ -127,7 +127,7 @@ export function ConnectionTabs({ onAddConnection }: ConnectionTabsProps) {
           );
         })}
       </div>
-      
+
       <Button
         variant="ghost"
         size="sm"

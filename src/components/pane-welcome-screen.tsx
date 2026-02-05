@@ -96,9 +96,7 @@ export const PaneWelcomeScreen = memo(function PaneWelcomeScreen({
         {/* Tables Quick Access */}
         {tables.length > 0 && !isRedis && (
           <div className="mb-8">
-            <h2 className="text-sm text-muted-foreground mb-3">
-              Recent Tables
-            </h2>
+            <h2 className="text-sm text-muted-foreground mb-3">Recent Tables</h2>
             <div className="flex flex-wrap gap-2">
               {tables.slice(0, 6).map((table) => (
                 <button

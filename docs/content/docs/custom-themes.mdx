@@ -4,9 +4,9 @@ description: Create and import custom color themes for QueryStudio.
 icon: Palette
 ---
 
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
-import { Step, Steps } from 'fumadocs-ui/components/steps';
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+import { Step, Steps } from "fumadocs-ui/components/steps";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 QueryStudio supports custom themes that let you personalize the entire application's appearance. Choose from built-in themes or create your own.
 
@@ -50,6 +50,7 @@ Custom themes are JSON files that define your color palette. Here's the complete
     <Callout type="info">
       Missing color properties will inherit from the default theme.
     </Callout>
+
   </Tab>
   <Tab value="Full Example">
     Complete theme with all properties:
@@ -99,6 +100,7 @@ Custom themes are JSON files that define your color palette. Here's the complete
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -108,16 +110,16 @@ Custom themes are JSON files that define your color palette. Here's the complete
 
 ### Metadata
 
-| Property | Type | Required | Description |
-| --- | --- | :---: | --- |
-| `id` | `string` | Yes | Unique identifier (kebab-case recommended) |
-| `name` | `string` | Yes | Internal name, typically matches `id` |
-| `displayName` | `string` | Yes | Human-readable name shown in UI |
-| `description` | `string` | No | Brief description of the theme |
-| `author` | `string` | No | Theme creator's name |
-| `version` | `string` | No | Semantic version (e.g., `1.0.0`) |
-| `isDark` | `boolean` | Yes | Set `true` for dark themes |
-| `isBuiltIn` | `boolean` | No | Always `false` for custom themes |
+| Property      | Type      | Required | Description                                |
+| ------------- | --------- | :------: | ------------------------------------------ |
+| `id`          | `string`  |   Yes    | Unique identifier (kebab-case recommended) |
+| `name`        | `string`  |   Yes    | Internal name, typically matches `id`      |
+| `displayName` | `string`  |   Yes    | Human-readable name shown in UI            |
+| `description` | `string`  |    No    | Brief description of the theme             |
+| `author`      | `string`  |    No    | Theme creator's name                       |
+| `version`     | `string`  |    No    | Semantic version (e.g., `1.0.0`)           |
+| `isDark`      | `boolean` |   Yes    | Set `true` for dark themes                 |
+| `isBuiltIn`   | `boolean` |    No    | Always `false` for custom themes           |
 
 ### Color Properties
 
@@ -138,6 +140,7 @@ Custom themes are JSON files that define your color palette. Here's the complete
     | `accent` | Highlights, hover states |
     | `accentForeground` | Text on accent elements |
     | `destructive` | Dangerous actions, errors, delete buttons |
+
   </Tab>
   <Tab value="UI Elements">
     Colors for specific interface components.
@@ -151,6 +154,7 @@ Custom themes are JSON files that define your color palette. Here's the complete
     | `border` | Borders and dividers |
     | `input` | Input field borders |
     | `ring` | Focus ring around interactive elements |
+
   </Tab>
   <Tab value="Sidebar">
     The sidebar has its own color system for visual separation.
@@ -165,6 +169,7 @@ Custom themes are JSON files that define your color palette. Here's the complete
     | `sidebarAccentForeground` | Hover state text |
     | `sidebarBorder` | Sidebar borders |
     | `sidebarRing` | Focus ring in sidebar |
+
   </Tab>
   <Tab value="Charts">
     Five colors for data visualization consistency.
@@ -180,6 +185,7 @@ Custom themes are JSON files that define your color palette. Here's the complete
     <Callout type="info">
       Choose colors with good contrast between each other for readable charts.
     </Callout>
+
   </Tab>
 </Tabs>
 
@@ -223,7 +229,8 @@ Select any theme and click **Export Theme** to download the JSON file. Share it 
 </Cards>
 
 <Callout type="info">
-  **OKLCH** is recommended for perceptually uniform color adjustments. It makes it easier to create harmonious color palettes.
+  **OKLCH** is recommended for perceptually uniform color adjustments. It makes it easier to create
+  harmonious color palettes.
 </Callout>
 
 ---
@@ -232,15 +239,19 @@ Select any theme and click **Export Theme** to download the JSON file. Share it 
 
 <Accordions type="single">
   <Accordion title="Start from an existing theme">
-    Export a built-in theme you like, then tweak the colors. This ensures you have all properties defined and a solid starting point.
+    Export a built-in theme you like, then tweak the colors. This ensures you have all properties
+    defined and a solid starting point.
   </Accordion>
   <Accordion title="Test accessibility">
-    Use a contrast checker to ensure text remains readable. Aim for at least 4.5:1 contrast ratio for body text.
+    Use a contrast checker to ensure text remains readable. Aim for at least 4.5:1 contrast ratio
+    for body text.
   </Accordion>
   <Accordion title="Test all UI states">
-    Preview your theme with tables, charts, modals, and error states to catch any issues before sharing.
+    Preview your theme with tables, charts, modals, and error states to catch any issues before
+    sharing.
   </Accordion>
   <Accordion title="Set isDark correctly">
-    The `isDark` flag affects scrollbars, system UI elements, and certain component behaviors. Dark background themes should set this to `true`.
+    The `isDark` flag affects scrollbars, system UI elements, and certain component behaviors. Dark
+    background themes should set this to `true`.
   </Accordion>
 </Accordions>

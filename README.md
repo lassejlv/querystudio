@@ -47,6 +47,17 @@ bun run dev
 - `bun run lint` - Run oxlint
 - `bun run fmt` - Format with oxfmt
 
+## Settings File
+
+QueryStudio persists app configuration in a single `settings.json` file in the Tauri AppConfig directory.
+Chat sessions are stored locally in `chats/<chat-id>.json` with metadata in `chats/index.json` in the same directory.
+
+- macOS: `~/Library/Application Support/<bundle-id>/settings.json`
+- Windows: `%AppData%\\<bundle-id>\\settings.json`
+- Linux: `~/.config/<bundle-id>/settings.json`
+
+The file is created automatically on startup if missing. If the file is invalid JSON, QueryStudio backs it up and regenerates defaults.
+
 ## Contributing
 
 1. Create a branch.

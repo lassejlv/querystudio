@@ -14,10 +14,10 @@ export const Route = createFileRoute("/db/$connectionId")({
 function LegacyConnectionRedirect() {
   const navigate = useNavigate();
   const { connectionId } = useParams({ from: "/db/$connectionId" });
-  
+
   const activeConnections = useConnectionStore((s) => s.activeConnections);
   const setActiveConnection = useConnectionStore((s) => s.setActiveConnection);
-  
+
   const { data: savedConnections, isLoading: isLoadingSaved } = useSavedConnections();
   const connect = useConnect();
   const reconnectAttempted = useRef(false);
@@ -76,9 +76,17 @@ function LegacyConnectionRedirect() {
           toast.error(`Failed to connect: ${error}`);
           navigate({ to: "/", replace: true });
         },
-      }
+      },
     );
-  }, [connectionId, activeConnections, savedConnections, isLoadingSaved, connect, setActiveConnection, navigate]);
+  }, [
+    connectionId,
+    activeConnections,
+    savedConnections,
+    isLoadingSaved,
+    connect,
+    setActiveConnection,
+    navigate,
+  ]);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -90,9 +98,7 @@ function LegacyConnectionRedirect() {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">
-            {isReconnecting ? "Connecting..." : "Loading..."}
-          </p>
+          <p className="text-muted-foreground">{isReconnecting ? "Connecting..." : "Loading..."}</p>
         </div>
       </div>
     </div>

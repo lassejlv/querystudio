@@ -111,7 +111,8 @@ function detectFakerType(columnName: string, dataType: string): FakerType {
   if (name.includes("url") || name.includes("link") || name.includes("website")) return "url";
   if (name.includes("uuid") || name === "id") return "uuid";
   if (name.includes("description")) return "loremSentence";
-  if (name.includes("content") || name.includes("body") || name.includes("text")) return "loremParagraph";
+  if (name.includes("content") || name.includes("body") || name.includes("text"))
+    return "loremParagraph";
   if (name.includes("created") || name.includes("updated") || name.includes("date")) {
     if (name.includes("at")) return "dateRecent";
   }
@@ -122,7 +123,8 @@ function detectFakerType(columnName: string, dataType: string): FakerType {
     if (name.includes("age")) return "intSmall";
     return "int";
   }
-  if (type.includes("float") || type.includes("decimal") || type.includes("numeric")) return "float";
+  if (type.includes("float") || type.includes("decimal") || type.includes("numeric"))
+    return "float";
   if (type.includes("uuid")) return "uuid";
   if (type.includes("timestamp") || type.includes("datetime")) return "dateRecent";
   if (type.includes("date")) return "dateRecent";
@@ -253,7 +255,7 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
         setIsLoading(false);
       }
     },
-    [sdk.connection.tables, sdk.connection.isConnected, sdk.api, sdk.utils.toast]
+    [sdk.connection.tables, sdk.connection.isConnected, sdk.api, sdk.utils.toast],
   );
 
   // Handle table selection
@@ -269,9 +271,7 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
 
   // Update column config
   const updateColumnConfig = (index: number, updates: Partial<ColumnConfig>) => {
-    setColumns((prev) =>
-      prev.map((col, i) => (i === index ? { ...col, ...updates } : col))
-    );
+    setColumns((prev) => prev.map((col, i) => (i === index ? { ...col, ...updates } : col)));
   };
 
   // Generate SQL
@@ -398,10 +398,14 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs">{col.name}</span>
                       {col.isPrimaryKey && (
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">PK</span>
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">
+                          PK
+                        </span>
                       )}
                       {!col.isNullable && (
-                        <span className="text-xs bg-red-100 text-red-800 px-1 rounded">NOT NULL</span>
+                        <span className="text-xs bg-red-100 text-red-800 px-1 rounded">
+                          NOT NULL
+                        </span>
                       )}
                     </div>
                   </td>
@@ -429,9 +433,7 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
                   <td className="p-2 text-center">
                     <Switch
                       checked={col.skip}
-                      onCheckedChange={(checked) =>
-                        updateColumnConfig(index, { skip: checked })
-                      }
+                      onCheckedChange={(checked) => updateColumnConfig(index, { skip: checked })}
                       disabled={!col.isNullable && !col.hasDefault}
                     />
                   </td>

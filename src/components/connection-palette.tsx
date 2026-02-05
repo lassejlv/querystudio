@@ -20,7 +20,11 @@ interface ConnectionPaletteProps {
   onSelectConnection?: (connection: SavedConnection) => void;
 }
 
-export function ConnectionPalette({ open, onOpenChange, onSelectConnection }: ConnectionPaletteProps) {
+export function ConnectionPalette({
+  open,
+  onOpenChange,
+  onSelectConnection,
+}: ConnectionPaletteProps) {
   const navigate = useNavigate();
   const { data: savedConnections, isLoading } = useSavedConnections();
   const connect = useConnect();
@@ -70,7 +74,7 @@ export function ConnectionPalette({ open, onOpenChange, onSelectConnection }: Co
   };
 
   const filteredConnections = savedConnections?.filter((conn) =>
-    conn.name.toLowerCase().includes(search.toLowerCase())
+    conn.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -88,10 +92,7 @@ export function ConnectionPalette({ open, onOpenChange, onSelectConnection }: Co
             <CommandItem disabled>Loading saved connections...</CommandItem>
           ) : (
             filteredConnections?.map((connection) => (
-              <CommandItem
-                key={connection.id}
-                onSelect={() => handleSelectConnection(connection)}
-              >
+              <CommandItem key={connection.id} onSelect={() => handleSelectConnection(connection)}>
                 <Database className="mr-2 h-4 w-4" />
                 <span>{connection.name}</span>
                 <span className="ml-2 text-xs text-muted-foreground">

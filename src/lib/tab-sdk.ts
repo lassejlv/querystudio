@@ -386,7 +386,10 @@ export function useTabPlugins(): TabPlugin[] {
 }
 
 // Hook to get creatable plugins
-export function useCreatableTabPlugins(includeExperimental = false, databaseType?: string): TabPlugin[] {
+export function useCreatableTabPlugins(
+  includeExperimental = false,
+  databaseType?: string,
+): TabPlugin[] {
   return useSyncExternalStore(
     (callback) => tabRegistry.subscribe(callback),
     () => tabRegistry.getCreatable(includeExperimental, databaseType),

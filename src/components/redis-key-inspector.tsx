@@ -34,19 +34,19 @@ export function RedisKeyInspector({ connectionId, keyName, onClose }: KeyInspect
       setLoading(true);
       // Get key type
       const typeResult = await api.executeQuery(connectionId, `TYPE "${keyName}"`);
-      const type = typeResult.rows[0]?.[0] as string || "none";
+      const type = (typeResult.rows[0]?.[0] as string) || "none";
 
       // Get TTL
       const ttlResult = await api.executeQuery(connectionId, `TTL "${keyName}"`);
-      const ttl = ttlResult.rows[0]?.[0] as number || -2;
+      const ttl = (ttlResult.rows[0]?.[0] as number) || -2;
 
       // Get memory usage
       const sizeResult = await api.executeQuery(connectionId, `MEMORY USAGE "${keyName}"`);
-      const size = sizeResult.rows[0]?.[0] as number || 0;
+      const size = (sizeResult.rows[0]?.[0] as number) || 0;
 
       // Get encoding
       const encodingResult = await api.executeQuery(connectionId, `OBJECT ENCODING "${keyName}"`);
-      const encoding = encodingResult.rows[0]?.[0] as string || "unknown";
+      const encoding = (encodingResult.rows[0]?.[0] as string) || "unknown";
 
       // Get value based on type
       let value: unknown = null;
@@ -57,22 +57,28 @@ export function RedisKeyInspector({ connectionId, keyName, onClose }: KeyInspect
           break;
         case "hash":
           const hashResult = await api.executeQuery(connectionId, `HGETALL "${keyName}"`);
-          value = hashResult.rows.reduce((acc, row) => {
-            acc[row[0] as string] = row[1];
-            return acc;
-          }, {} as Record<string, unknown>);
+          value = hashResult.rows.reduce(
+            (acc, row) => {
+              acc[row[0] as string] = row[1];
+              return acc;
+            },
+            {} as Record<string, unknown>,
+          );
           break;
         case "list":
           const listResult = await api.executeQuery(connectionId, `LRANGE "${keyName}" 0 -1`);
-          value = listResult.rows.map(row => row[0]);
+          value = listResult.rows.map((row) => row[0]);
           break;
         case "set":
           const setResult = await api.executeQuery(connectionId, `SMEMBERS "${keyName}"`);
-          value = setResult.rows.map(row => row[0]);
+          value = setResult.rows.map((row) => row[0]);
           break;
         case "zset":
-          const zsetResult = await api.executeQuery(connectionId, `ZRANGE "${keyName}" 0 -1 WITHSCORES`);
-          value = zsetResult.rows.map(row => ({ member: row[0], score: row[1] }));
+          const zsetResult = await api.executeQuery(
+            connectionId,
+            `ZRANGE "${keyName}" 0 -1 WITHSCORES`,
+          );
+          value = zsetResult.rows.map((row) => ({ member: row[0], score: row[1] }));
           break;
         default:
           value = null;
@@ -139,12 +145,18 @@ export function RedisKeyInspector({ connectionId, keyName, onClose }: KeyInspect
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "string": return <FileType className="h-4 w-4" />;
-      case "hash": return <Hash className="h-4 w-4" />;
-      case "list": return <Database className="h-4 w-4" />;
-      case "set": return <Binary className="h-4 w-4" />;
-      case "zset": return <Clock className="h-4 w-4" />;
-      default: return <FileType className="h-4 w-4" />;
+      case "string":
+        return <FileType className="h-4 w-4" />;
+      case "hash":
+        return <Hash className="h-4 w-4" />;
+      case "list":
+        return <Database className="h-4 w-4" />;
+      case "set":
+        return <Binary className="h-4 w-4" />;
+      case "zset":
+        return <Clock className="h-4 w-4" />;
+      default:
+        return <FileType className="h-4 w-4" />;
     }
   };
 
@@ -244,8 +256,12 @@ export function RedisKeyInspector({ connectionId, keyName, onClose }: KeyInspect
           {/* Value Preview */}
           <Tabs defaultValue="preview">
             <TabsList className="w-full">
-              <TabsTrigger value="preview" className="flex-1">Preview</TabsTrigger>
-              <TabsTrigger value="json" className="flex-1">JSON</TabsTrigger>
+              <TabsTrigger value="preview" className="flex-1">
+                Preview
+              </TabsTrigger>
+              <TabsTrigger value="json" className="flex-1">
+                JSON
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="preview" className="mt-2">
               <div className="border rounded-md p-3 bg-muted/50">
@@ -267,24 +283,30 @@ export function RedisKeyInspector({ connectionId, keyName, onClose }: KeyInspect
                 {details.type === "list" && (
                   <ol className="list-decimal list-inside space-y-1">
                     {(details.value as unknown[]).map((item, i) => (
-                      <li key={i} className="font-mono text-sm">{String(item)}</li>
+                      <li key={i} className="font-mono text-sm">
+                        {String(item)}
+                      </li>
                     ))}
                   </ol>
                 )}
                 {details.type === "set" && (
                   <ul className="space-y-1">
                     {(details.value as unknown[]).map((item, i) => (
-                      <li key={i} className="font-mono text-sm">• {String(item)}</li>
+                      <li key={i} className="font-mono text-sm">
+                        • {String(item)}
+                      </li>
                     ))}
                   </ul>
                 )}
                 {details.type === "zset" && (
                   <table className="w-full text-sm">
                     <tbody>
-                      {(details.value as {member: unknown; score: unknown}[]).map((item, i) => (
+                      {(details.value as { member: unknown; score: unknown }[]).map((item, i) => (
                         <tr key={i} className="border-b last:border-0">
                           <td className="py-1 pr-4 font-mono">{String(item.member)}</td>
-                          <td className="py-1 font-mono text-muted-foreground">{String(item.score)}</td>
+                          <td className="py-1 font-mono text-muted-foreground">
+                            {String(item.score)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

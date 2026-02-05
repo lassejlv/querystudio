@@ -80,7 +80,7 @@ export function AddRedisKeyDialog({
   const [zsetMembers, setZsetMembers] = useState<ZSetMember[]>([{ member: "", score: 0 }]);
 
   // JSON value
-  const [jsonValue, setJsonValue] = useState('{}');
+  const [jsonValue, setJsonValue] = useState("{}");
 
   const resetForm = () => {
     setKeyName("");
@@ -91,7 +91,7 @@ export function AddRedisKeyDialog({
     setListItems([""]);
     setSetMembers([""]);
     setZsetMembers([{ member: "", score: 0 }]);
-    setJsonValue('{}');
+    setJsonValue("{}");
     setActiveTab("form");
   };
 

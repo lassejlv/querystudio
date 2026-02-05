@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Connection, TableInfo } from "./types";
+import { useSettingsStore } from "./settings-store";
 
 // Storage keys
 const LAST_CONNECTION_KEY = "querystudio_last_connection";
@@ -140,7 +141,7 @@ export function getLastConnectionId(): string | null {
   return localStorage.getItem(LAST_CONNECTION_KEY);
 }
 
-// Store for AI and Query Editor communication with persistence for activeTab
+// Store for AI and Query Editor communication.
 interface AIQueryState {
   // SQL to append to query editor
   pendingSql: string | null;
@@ -158,7 +159,9 @@ interface AIQueryState {
 
   // AI Panel visibility (persisted)
   aiPanelOpen: boolean;
+  aiPanelWidth: number;
   setAiPanelOpen: (open: boolean) => void;
+  setAiPanelWidth: (width: number) => void;
   toggleAiPanel: () => void;
 
   // Sidebar state (persisted)
@@ -177,6 +180,10 @@ interface AIQueryState {
   autoReconnect: boolean;
   setAutoReconnect: (enabled: boolean) => void;
 
+  // Allow opening multiple connections at the same time (persisted)
+  multiConnectionsEnabled: boolean;
+  setMultiConnectionsEnabled: (enabled: boolean) => void;
+
   // Experimental features (persisted)
   experimentalTerminal: boolean;
   setExperimentalTerminal: (enabled: boolean) => void;
@@ -188,62 +195,110 @@ interface AIQueryState {
   setDebugMode: (enabled: boolean) => void;
 }
 
-export const useAIQueryStore = create<AIQueryState>()(
-  persist(
-    (set) => ({
-      pendingSql: null,
-      appendSql: (sql: string) => set({ pendingSql: sql }),
-      clearPendingSql: () => set({ pendingSql: null }),
+export const useAIQueryStore = create<AIQueryState>()((set, get) => ({
+  pendingSql: null,
+  appendSql: (sql: string) => set({ pendingSql: sql }),
+  clearPendingSql: () => set({ pendingSql: null }),
 
-      debugRequest: null,
-      requestDebug: (query: string, error: string) => set({ debugRequest: { query, error } }),
-      clearDebugRequest: () => set({ debugRequest: null }),
+  debugRequest: null,
+  requestDebug: (query: string, error: string) => set({ debugRequest: { query, error } }),
+  clearDebugRequest: () => set({ debugRequest: null }),
 
-      activeTab: "data",
-      setActiveTab: (tab: string) => set({ activeTab: tab }),
+  activeTab: useSettingsStore.getState().activeTab,
+  setActiveTab: (tab: string) => {
+    set({ activeTab: tab });
+    void useSettingsStore.getState().updateSettings({ activeTab: tab });
+  },
 
-      aiPanelOpen: false,
-      setAiPanelOpen: (open: boolean) => set({ aiPanelOpen: open }),
-      toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
+  aiPanelOpen: useSettingsStore.getState().aiPanelOpen,
+  aiPanelWidth: useSettingsStore.getState().aiPanelWidth,
+  setAiPanelOpen: (open: boolean) => {
+    set({ aiPanelOpen: open });
+    void useSettingsStore.getState().updateSettings({ aiPanelOpen: open });
+  },
+  setAiPanelWidth: (width: number) => {
+    set({ aiPanelWidth: width });
+    void useSettingsStore.getState().updateSettings({ aiPanelWidth: width });
+  },
+  toggleAiPanel: () => {
+    const next = !get().aiPanelOpen;
+    set({ aiPanelOpen: next });
+    void useSettingsStore.getState().updateSettings({ aiPanelOpen: next });
+  },
 
-      sidebarWidth: 256,
-      sidebarCollapsed: false,
-      setSidebarWidth: (width: number) => set({ sidebarWidth: width }),
-      setSidebarCollapsed: (collapsed: boolean) => set({ sidebarCollapsed: collapsed }),
-      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  sidebarWidth: useSettingsStore.getState().sidebarWidth,
+  sidebarCollapsed: useSettingsStore.getState().sidebarCollapsed,
+  setSidebarWidth: (width: number) => {
+    set({ sidebarWidth: width });
+    void useSettingsStore.getState().updateSettings({ sidebarWidth: width });
+  },
+  setSidebarCollapsed: (collapsed: boolean) => {
+    set({ sidebarCollapsed: collapsed });
+    void useSettingsStore.getState().updateSettings({ sidebarCollapsed: collapsed });
+  },
+  toggleSidebar: () => {
+    const next = !get().sidebarCollapsed;
+    set({ sidebarCollapsed: next });
+    void useSettingsStore.getState().updateSettings({ sidebarCollapsed: next });
+  },
 
-      statusBarVisible: true,
-      setStatusBarVisible: (visible: boolean) => set({ statusBarVisible: visible }),
-      toggleStatusBar: () => set((state) => ({ statusBarVisible: !state.statusBarVisible })),
+  statusBarVisible: useSettingsStore.getState().statusBarVisible,
+  setStatusBarVisible: (visible: boolean) => {
+    set({ statusBarVisible: visible });
+    void useSettingsStore.getState().updateSettings({ statusBarVisible: visible });
+  },
+  toggleStatusBar: () => {
+    const next = !get().statusBarVisible;
+    set({ statusBarVisible: next });
+    void useSettingsStore.getState().updateSettings({ statusBarVisible: next });
+  },
 
-      autoReconnect: true,
-      setAutoReconnect: (enabled: boolean) => set({ autoReconnect: enabled }),
+  autoReconnect: useSettingsStore.getState().autoReconnect,
+  setAutoReconnect: (enabled: boolean) => {
+    set({ autoReconnect: enabled });
+    void useSettingsStore.getState().updateSettings({ autoReconnect: enabled });
+  },
 
-      experimentalTerminal: false,
-      setExperimentalTerminal: (enabled: boolean) => set({ experimentalTerminal: enabled }),
+  multiConnectionsEnabled: useSettingsStore.getState().multiConnectionsEnabled,
+  setMultiConnectionsEnabled: (enabled: boolean) => {
+    set({ multiConnectionsEnabled: enabled });
+    void useSettingsStore.getState().updateSettings({ multiConnectionsEnabled: enabled });
+  },
 
-      experimentalPlugins: false,
-      setExperimentalPlugins: (enabled: boolean) => set({ experimentalPlugins: enabled }),
+  experimentalTerminal: useSettingsStore.getState().experimentalTerminal,
+  setExperimentalTerminal: (enabled: boolean) => {
+    set({ experimentalTerminal: enabled });
+    void useSettingsStore.getState().updateSettings({ experimentalTerminal: enabled });
+  },
 
-      debugMode: false,
-      setDebugMode: (enabled: boolean) => set({ debugMode: enabled }),
-    }),
-    {
-      name: "querystudio_ui_state",
-      partialize: (state) => ({
-        activeTab: state.activeTab,
-        aiPanelOpen: state.aiPanelOpen,
-        sidebarWidth: state.sidebarWidth,
-        sidebarCollapsed: state.sidebarCollapsed,
-        statusBarVisible: state.statusBarVisible,
-        autoReconnect: state.autoReconnect,
-        experimentalTerminal: state.experimentalTerminal,
-        experimentalPlugins: state.experimentalPlugins,
-        debugMode: state.debugMode,
-      }),
-    },
-  ),
-);
+  experimentalPlugins: useSettingsStore.getState().experimentalPlugins,
+  setExperimentalPlugins: (enabled: boolean) => {
+    set({ experimentalPlugins: enabled });
+    void useSettingsStore.getState().updateSettings({ experimentalPlugins: enabled });
+  },
+
+  debugMode: useSettingsStore.getState().debugMode,
+  setDebugMode: (enabled: boolean) => {
+    set({ debugMode: enabled });
+    void useSettingsStore.getState().updateSettings({ debugMode: enabled });
+  },
+}));
+
+useSettingsStore.subscribe((state) => {
+  useAIQueryStore.setState({
+    activeTab: state.activeTab,
+    aiPanelOpen: state.aiPanelOpen,
+    aiPanelWidth: state.aiPanelWidth,
+    sidebarWidth: state.sidebarWidth,
+    sidebarCollapsed: state.sidebarCollapsed,
+    statusBarVisible: state.statusBarVisible,
+    autoReconnect: state.autoReconnect,
+    multiConnectionsEnabled: state.multiConnectionsEnabled,
+    experimentalTerminal: state.experimentalTerminal,
+    experimentalPlugins: state.experimentalPlugins,
+    debugMode: state.debugMode,
+  });
+});
 
 // Query history per connection
 interface QueryHistoryEntry {

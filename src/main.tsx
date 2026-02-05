@@ -4,6 +4,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import "./main.css";
 import "./lib/theme-store";
+import { initializeSettingsStore } from "./lib/settings-store";
 import { registerBuiltInPlugins } from "./lib/tab-sdk";
 import { registerTabComponents } from "./lib/register-tab-components";
 import {
@@ -27,6 +28,7 @@ localPlugins.forEach((plugin) => trackBundledPlugin(plugin));
 
 // Register user-imported plugins from the plugin store
 registerImportedPlugins();
+void initializeSettingsStore();
 
 // Create a new router instance
 const router = createRouter({ routeTree });

@@ -35,7 +35,7 @@ export function RedisDbSelector({ connectionId, currentDb = 0, onDbChange }: Red
     try {
       setLoading(true);
       const info = await api.executeQuery(connectionId, "INFO KEYSPACE");
-      const infoText = info.rows[0]?.[0] as string || "";
+      const infoText = (info.rows[0]?.[0] as string) || "";
 
       const newDbInfo = new Map<number, number>();
 
@@ -83,9 +83,7 @@ export function RedisDbSelector({ connectionId, currentDb = 0, onDbChange }: Red
           <Database className="h-4 w-4" />
           <span>DB {selectedDb}</span>
           {dbInfo.get(selectedDb) ? (
-            <span className="text-xs text-muted-foreground">
-              ({dbInfo.get(selectedDb)} keys)
-            </span>
+            <span className="text-xs text-muted-foreground">({dbInfo.get(selectedDb)} keys)</span>
           ) : null}
           <ChevronDown className="h-3 w-3" />
         </Button>

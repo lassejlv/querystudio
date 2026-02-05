@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { api } from "./api";
-import { useConnectionStore } from "./store";
+import { useAIQueryStore, useConnectionStore } from "./store";
 import { authClient, type ExtendedUser } from "./auth-client";
 import type { ConnectionConfig, DatabaseType, SavedConnection } from "./types";
 
@@ -279,6 +279,21 @@ export function useConnect() {
       config: ConnectionConfig;
       save?: boolean;
     }) => {
+      if (!useAIQueryStore.getState().multiConnectionsEnabled) {
+        const existingConnections = useConnectionStore
+          .getState()
+          .activeConnections.filter((connection) => connection.id !== id);
+
+        for (const connection of existingConnections) {
+          try {
+            await api.disconnect(connection.id);
+          } catch (error) {
+            console.warn(`Failed to disconnect existing connection ${connection.id}:`, error);
+          }
+          useConnectionStore.getState().disconnect(connection.id);
+        }
+      }
+
       await api.connect(id, config);
 
       if (save) {

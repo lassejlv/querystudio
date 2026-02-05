@@ -1,4 +1,5 @@
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { isTauri } from "@tauri-apps/api/core";
 import { api } from "./api";
 import type {
   AgentMessage,
@@ -40,7 +41,7 @@ export function getModelProvider(modelId: ModelId): AIProviderType {
 const CHAT_HISTORY_KEY = "querystudio_chat_history";
 const MAX_SESSIONS = 50;
 
-export function loadChatHistory(): ChatSession[] {
+function loadChatHistoryFromLocalStorage(): ChatSession[] {
   try {
     const stored = localStorage.getItem(CHAT_HISTORY_KEY);
     return stored ? JSON.parse(stored) : [];
@@ -49,9 +50,48 @@ export function loadChatHistory(): ChatSession[] {
   }
 }
 
-export function saveChatHistory(sessions: ChatSession[]): void {
+function saveChatHistoryToLocalStorage(sessions: ChatSession[]): ChatSession[] {
   const limited = sessions.slice(-MAX_SESSIONS);
   localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(limited));
+  return limited;
+}
+
+export async function loadChatHistory(): Promise<ChatSession[]> {
+  if (isTauri()) {
+    try {
+      const sessions = await api.getChatHistory();
+      if (sessions.length > 0) {
+        return sessions;
+      }
+
+      // One-time migration path from legacy browser storage into file-backed storage.
+      const legacy = loadChatHistoryFromLocalStorage();
+      if (legacy.length > 0) {
+        return await api.setChatHistory(legacy.slice(-MAX_SESSIONS));
+      }
+
+      return sessions;
+    } catch {
+      return loadChatHistoryFromLocalStorage();
+    }
+  }
+
+  return loadChatHistoryFromLocalStorage();
+}
+
+export async function saveChatHistory(sessions: ChatSession[]): Promise<ChatSession[]> {
+  const limited = sessions.slice(-MAX_SESSIONS);
+  saveChatHistoryToLocalStorage(limited);
+
+  if (isTauri()) {
+    try {
+      return await api.setChatHistory(limited);
+    } catch {
+      return limited;
+    }
+  }
+
+  return limited;
 }
 
 export function createChatSession(

@@ -152,8 +152,8 @@ export const ProviderIcon = memo(function ProviderIcon({
   return (
     <span
       className={cn("inline-flex items-center justify-center shrink-0", className)}
-      style={{ 
-        width: size, 
+      style={{
+        width: size,
         height: size,
         color: "currentColor",
       }}

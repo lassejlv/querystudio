@@ -10,6 +10,7 @@ import type {
   ChatRequest,
   ChatResponse,
   UserStatus,
+  ChatSession,
 } from "./types";
 
 export const api = {
@@ -111,4 +112,10 @@ export const api = {
   getConnectionCount: () => invoke<number>("get_connection_count"),
 
   getSavedConnectionCount: () => storage.getSavedConnectionCount(),
+
+  // Chat history persistence (desktop file-backed; local fallback in ai-agent)
+  getChatHistory: () => invoke<ChatSession[]>("get_chat_history"),
+
+  setChatHistory: (sessions: ChatSession[]) =>
+    invoke<ChatSession[]>("set_chat_history", { sessions }),
 };

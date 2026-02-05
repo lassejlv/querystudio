@@ -157,7 +157,11 @@ function formatSQL(sql: string, options: FormatOptions): string {
     const result = indent.repeat(indentLevel) + trimmedLine;
 
     // Increase indent after opening keywords
-    if (/^(SELECT|FROM|WHERE|JOIN|INSERT|UPDATE|DELETE|CREATE|ALTER|WITH|CASE|BEGIN)/i.test(trimmedLine)) {
+    if (
+      /^(SELECT|FROM|WHERE|JOIN|INSERT|UPDATE|DELETE|CREATE|ALTER|WITH|CASE|BEGIN)/i.test(
+        trimmedLine,
+      )
+    ) {
       indentLevel++;
     }
 
@@ -269,11 +273,7 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Button
-            onClick={handleFormat}
-            size="sm"
-            className="gap-2"
-          >
+          <Button onClick={handleFormat} size="sm" className="gap-2">
             <Sparkles className="h-4 w-4" />
             Format SQL
             <kbd className="ml-1 hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-mono sm:inline">
@@ -290,12 +290,7 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
             <Copy className="h-4 w-4" />
             Copy
           </Button>
-          <Button
-            onClick={handleClear}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
+          <Button onClick={handleClear} variant="outline" size="sm" className="gap-2">
             <Trash2 className="h-4 w-4" />
             Clear
           </Button>
@@ -342,16 +337,14 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
       <div className="flex flex-1 gap-4 min-h-0">
         {/* Input Panel */}
         <div className="flex flex-1 flex-col gap-2">
-          <Label className="text-sm font-medium text-muted-foreground">
-            Input SQL
-          </Label>
+          <Label className="text-sm font-medium text-muted-foreground">Input SQL</Label>
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Paste your SQL here..."
             className={cn(
               "flex-1 resize-none font-mono text-sm",
-              "bg-muted/50 focus:bg-background"
+              "bg-muted/50 focus:bg-background",
             )}
             spellCheck={false}
           />
@@ -359,17 +352,12 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
 
         {/* Output Panel */}
         <div className="flex flex-1 flex-col gap-2">
-          <Label className="text-sm font-medium text-muted-foreground">
-            Formatted SQL
-          </Label>
+          <Label className="text-sm font-medium text-muted-foreground">Formatted SQL</Label>
           <Textarea
             value={output}
             readOnly
             placeholder="Formatted SQL will appear here..."
-            className={cn(
-              "flex-1 resize-none font-mono text-sm",
-              "bg-muted/30"
-            )}
+            className={cn("flex-1 resize-none font-mono text-sm", "bg-muted/30")}
             spellCheck={false}
           />
         </div>

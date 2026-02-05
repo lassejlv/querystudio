@@ -346,12 +346,7 @@ export const RedisConsole = memo(function RedisConsole({
       fitAddonRef.current = null;
       isInitializedRef.current = false;
     };
-  }, [
-    executeCommand,
-    refreshLine,
-    writePrompt,
-    saveHistory,
-  ]);
+  }, [executeCommand, refreshLine, writePrompt, saveHistory]);
 
   // Update theme when it changes
   useEffect(() => {
@@ -387,8 +382,6 @@ export const RedisConsole = memo(function RedisConsole({
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" style={{ padding: "8px" }} />
-
-
     </div>
   );
 });

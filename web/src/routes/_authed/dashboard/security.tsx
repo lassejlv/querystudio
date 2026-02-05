@@ -15,7 +15,7 @@ type Session = {
   token: string;
   userId: string;
   updatedAt: Date;
-}
+};
 
 export const Route = createFileRoute("/_authed/dashboard/security")({
   component: SecurityPage,
@@ -34,13 +34,13 @@ function SecurityPage() {
     try {
       const { data: sessionsData, error } = await authClient.listSessions();
       if (error) throw new Error(error.message);
-      
+
       // Get current session to identify it
       const { data: currentSession } = await authClient.getSession();
       if (currentSession?.session?.id) {
         setCurrentSessionId(currentSession.session.id);
       }
-      
+
       setSessions(sessionsData || []);
     } catch {
       toast.error("Failed to load sessions");
@@ -57,7 +57,7 @@ function SecurityPage() {
     try {
       const { error } = await authClient.revokeSession({ token: sessionId });
       if (error) throw new Error(error.message);
-      
+
       toast.success("Session revoked");
       fetchSessions();
     } catch {
@@ -69,7 +69,7 @@ function SecurityPage() {
     try {
       const { error } = await authClient.revokeOtherSessions();
       if (error) throw new Error(error.message);
-      
+
       toast.success("All other sessions signed out");
       fetchSessions();
     } catch {
@@ -244,12 +244,7 @@ function SecurityPage() {
         )}
 
         {sessions.length > 1 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={handleRevokeOtherSessions}
-          >
+          <Button variant="outline" size="sm" className="mt-4" onClick={handleRevokeOtherSessions}>
             Sign out other sessions
           </Button>
         )}
