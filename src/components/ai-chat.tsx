@@ -15,6 +15,7 @@ import {
   PlayCircle,
   History,
   RotateCcw,
+  Loader,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -199,7 +200,10 @@ const InlineCode = memo(function InlineCode({ children }: { children: React.Reac
 interface StreamingTextProps {
   content: string;
   isStreaming: boolean;
-  markdownComponents: Record<string, React.ComponentType<{ children?: React.ReactNode; className?: string }>>;
+  markdownComponents: Record<
+    string,
+    React.ComponentType<{ children?: React.ReactNode; className?: string }>
+  >;
 }
 
 const StreamingText = memo(function StreamingText({
@@ -217,7 +221,7 @@ const StreamingText = memo(function StreamingText({
       const startLength = prevContentRef.current.length;
       const targetLength = content.length;
       const charsToAnimate = targetLength - startLength;
-      
+
       // Animate faster for larger chunks, slower for small ones
       const charsPerFrame = Math.max(1, Math.ceil(charsToAnimate / 8));
       let currentLength = startLength;
@@ -225,7 +229,7 @@ const StreamingText = memo(function StreamingText({
       const animate = () => {
         currentLength = Math.min(currentLength + charsPerFrame, targetLength);
         setDisplayedLength(currentLength);
-        
+
         if (currentLength < targetLength) {
           animationRef.current = requestAnimationFrame(animate);
         }
@@ -266,9 +270,7 @@ const StreamingText = memo(function StreamingText({
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {displayedContent}
       </ReactMarkdown>
-      {isStreaming && (
-        <span className="streaming-cursor" />
-      )}
+      {isStreaming && <span className="streaming-cursor" />}
     </div>
   );
 });
@@ -309,16 +311,28 @@ const MessageBubble = memo(function MessageBubble({
       },
       // Headings
       h1({ children }: { children?: React.ReactNode }) {
-        return <h1 className="text-lg font-semibold text-foreground mt-4 mb-2 first:mt-0">{children}</h1>;
+        return (
+          <h1 className="text-lg font-semibold text-foreground mt-4 mb-2 first:mt-0">{children}</h1>
+        );
       },
       h2({ children }: { children?: React.ReactNode }) {
-        return <h2 className="text-base font-semibold text-foreground mt-3 mb-1.5 first:mt-0">{children}</h2>;
+        return (
+          <h2 className="text-base font-semibold text-foreground mt-3 mb-1.5 first:mt-0">
+            {children}
+          </h2>
+        );
       },
       h3({ children }: { children?: React.ReactNode }) {
-        return <h3 className="text-sm font-semibold text-foreground mt-2.5 mb-1 first:mt-0">{children}</h3>;
+        return (
+          <h3 className="text-sm font-semibold text-foreground mt-2.5 mb-1 first:mt-0">
+            {children}
+          </h3>
+        );
       },
       h4({ children }: { children?: React.ReactNode }) {
-        return <h4 className="text-sm font-medium text-foreground mt-2 mb-1 first:mt-0">{children}</h4>;
+        return (
+          <h4 className="text-sm font-medium text-foreground mt-2 mb-1 first:mt-0">{children}</h4>
+        );
       },
       // Paragraphs
       p({ children }: { children?: React.ReactNode }) {
@@ -326,10 +340,18 @@ const MessageBubble = memo(function MessageBubble({
       },
       // Lists
       ul({ children }: { children?: React.ReactNode }) {
-        return <ul className="my-1.5 ml-4 list-disc space-y-0.5 marker:text-muted-foreground">{children}</ul>;
+        return (
+          <ul className="my-1.5 ml-4 list-disc space-y-0.5 marker:text-muted-foreground">
+            {children}
+          </ul>
+        );
       },
       ol({ children }: { children?: React.ReactNode }) {
-        return <ol className="my-1.5 ml-4 list-decimal space-y-0.5 marker:text-muted-foreground">{children}</ol>;
+        return (
+          <ol className="my-1.5 ml-4 list-decimal space-y-0.5 marker:text-muted-foreground">
+            {children}
+          </ol>
+        );
       },
       li({ children }: { children?: React.ReactNode }) {
         return <li className="pl-1">{children}</li>;
@@ -416,7 +438,7 @@ const MessageBubble = memo(function MessageBubble({
           <div className="space-y-1.5">
             {message.toolCalls?.length ? (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Wrench className="h-3 w-3 animate-spin" />
+                <Loader className="h-3 w-3 animate-spin" />
                 <span>{message.toolCalls[message.toolCalls.length - 1].name}...</span>
               </div>
             ) : (
