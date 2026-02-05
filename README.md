@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A modern, AI-powered database IDE for developers</strong>
+  The Open-Source lightweight SQL-studio that you deserve. Built with Tauri + Rust + React
 </p>
 
 <p align="center">
