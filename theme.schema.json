@@ -131,6 +131,58 @@
         "sidebarRing": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
       },
       "additionalProperties": false
+    },
+    "terminal": {
+      "type": "object",
+      "required": [
+        "background",
+        "foreground",
+        "cursor",
+        "cursorAccent",
+        "selectionBackground",
+        "selectionForeground",
+        "black",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "magenta",
+        "cyan",
+        "white",
+        "brightBlack",
+        "brightRed",
+        "brightGreen",
+        "brightYellow",
+        "brightBlue",
+        "brightMagenta",
+        "brightCyan",
+        "brightWhite"
+      ],
+      "properties": {
+        "background": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "foreground": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "cursor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "cursorAccent": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "selectionBackground": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "selectionForeground": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "black": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "red": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "green": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "yellow": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "blue": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "magenta": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "cyan": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "white": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightBlack": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightRed": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightGreen": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightYellow": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightBlue": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightMagenta": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightCyan": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "brightWhite": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

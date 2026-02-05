@@ -40,5 +40,29 @@
     "sidebarAccentForeground": "#efefef",
     "sidebarBorder": "#1e1e20",
     "sidebarRing": "#5c5c63"
+  },
+  "terminal": {
+    "background": "#121214",
+    "foreground": "#efefef",
+    "cursor": "#3b6eeb",
+    "cursorAccent": "#121214",
+    "selectionBackground": "#252527",
+    "selectionForeground": "#efefef",
+    "black": "#121214",
+    "red": "#dc4a40",
+    "green": "#30b0a8",
+    "yellow": "#b89a3a",
+    "blue": "#3b6eeb",
+    "magenta": "#a040e0",
+    "cyan": "#30b0a8",
+    "white": "#efefef",
+    "brightBlack": "#5c5c63",
+    "brightRed": "#e86b62",
+    "brightGreen": "#4fc4bc",
+    "brightYellow": "#d4b44e",
+    "brightBlue": "#5a88f0",
+    "brightMagenta": "#b85ef0",
+    "brightCyan": "#4fc4bc",
+    "brightWhite": "#ffffff"
   }
 }
