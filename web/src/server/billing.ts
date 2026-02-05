@@ -75,7 +75,7 @@ export const getSubscriptionDetails = createServerFn().handler(async () => {
   const { user } = session
 
   if (!user.polarCustomerId) throw new Error('No active customerID')
-  if (!user.polarSubscriptionId) throw new Error('User has no active subscription!')
+  if (!user.polarSubscriptionId) return null
 
   const subscription = await polar.subscriptions.get({ id: user.polarSubscriptionId })
 
