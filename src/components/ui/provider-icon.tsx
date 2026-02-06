@@ -1,4 +1,5 @@
 import { memo, useState, useEffect } from "react";
+import { Github } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProviderIconProps {
@@ -14,6 +15,7 @@ const PROVIDER_LOGO_MAP: Record<string, string> = {
   google: "google",
   openrouter: "openrouter",
   vercel: "vercel",
+  copilot: "github",
   deepseek: "deepseek",
   meta: "meta",
   "meta-llama": "meta",
@@ -97,8 +99,14 @@ export const ProviderIcon = memo(function ProviderIcon({
   className = "",
   size = 16,
 }: ProviderIconProps) {
+  const normalizedProvider = provider.toLowerCase();
+
+  if (normalizedProvider === "copilot" || normalizedProvider === "github") {
+    return <Github className={cn("shrink-0", className)} size={size} />;
+  }
+
   const [svg, setSvg] = useState<string | null>(() => {
-    const logoName = PROVIDER_LOGO_MAP[provider.toLowerCase()] || provider.toLowerCase();
+    const logoName = PROVIDER_LOGO_MAP[normalizedProvider] || normalizedProvider;
     return svgCache.get(logoName) ?? null;
   });
   const [loading, setLoading] = useState(!svg);
@@ -106,7 +114,7 @@ export const ProviderIcon = memo(function ProviderIcon({
   useEffect(() => {
     let cancelled = false;
 
-    const logoName = PROVIDER_LOGO_MAP[provider.toLowerCase()] || provider.toLowerCase();
+    const logoName = PROVIDER_LOGO_MAP[normalizedProvider] || normalizedProvider;
 
     // If already cached, use it immediately
     if (svgCache.has(logoName)) {
@@ -126,7 +134,7 @@ export const ProviderIcon = memo(function ProviderIcon({
     return () => {
       cancelled = true;
     };
-  }, [provider]);
+  }, [normalizedProvider, provider]);
 
   if (loading) {
     // Return a placeholder with the same dimensions while loading
@@ -170,6 +178,7 @@ export function preloadProviderIcons() {
     "google",
     "openrouter",
     "vercel",
+    "copilot",
     "deepseek",
     "meta",
     "mistral",

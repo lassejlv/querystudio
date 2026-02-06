@@ -33,7 +33,14 @@ export const AI_MODELS: AIModelInfo[] = [
 ];
 
 export function getModelProvider(modelId: ModelId): AIProviderType {
-  return AI_MODELS.find((m) => m.id === modelId)?.provider ?? "openai";
+  const known = AI_MODELS.find((m) => m.id === modelId)?.provider;
+  if (known) return known;
+  if (modelId.startsWith("anthropic/")) return "anthropic";
+  if (modelId.startsWith("google/") || modelId.startsWith("gemini-")) return "google";
+  if (modelId.startsWith("openrouter/")) return "openrouter";
+  if (modelId.startsWith("vercel/")) return "vercel";
+  if (modelId.startsWith("copilot/")) return "copilot";
+  return "openai";
 }
 
 // --- Chat History Management ---

@@ -1,4 +1,5 @@
 pub mod anthropic;
+pub mod copilot;
 pub mod gemini;
 pub mod openai;
 pub mod openrouter;
@@ -17,6 +18,7 @@ pub enum AIProviderType {
     Google,
     OpenRouter,
     Vercel,
+    Copilot,
 }
 
 impl fmt::Display for AIProviderType {
@@ -27,6 +29,7 @@ impl fmt::Display for AIProviderType {
             AIProviderType::Google => write!(f, "Google"),
             AIProviderType::OpenRouter => write!(f, "OpenRouter"),
             AIProviderType::Vercel => write!(f, "Vercel"),
+            AIProviderType::Copilot => write!(f, "Copilot"),
         }
     }
 }
@@ -48,6 +51,8 @@ pub enum AIModel {
     OpenRouter(String),
     /// Dynamic Vercel AI Gateway model — holds the raw model slug (e.g. "anthropic/claude-sonnet-4.5")
     Vercel(String),
+    /// Dynamic GitHub Copilot model — holds the raw model slug (e.g. "gpt-5", "claude-sonnet-4")
+    Copilot(String),
 }
 
 impl AIModel {
@@ -62,6 +67,7 @@ impl AIModel {
             AIModel::Gemini(slug) => slug.clone(),
             AIModel::OpenRouter(slug) => format!("openrouter/{}", slug),
             AIModel::Vercel(slug) => format!("vercel/{}", slug),
+            AIModel::Copilot(slug) => format!("copilot/{}", slug),
         }
     }
 
@@ -74,6 +80,7 @@ impl AIModel {
             }
             AIModel::OpenRouter(_) => AIProviderType::OpenRouter,
             AIModel::Vercel(_) => AIProviderType::Vercel,
+            AIModel::Copilot(_) => AIProviderType::Copilot,
         }
     }
 
@@ -85,7 +92,8 @@ impl AIModel {
             | AIModel::Anthropic(slug)
             | AIModel::Gemini(slug)
             | AIModel::OpenRouter(slug)
-            | AIModel::Vercel(slug) => slug.clone(),
+            | AIModel::Vercel(slug)
+            | AIModel::Copilot(slug) => slug.clone(),
             other => other.as_str(),
         }
     }
@@ -130,6 +138,10 @@ impl std::str::FromStr for AIModel {
             s if s.starts_with("vercel/") => {
                 let slug = s.strip_prefix("vercel/").unwrap().to_string();
                 Ok(AIModel::Vercel(slug))
+            }
+            s if s.starts_with("copilot/") => {
+                let slug = s.strip_prefix("copilot/").unwrap().to_string();
+                Ok(AIModel::Copilot(slug))
             }
             _ => Err(AIProviderError::new(format!("Unknown model: {}", s))),
         }
@@ -350,6 +362,10 @@ pub fn create_ai_provider(
         }
         AIProviderType::Vercel => {
             let provider = vercel::VercelProvider::new(api_key);
+            Ok(Box::new(provider))
+        }
+        AIProviderType::Copilot => {
+            let provider = copilot::CopilotProvider::new(api_key);
             Ok(Box::new(provider))
         }
     }
