@@ -196,6 +196,9 @@ function LandingPage() {
               <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground">
                 Terms
               </Link>
+              <Link to="/status" className="text-sm text-muted-foreground hover:text-foreground">
+                Status
+              </Link>
               <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground">
                 Login
               </Link>

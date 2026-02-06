@@ -77,6 +77,12 @@ export function Header() {
           >
             Pricing
           </Link>
+          <Link
+            to="/status"
+            className={`text-sm ${currentPath === "/status" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Status
+          </Link>
 
           {isLoading ? (
             <div className="w-7 h-7 rounded-full bg-muted" />
