@@ -109,6 +109,8 @@ export const api = {
   aiFetchVercelModels: (apiKey: string) =>
     invoke<AIModelInfo[]>("ai_fetch_vercel_models", { apiKey }),
 
+  aiFetchCopilotModels: () => invoke<AIModelInfo[]>("ai_fetch_copilot_models"),
+
   // User status API (synced from auth session)
   setUserProStatus: (isPro: boolean) => invoke<void>("set_user_pro_status", { isPro }),
 

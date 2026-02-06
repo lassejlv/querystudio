@@ -37,7 +37,7 @@ function RootComponent() {
   return (
     <>
       <QueryClientProvider client={queryClient}>
-        <Toaster />
+        <Toaster closeButton={false} visibleToasts={0} />
         <UpdateChecker />
         <AuthDeepLinkHandler />
         <ProStatusSync />

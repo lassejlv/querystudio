@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useConnectionStore, useAIQueryStore, useLastChatStore } from "@/lib/store";
 import {
   AIAgent,
@@ -71,30 +72,33 @@ const ANTHROPIC_API_KEY_STORAGE_KEY = "querystudio_anthropic_api_key";
 const GOOGLE_API_KEY_STORAGE_KEY = "querystudio_google_api_key";
 const OPENROUTER_API_KEY_STORAGE_KEY = "querystudio_openrouter_api_key";
 const VERCEL_API_KEY_STORAGE_KEY = "querystudio_vercel_api_key";
+const COPILOT_ENABLED_STORAGE_KEY = "querystudio_copilot_enabled";
 const SELECTED_MODEL_KEY = "querystudio_selected_model";
+
+type ProviderKeys = {
+  openai: string;
+  anthropic: string;
+  google: string;
+  openrouter: string;
+  vercel: string;
+  copilot: string;
+};
 
 function getProviderForModel(model: ModelId, allModels: AIModelInfo[]): string {
   return allModels.find((m) => m.id === model)?.provider ?? "openai";
 }
 
-function getApiKeyForModel(
-  model: ModelId,
-  allModels: AIModelInfo[],
-  keys: { openai: string; anthropic: string; google: string; openrouter: string; vercel: string },
-): string {
+function getApiKeyForModel(model: ModelId, allModels: AIModelInfo[], keys: ProviderKeys): string {
   const provider = getProviderForModel(model, allModels);
   if (provider === "anthropic") return keys.anthropic;
   if (provider === "google") return keys.google;
   if (provider === "openrouter") return keys.openrouter;
   if (provider === "vercel") return keys.vercel;
+  if (provider === "copilot") return keys.copilot;
   return keys.openai;
 }
 
-function isModelAvailable(
-  model: ModelId,
-  allModels: AIModelInfo[],
-  keys: { openai: string; anthropic: string; google: string; openrouter: string; vercel: string },
-): boolean {
+function isModelAvailable(model: ModelId, allModels: AIModelInfo[], keys: ProviderKeys): boolean {
   const key = getApiKeyForModel(model, allModels, keys);
   return !!key.trim();
 }
@@ -540,12 +544,16 @@ export const AIChat = memo(function AIChat() {
   const [vercelApiKey, setVercelApiKey] = useState(
     () => localStorage.getItem(VERCEL_API_KEY_STORAGE_KEY) || "",
   );
+  const [copilotEnabled, setCopilotEnabled] = useState(
+    () => localStorage.getItem(COPILOT_ENABLED_STORAGE_KEY) === "true",
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [tempOpenaiKey, setTempOpenaiKey] = useState("");
   const [tempAnthropicKey, setTempAnthropicKey] = useState("");
   const [tempGoogleKey, setTempGoogleKey] = useState("");
   const [tempOpenrouterKey, setTempOpenrouterKey] = useState("");
   const [tempVercelKey, setTempVercelKey] = useState("");
+  const [tempCopilotEnabled, setTempCopilotEnabled] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => {
     return localStorage.getItem(SELECTED_MODEL_KEY) || "gpt-5";
   });
@@ -554,6 +562,8 @@ export const AIChat = memo(function AIChat() {
   const [anthropicModels, setAnthropicModels] = useState<AIModelInfo[]>([]);
   const [openrouterModels, setOpenrouterModels] = useState<AIModelInfo[]>([]);
   const [vercelModels, setVercelModels] = useState<AIModelInfo[]>([]);
+  const [copilotModels, setCopilotModels] = useState<AIModelInfo[]>([]);
+  const [copilotModelsLoading, setCopilotModelsLoading] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
 
   // Fetch OpenAI models when API key changes
@@ -656,6 +666,27 @@ export const AIChat = memo(function AIChat() {
     };
   }, [vercelApiKey]);
 
+  const fetchCopilotModels = useCallback(async () => {
+    if (!copilotEnabled) {
+      setCopilotModels([]);
+      setCopilotModelsLoading(false);
+      return;
+    }
+    setCopilotModelsLoading(true);
+    try {
+      const models = await api.aiFetchCopilotModels();
+      setCopilotModels(models);
+    } catch {
+      setCopilotModels([]);
+    } finally {
+      setCopilotModelsLoading(false);
+    }
+  }, [copilotEnabled]);
+
+  useEffect(() => {
+    void fetchCopilotModels();
+  }, [fetchCopilotModels]);
+
   const allModels = useMemo(() => {
     const merged = [
       ...AI_MODELS,
@@ -664,6 +695,7 @@ export const AIChat = memo(function AIChat() {
       ...anthropicModels,
       ...openrouterModels,
       ...vercelModels,
+      ...copilotModels,
     ];
 
     const seen = new Set<string>();
@@ -674,7 +706,7 @@ export const AIChat = memo(function AIChat() {
       seen.add(model.id);
       return true;
     });
-  }, [openaiModels, geminiModels, anthropicModels, openrouterModels, vercelModels]);
+  }, [openaiModels, geminiModels, anthropicModels, openrouterModels, vercelModels, copilotModels]);
 
   const apiKeys = useMemo(
     () => ({
@@ -683,8 +715,9 @@ export const AIChat = memo(function AIChat() {
       google: googleApiKey,
       openrouter: openrouterApiKey,
       vercel: vercelApiKey,
+      copilot: copilotEnabled ? "enabled" : "",
     }),
-    [openaiApiKey, anthropicApiKey, googleApiKey, openrouterApiKey, vercelApiKey],
+    [openaiApiKey, anthropicApiKey, googleApiKey, openrouterApiKey, vercelApiKey, copilotEnabled],
   );
 
   const agentRef = useRef<AIAgent | null>(null);
@@ -795,11 +828,13 @@ export const AIChat = memo(function AIChat() {
     setGoogleApiKey(tempGoogleKey);
     setOpenrouterApiKey(tempOpenrouterKey);
     setVercelApiKey(tempVercelKey);
+    setCopilotEnabled(tempCopilotEnabled);
     localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, tempOpenaiKey);
     localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, tempAnthropicKey);
     localStorage.setItem(GOOGLE_API_KEY_STORAGE_KEY, tempGoogleKey);
     localStorage.setItem(OPENROUTER_API_KEY_STORAGE_KEY, tempOpenrouterKey);
     localStorage.setItem(VERCEL_API_KEY_STORAGE_KEY, tempVercelKey);
+    localStorage.setItem(COPILOT_ENABLED_STORAGE_KEY, tempCopilotEnabled ? "true" : "false");
     setShowSettings(false);
   };
 
@@ -1081,7 +1116,8 @@ export const AIChat = memo(function AIChat() {
     apiKeys.anthropic.trim() ||
     apiKeys.google.trim() ||
     apiKeys.openrouter.trim() ||
-    apiKeys.vercel.trim()
+    apiKeys.vercel.trim() ||
+    apiKeys.copilot.trim()
   );
 
   if (!hasAnyApiKey) {
@@ -1092,7 +1128,8 @@ export const AIChat = memo(function AIChat() {
             <p className="text-lg font-medium text-foreground">API Key Required</p>
             <p className="text-sm text-muted-foreground">
               To use AI features, you need to provide at least one API key (OpenAI, Anthropic,
-              Google, OpenRouter, or Vercel AI Gateway). Your keys are stored locally.
+              Google, OpenRouter, Vercel AI Gateway) or enable GitHub Copilot CLI. Your keys are
+              stored locally.
             </p>
           </div>
           <Button
@@ -1102,6 +1139,7 @@ export const AIChat = memo(function AIChat() {
               setTempGoogleKey(googleApiKey);
               setTempOpenrouterKey(openrouterApiKey);
               setTempVercelKey(vercelApiKey);
+              setTempCopilotEnabled(copilotEnabled);
               setShowSettings(true);
             }}
           >
@@ -1115,7 +1153,7 @@ export const AIChat = memo(function AIChat() {
                 <DialogTitle>API Keys</DialogTitle>
                 <DialogDescription>
                   Enter your API keys to enable Querybuddy. You can use OpenAI, Anthropic, Google,
-                  OpenRouter, Vercel AI Gateway, or any combination.
+                  OpenRouter, Vercel AI Gateway, or GitHub Copilot CLI.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -1176,6 +1214,19 @@ export const AIChat = memo(function AIChat() {
                   />
                   <p className="text-xs text-muted-foreground">For Vercel AI Gateway models</p>
                 </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="copilotEnabled">GitHub Copilot CLI</Label>
+                    <Switch
+                      id="copilotEnabled"
+                      checked={tempCopilotEnabled}
+                      onCheckedChange={setTempCopilotEnabled}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    No API key needed. Install Copilot CLI and run `copilot login`.
+                  </p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -1188,7 +1239,8 @@ export const AIChat = memo(function AIChat() {
                     !tempAnthropicKey.trim() &&
                     !tempGoogleKey.trim() &&
                     !tempOpenrouterKey.trim() &&
-                    !tempVercelKey.trim()
+                    !tempVercelKey.trim() &&
+                    !tempCopilotEnabled
                   }
                 >
                   Save
@@ -1293,6 +1345,7 @@ export const AIChat = memo(function AIChat() {
               setTempGoogleKey(googleApiKey);
               setTempOpenrouterKey(openrouterApiKey);
               setTempVercelKey(vercelApiKey);
+              setTempCopilotEnabled(copilotEnabled);
               setShowSettings(true);
             }}
           >
@@ -1395,7 +1448,15 @@ export const AIChat = memo(function AIChat() {
           </div>
 
           <div className="flex items-center justify-between">
-            <Popover open={modelPickerOpen} onOpenChange={setModelPickerOpen}>
+            <Popover
+              open={modelPickerOpen}
+              onOpenChange={(open) => {
+                setModelPickerOpen(open);
+                if (open && copilotEnabled && !copilotModelsLoading && copilotModels.length === 0) {
+                  void fetchCopilotModels();
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -1423,7 +1484,9 @@ export const AIChat = memo(function AIChat() {
                 <Command>
                   <CommandInput placeholder="Search models..." className="h-9" />
                   <CommandList className="max-h-64">
-                    <CommandEmpty>No models found.</CommandEmpty>
+                    <CommandEmpty>
+                      {copilotModelsLoading ? "Loading models..." : "No models found."}
+                    </CommandEmpty>
                     <CommandGroup>
                       {allModels
                         .filter((model) => isModelAvailable(model.id, allModels, apiKeys))
@@ -1468,7 +1531,9 @@ export const AIChat = memo(function AIChat() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>AI Settings</DialogTitle>
-            <DialogDescription>Configure your API keys for Querybuddy.</DialogDescription>
+            <DialogDescription>
+              Configure your API keys or enable GitHub Copilot CLI for Querybuddy.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -1528,6 +1593,19 @@ export const AIChat = memo(function AIChat() {
               />
               <p className="text-xs text-muted-foreground">For Vercel AI Gateway models</p>
             </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="copilotEnabled2">GitHub Copilot CLI</Label>
+                <Switch
+                  id="copilotEnabled2"
+                  checked={tempCopilotEnabled}
+                  onCheckedChange={setTempCopilotEnabled}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                No API key needed. Install Copilot CLI and run `copilot auth login`.
+              </p>
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -1540,7 +1618,8 @@ export const AIChat = memo(function AIChat() {
                 !tempAnthropicKey.trim() &&
                 !tempGoogleKey.trim() &&
                 !tempOpenrouterKey.trim() &&
-                !tempVercelKey.trim()
+                !tempVercelKey.trim() &&
+                !tempCopilotEnabled
               }
             >
               Save
