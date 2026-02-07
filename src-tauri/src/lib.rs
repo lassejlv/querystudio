@@ -49,7 +49,8 @@ async fn connect(
 
     let is_pro = user_state.is_pro().await;
     let max_connections = user_state.get_max_connections().await;
-    let current_connections = state.connection_count();
+    let current_connections = state.connection_count_excluding(&id);
+    let requested_db_type = config.db_type;
 
     if current_connections >= max_connections {
         warn!(
@@ -69,6 +70,17 @@ async fn connect(
             } else {
                 "Upgrade to Pro for unlimited connections."
             }
+        ));
+    }
+
+    if !is_pro && state.has_database_type_connection_excluding(requested_db_type, &id) {
+        warn!(
+            "Dialect limit reached for free tier: {:?} [id={}]",
+            requested_db_type, id
+        );
+        return Err(format!(
+            "Free tier allows only one active {} connection at a time. Disconnect your existing {} connection or upgrade to Pro.",
+            requested_db_type, requested_db_type
         ));
     }
 

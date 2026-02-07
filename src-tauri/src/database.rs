@@ -32,6 +32,25 @@ impl ConnectionManager {
         self.connections.read().len()
     }
 
+    pub fn connection_count_excluding(&self, exclude_id: &str) -> usize {
+        self.connections
+            .read()
+            .iter()
+            .filter(|(id, _)| id.as_str() != exclude_id)
+            .count()
+    }
+
+    pub fn has_database_type_connection_excluding(
+        &self,
+        db_type: DatabaseType,
+        exclude_id: &str,
+    ) -> bool {
+        self.connections
+            .read()
+            .iter()
+            .any(|(id, provider)| id.as_str() != exclude_id && provider.database_type() == db_type)
+    }
+
     pub async fn connect(&self, id: String, config: ConnectionConfig) -> Result<(), String> {
         let provider = create_provider(config.db_type, config.params)
             .await

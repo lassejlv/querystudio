@@ -5,6 +5,23 @@ import { useAIQueryStore, useConnectionStore } from "./store";
 import { authClient, type ExtendedUser } from "./auth-client";
 import type { ConnectionConfig, DatabaseType, SavedConnection } from "./types";
 
+function getDatabaseTypeLabel(dbType: DatabaseType): string {
+  switch (dbType) {
+    case "postgres":
+      return "PostgreSQL";
+    case "mysql":
+      return "MySQL";
+    case "sqlite":
+      return "SQLite";
+    case "redis":
+      return "Redis";
+    case "mongodb":
+      return "MongoDB";
+    default:
+      return dbType;
+  }
+}
+
 export function useTables(connectionId: string | null) {
   return useQuery({
     queryKey: ["tables", connectionId],
@@ -264,6 +281,9 @@ export function useConnect() {
   const queryClient = useQueryClient();
   const addConnection = useConnectionStore((s) => s.addConnection);
   const saveConnection = useSaveConnection();
+  const { data: session } = authClient.useSession();
+  const user = session?.user as ExtendedUser | undefined;
+  const isPro = user?.isPro ?? false;
 
   return useMutation({
     mutationFn: async ({
@@ -279,11 +299,34 @@ export function useConnect() {
       config: ConnectionConfig;
       save?: boolean;
     }) => {
-      if (!useAIQueryStore.getState().multiConnectionsEnabled) {
-        const existingConnections = useConnectionStore
-          .getState()
-          .activeConnections.filter((connection) => connection.id !== id);
+      const multiConnectionsEnabled = useAIQueryStore.getState().multiConnectionsEnabled;
+      const existingConnections = useConnectionStore
+        .getState()
+        .activeConnections.filter((connection) => connection.id !== id);
 
+      if (!isPro && multiConnectionsEnabled) {
+        const hasExistingDialect = existingConnections.some(
+          (connection) => connection.db_type === db_type,
+        );
+        if (hasExistingDialect) {
+          const dialectLabel = getDatabaseTypeLabel(db_type);
+          throw new Error(`Free tier allows only one active ${dialectLabel} connection at a time.`);
+        }
+      }
+
+      if (!isPro && save) {
+        const savedConnections = await api.getSavedConnections();
+        const hasSavedDialect = savedConnections.connections.some(
+          (connection) => connection.id !== id && connection.db_type === db_type,
+        );
+
+        if (hasSavedDialect) {
+          const dialectLabel = getDatabaseTypeLabel(db_type);
+          throw new Error(`Free tier allows only one saved ${dialectLabel} connection.`);
+        }
+      }
+
+      if (!multiConnectionsEnabled) {
         for (const connection of existingConnections) {
           try {
             await api.disconnect(connection.id);
