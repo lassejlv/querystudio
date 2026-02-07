@@ -16,6 +16,7 @@ import {
   History,
   RotateCcw,
   Loader,
+  Sparkles,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -607,6 +608,8 @@ const MessageBubble = memo(function MessageBubble({
 
 export const AIChat = memo(function AIChat() {
   const connection = useConnectionStore((s) => s.getActiveConnection());
+  const selectedTable = useConnectionStore((s) => s.selectedTable);
+  const selectedRowsContext = useAIQueryStore((s) => s.selectedRowsContext);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1065,6 +1068,60 @@ export const AIChat = memo(function AIChat() {
     setQueuedMessageCount(queuedMessagesRef.current.length);
   }, []);
 
+  const composePromptWithContext = useCallback(
+    (userText: string) => {
+      const contextLines: string[] = [];
+
+      if (selectedTable) {
+        contextLines.push(`Active table: ${selectedTable.schema}.${selectedTable.name}`);
+      }
+
+      if (selectedRowsContext?.preview) {
+        contextLines.push(
+          `Selected row context (${selectedRowsContext.schema}.${selectedRowsContext.table}, ${selectedRowsContext.count} row):\n${selectedRowsContext.preview}`,
+        );
+      }
+
+      if (contextLines.length === 0) {
+        return userText;
+      }
+
+      return `Database context:\n${contextLines.join("\n\n")}\n\nUser request:\n${userText}`;
+    },
+    [selectedTable, selectedRowsContext],
+  );
+
+  const quickActions = useMemo(() => {
+    const activeTableRef = selectedTable
+      ? `${selectedTable.schema}.${selectedTable.name}`
+      : "the active table";
+
+    const actions = [
+      {
+        label: "Schema Summary",
+        prompt: `Give me a concise schema summary for ${activeTableRef}.`,
+      },
+      {
+        label: "Generate Update SQL",
+        prompt: `Generate a safe SQL UPDATE statement for ${activeTableRef} with best practices and a WHERE clause.`,
+      },
+      {
+        label: "Find Anomalies",
+        prompt: `What are the best anomaly checks I should run on ${activeTableRef}? Include SQL examples.`,
+      },
+    ];
+
+    if (selectedRowsContext?.preview) {
+      actions.unshift({
+        label: "Explain Selected Row",
+        prompt:
+          "Explain the currently selected row, highlight suspicious values, and suggest follow-up SQL checks.",
+      });
+    }
+
+    return actions;
+  }, [selectedTable, selectedRowsContext]);
+
   const sendMessage = useCallback(
     async (userText: string, addUserMessage: boolean = true) => {
       if (!agentRef.current) return;
@@ -1092,7 +1149,8 @@ export const AIChat = memo(function AIChat() {
       ]);
 
       try {
-        const stream = agentRef.current.chatStream(userText, (toolUpdate) => {
+        const promptWithContext = composePromptWithContext(userText);
+        const stream = agentRef.current.chatStream(promptWithContext, (toolUpdate) => {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === loadingId
@@ -1180,7 +1238,7 @@ export const AIChat = memo(function AIChat() {
         }
       }
     },
-    [scrollToBottom, saveCurrentSession],
+    [scrollToBottom, saveCurrentSession, composePromptWithContext],
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1393,7 +1451,7 @@ export const AIChat = memo(function AIChat() {
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-background">
       {/* Header */}
-      <div className="z-10 shrink-0 border-b border-border/70 bg-background/80 px-3 py-2 backdrop-blur-sm">
+      <div className="z-10 shrink-0 border-b border-border/55 bg-background/80 px-3 py-2 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-2">
@@ -1500,7 +1558,7 @@ export const AIChat = memo(function AIChat() {
       <div className="z-10 flex-1 overflow-y-auto px-3 py-3" ref={scrollRef}>
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <div className="max-w-sm space-y-4 rounded-2xl border border-border/70 bg-card/55 p-5 text-center backdrop-blur-sm">
+            <div className="max-w-sm space-y-4 rounded-2xl border border-border/55 bg-card/50 p-5 text-center backdrop-blur-sm">
               <div className="flex justify-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
                   <Bot className="h-5 w-5 text-primary/60" />
@@ -1515,17 +1573,15 @@ export const AIChat = memo(function AIChat() {
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2">
-                {["What tables do I have?", "Show me recent data", "Describe the schema"].map(
-                  (suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => setInput(suggestion)}
-                      className="rounded-md border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-                    >
-                      {suggestion}
-                    </button>
-                  ),
-                )}
+                {quickActions.slice(0, 4).map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => setInput(action.prompt)}
+                    className="rounded-md border border-border/55 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  >
+                    {action.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -1543,9 +1599,9 @@ export const AIChat = memo(function AIChat() {
       </div>
 
       {/* Input Area */}
-      <div className="z-10 border-t border-border/50 bg-background/85 px-3 pb-3 pt-2 backdrop-blur-sm">
+      <div className="z-10 border-t border-border/45 bg-background/85 px-3 pb-3 pt-2 backdrop-blur-sm">
         <form onSubmit={handleSubmit}>
-          <div className="mx-auto w-full max-w-4xl rounded-[28px] border border-white/10 bg-card/55 p-3 supports-[backdrop-filter]:bg-card/45">
+          <div className="mx-auto w-full max-w-4xl rounded-[28px] border border-white/8 bg-card/50 p-3 supports-[backdrop-filter]:bg-card/40">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -1561,6 +1617,20 @@ export const AIChat = memo(function AIChat() {
               placeholder="Ask about your database..."
               className="min-h-[92px] max-h-56 rounded-2xl border-transparent bg-transparent px-2 py-1.5 text-[15px] leading-relaxed placeholder:text-muted-foreground/70 shadow-none focus-visible:border-transparent focus-visible:ring-0"
             />
+
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 px-1">
+              {quickActions.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={() => setInput(action.prompt)}
+                  className="inline-flex items-center gap-1 rounded-full border border-border/55 bg-background/30 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-background/50 hover:text-foreground"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  {action.label}
+                </button>
+              ))}
+            </div>
 
             <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2.5">
               <div className="flex min-w-0 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

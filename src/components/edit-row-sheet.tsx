@@ -30,6 +30,7 @@ interface EditRowSheetProps {
   columns: ColumnInfo[];
   rowData: Record<string, unknown>;
   onSuccess?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function isBooleanType(dataType: string): boolean {
@@ -47,11 +48,13 @@ export function EditRowSheet({
   columns,
   rowData,
   onSuccess,
+  onDirtyChange,
 }: EditRowSheetProps) {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [nullFields, setNullFields] = useState<Set<string>>(new Set());
   const [originalData, setOriginalData] = useState<Record<string, unknown>>({});
   const [mongoDocument, setMongoDocument] = useState<string>("{}");
+  const [isDirty, setIsDirty] = useState(false);
   const updateRow = useUpdateRow(connectionId);
   const updateDocument = useUpdateDocument(connectionId);
 
@@ -85,8 +88,10 @@ export function EditRowSheet({
       setFormData(initial);
       setNullFields(initialNulls);
       setOriginalData(rowData);
+      setIsDirty(false);
+      onDirtyChange?.(false);
     }
-  }, [open, rowData, columns]);
+  }, [open, rowData, columns, onDirtyChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +122,8 @@ export function EditRowSheet({
           update,
         });
         toast.success("Document updated successfully");
+        setIsDirty(false);
+        onDirtyChange?.(false);
         onOpenChange(false);
         onSuccess?.();
       } catch (error) {
@@ -197,6 +204,8 @@ export function EditRowSheet({
     try {
       await updateRow.mutateAsync({ schema, table, query });
       toast.success("Row updated successfully");
+      setIsDirty(false);
+      onDirtyChange?.(false);
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
@@ -247,7 +256,15 @@ export function EditRowSheet({
   };
 
   const updateField = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      if (prev[name] !== value) {
+        if (!isDirty) {
+          setIsDirty(true);
+          onDirtyChange?.(true);
+        }
+      }
+      return { ...prev, [name]: value };
+    });
     if (nullFields.has(name) && value !== "") {
       setNullFields((prev) => {
         const next = new Set(prev);
@@ -260,13 +277,26 @@ export function EditRowSheet({
   const toggleNull = (name: string, isNull: boolean) => {
     setNullFields((prev) => {
       const next = new Set(prev);
+      const wasNull = next.has(name);
       if (isNull) {
         next.add(name);
       } else {
         next.delete(name);
       }
+      if (wasNull !== isNull && !isDirty) {
+        setIsDirty(true);
+        onDirtyChange?.(true);
+      }
       return next;
     });
+  };
+
+  const handleSheetOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setIsDirty(false);
+      onDirtyChange?.(false);
+    }
+    onOpenChange(nextOpen);
   };
 
   const getInputType = (dataType: string): string => {
@@ -310,7 +340,7 @@ export function EditRowSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleSheetOpenChange}>
       <SheetContent className="sm:max-w-lg flex flex-col">
         <SheetHeader>
           <SheetTitle>Edit {isMongoDB ? "Document" : "Row"}</SheetTitle>

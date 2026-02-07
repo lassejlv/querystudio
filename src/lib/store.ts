@@ -197,6 +197,21 @@ interface AIQueryState {
   // Custom UI font family (persisted)
   customFontFamily: string;
   setCustomFontFamily: (fontFamily: string) => void;
+
+  // Selected row context for AI actions (ephemeral)
+  selectedRowsContext: {
+    schema: string;
+    table: string;
+    count: number;
+    preview: string;
+  } | null;
+  setSelectedRowsContext: (context: {
+    schema: string;
+    table: string;
+    count: number;
+    preview: string;
+  }) => void;
+  clearSelectedRowsContext: () => void;
 }
 
 export const useAIQueryStore = create<AIQueryState>()((set, get) => ({
@@ -292,6 +307,10 @@ export const useAIQueryStore = create<AIQueryState>()((set, get) => ({
     set({ customFontFamily: fontFamily });
     void useSettingsStore.getState().updateSettings({ customFontFamily: fontFamily });
   },
+
+  selectedRowsContext: null,
+  setSelectedRowsContext: (context) => set({ selectedRowsContext: context }),
+  clearSelectedRowsContext: () => set({ selectedRowsContext: null }),
 }));
 
 useSettingsStore.subscribe((state) => {

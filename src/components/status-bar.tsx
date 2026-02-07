@@ -14,6 +14,8 @@ import {
   LogIn,
   LogOut,
   Settings,
+  RefreshCw,
+  PencilLine,
 } from "lucide-react";
 import { useConnectionStore, useAIQueryStore } from "@/lib/store";
 import { useLayoutStore } from "@/lib/layout-store";
@@ -38,11 +40,17 @@ interface StatusBarState {
   lastRowCount: number | null;
   lastQueryStatus: "success" | "error" | null;
   cursorPosition: { line: number; column: number } | null;
+  lastDataRefreshAt: number | null;
+  lastDataFetchDurationMs: number | null;
+  hasUnsavedEdits: boolean;
 
   setLastQueryTime: (time: number | null) => void;
   setLastRowCount: (count: number | null) => void;
   setLastQueryStatus: (status: "success" | "error" | null) => void;
   setCursorPosition: (position: { line: number; column: number } | null) => void;
+  setLastDataRefreshAt: (time: number | null) => void;
+  setLastDataFetchDurationMs: (ms: number | null) => void;
+  setHasUnsavedEdits: (dirty: boolean) => void;
   setQueryResult: (time: number, rowCount: number, success: boolean) => void;
 }
 
@@ -51,11 +59,17 @@ export const useStatusBarStore = create<StatusBarState>()((set) => ({
   lastRowCount: null,
   lastQueryStatus: null,
   cursorPosition: null,
+  lastDataRefreshAt: null,
+  lastDataFetchDurationMs: null,
+  hasUnsavedEdits: false,
 
   setLastQueryTime: (time) => set({ lastQueryTime: time }),
   setLastRowCount: (count) => set({ lastRowCount: count }),
   setLastQueryStatus: (status) => set({ lastQueryStatus: status }),
   setCursorPosition: (position) => set({ cursorPosition: position }),
+  setLastDataRefreshAt: (time) => set({ lastDataRefreshAt: time }),
+  setLastDataFetchDurationMs: (ms) => set({ lastDataFetchDurationMs: ms }),
+  setHasUnsavedEdits: (dirty) => set({ hasUnsavedEdits: dirty }),
   setQueryResult: (time, rowCount, success) =>
     set({
       lastQueryTime: time,
@@ -136,6 +150,16 @@ function formatRowCount(count: number): string {
   return count.toLocaleString();
 }
 
+function formatTimeSince(timestamp: number): string {
+  const diffMs = Date.now() - timestamp;
+  const diffSec = Math.max(1, Math.floor(diffMs / 1000));
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  return `${diffHour}h ago`;
+}
+
 export function StatusBar() {
   const navigate = useNavigate();
   const connection = useConnectionStore((s) => s.getActiveConnection());
@@ -147,6 +171,9 @@ export function StatusBar() {
   const lastRowCount = useStatusBarStore((s) => s.lastRowCount);
   const lastQueryStatus = useStatusBarStore((s) => s.lastQueryStatus);
   const cursorPosition = useStatusBarStore((s) => s.cursorPosition);
+  const lastDataRefreshAt = useStatusBarStore((s) => s.lastDataRefreshAt);
+  const lastDataFetchDurationMs = useStatusBarStore((s) => s.lastDataFetchDurationMs);
+  const hasUnsavedEdits = useStatusBarStore((s) => s.hasUnsavedEdits);
 
   const experimentalTerminal = useAIQueryStore((s) => s.experimentalTerminal);
 
@@ -330,6 +357,39 @@ export function StatusBar() {
                 {formatRowCount(lastRowCount)} row
                 {lastRowCount !== 1 ? "s" : ""}
               </span>
+            </div>
+          </>
+        )}
+
+        {/* Data refresh timestamp */}
+        {lastDataRefreshAt !== null && !isVeryCompact && (
+          <>
+            <div className="h-3 w-px bg-border/70" />
+            <div className="flex items-center gap-1.5 rounded-md bg-background/35 px-1.5 py-0.5">
+              <RefreshCw className="h-3 w-3 text-sky-300" />
+              <span>{formatTimeSince(lastDataRefreshAt)}</span>
+            </div>
+          </>
+        )}
+
+        {/* Data refresh latency */}
+        {lastDataFetchDurationMs !== null && !isCompact && (
+          <>
+            <div className="h-3 w-px bg-border/70" />
+            <div className="flex items-center gap-1.5 rounded-md bg-background/35 px-1.5 py-0.5">
+              <Zap className="h-3 w-3 text-sky-300" />
+              <span>{formatExecutionTime(lastDataFetchDurationMs)}</span>
+            </div>
+          </>
+        )}
+
+        {/* Unsaved edits */}
+        {hasUnsavedEdits && (
+          <>
+            <div className="h-3 w-px bg-border/70" />
+            <div className="flex items-center gap-1.5 rounded-md border border-amber-300/30 bg-amber-500/10 px-1.5 py-0.5 text-amber-200">
+              <PencilLine className="h-3 w-3" />
+              <span>Unsaved edits</span>
             </div>
           </>
         )}

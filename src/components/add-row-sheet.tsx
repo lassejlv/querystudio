@@ -28,6 +28,7 @@ interface AddRowSheetProps {
   table: string;
   columns: ColumnInfo[];
   onSuccess?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function isBooleanType(dataType: string): boolean {
@@ -44,10 +45,12 @@ export function AddRowSheet({
   table,
   columns,
   onSuccess,
+  onDirtyChange,
 }: AddRowSheetProps) {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [nullFields, setNullFields] = useState<Set<string>>(new Set());
   const [mongoDocument, setMongoDocument] = useState<string>("{\n  \n}");
+  const [isDirty, setIsDirty] = useState(false);
   const insertRow = useInsertRow(connectionId);
   const insertDocument = useInsertDocument(connectionId);
 
@@ -68,8 +71,10 @@ export function AddRowSheet({
       setFormData(initial);
       setNullFields(initialDefaults);
       setMongoDocument("{\n  \n}");
+      setIsDirty(false);
+      onDirtyChange?.(false);
     }
-  }, [open, columns]);
+  }, [open, columns, onDirtyChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +96,8 @@ export function AddRowSheet({
           document: mongoDocument,
         });
         toast.success("Document inserted successfully");
+        setIsDirty(false);
+        onDirtyChange?.(false);
         onOpenChange(false);
         onSuccess?.();
       } catch (error) {
@@ -143,6 +150,8 @@ export function AddRowSheet({
     try {
       await insertRow.mutateAsync({ schema, table, query });
       toast.success("Row inserted successfully");
+      setIsDirty(false);
+      onDirtyChange?.(false);
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
@@ -197,7 +206,15 @@ export function AddRowSheet({
   };
 
   const updateField = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      if (prev[name] !== value) {
+        if (!isDirty) {
+          setIsDirty(true);
+          onDirtyChange?.(true);
+        }
+      }
+      return { ...prev, [name]: value };
+    });
     // If user types something, unmark as null
     if (nullFields.has(name) && value !== "") {
       setNullFields((prev) => {
@@ -211,13 +228,26 @@ export function AddRowSheet({
   const toggleNull = (name: string, isNull: boolean) => {
     setNullFields((prev) => {
       const next = new Set(prev);
+      const wasNull = next.has(name);
       if (isNull) {
         next.add(name);
       } else {
         next.delete(name);
       }
+      if (wasNull !== isNull && !isDirty) {
+        setIsDirty(true);
+        onDirtyChange?.(true);
+      }
       return next;
     });
+  };
+
+  const handleSheetOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setIsDirty(false);
+      onDirtyChange?.(false);
+    }
+    onOpenChange(nextOpen);
   };
 
   const getInputType = (dataType: string): string => {
@@ -254,7 +284,7 @@ export function AddRowSheet({
   const isPending = insertRow.isPending || insertDocument.isPending;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleSheetOpenChange}>
       <SheetContent className="sm:max-w-lg flex flex-col">
         <SheetHeader>
           <SheetTitle>Add New {isMongoDB ? "Document" : "Row"}</SheetTitle>
