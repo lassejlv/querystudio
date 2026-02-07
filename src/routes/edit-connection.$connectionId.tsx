@@ -349,7 +349,7 @@ function EditConnectionPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div className="flex h-screen flex-col bg-gradient-to-b from-background to-card/20 text-foreground">
       {/* Titlebar drag region */}
       <div
         data-tauri-drag-region
@@ -358,252 +358,266 @@ function EditConnectionPage() {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Content */}
-        <main className="flex-1 overflow-auto p-8 flex justify-center">
-          <div className="max-w-xl w-full">
-            <div className="space-y-6">
+        <main className="flex flex-1 justify-center overflow-auto px-6 pb-8 pt-5">
+          <div className="w-full max-w-2xl space-y-5">
+            <div className="rounded-2xl border border-border/60 bg-card/35 p-5 backdrop-blur">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/" })}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate({ to: "/" })}
+                  className="rounded-xl"
+                >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <div>
+                <div className="space-y-1">
                   <h2 className="text-2xl font-bold tracking-tight">Edit Connection</h2>
                   <p className="text-muted-foreground">Update your database connection settings.</p>
                 </div>
               </div>
-              <Separator />
+            </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-5 rounded-2xl border border-border/60 bg-card/35 p-5 backdrop-blur"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="name">Connection Name</Label>
+                <Input
+                  id="name"
+                  placeholder="My Database"
+                  value={formData.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  className={cn("h-10 rounded-xl", errors.name && "border-destructive")}
+                />
+                {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Connection Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="My Database"
-                    value={formData.name}
-                    onChange={(e) => updateField("name", e.target.value)}
-                    className={cn(errors.name && "border-destructive")}
-                  />
-                  {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+                  <Label htmlFor="dbType">Database Type</Label>
+                  <select
+                    id="dbType"
+                    value={dbType}
+                    onChange={(e) => handleDbSelect(e.target.value as DatabaseType)}
+                    className="flex h-10 w-full rounded-xl border border-input bg-background/80 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {DATABASE_OPTIONS.map((db) => (
+                      <option key={db.id} value={db.id}>
+                        {db.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {dbType !== "sqlite" && (
                   <div className="space-y-2">
-                    <Label htmlFor="dbType">Database Type</Label>
+                    <Label htmlFor="mode">Connection Method</Label>
                     <select
-                      id="dbType"
-                      value={dbType}
-                      onChange={(e) => handleDbSelect(e.target.value as DatabaseType)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      id="mode"
+                      value={mode}
+                      onChange={(e) => setMode(e.target.value as ConnectionMode)}
+                      className="flex h-10 w-full rounded-xl border border-input bg-background/80 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {DATABASE_OPTIONS.map((db) => (
-                        <option key={db.id} value={db.id}>
-                          {db.name}
-                        </option>
-                      ))}
+                      <option value="params">Parameters</option>
+                      <option value="string">Connection URL</option>
                     </select>
                   </div>
+                )}
+              </div>
 
-                  {dbType !== "sqlite" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="mode">Connection Method</Label>
-                      <select
-                        id="mode"
-                        value={mode}
-                        onChange={(e) => setMode(e.target.value as ConnectionMode)}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <option value="params">Parameters</option>
-                        <option value="string">Connection URL</option>
-                      </select>
+              {mode === "params" ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="host">Host</Label>
+                      <Input
+                        id="host"
+                        placeholder={selectedDb.defaults.host}
+                        value={formData.host}
+                        onChange={(e) => updateField("host", e.target.value)}
+                        className={cn("h-10 rounded-xl", errors.host && "border-destructive")}
+                      />
+                      {errors.host && <p className="text-xs text-destructive">{errors.host}</p>}
                     </div>
-                  )}
-                </div>
-
-                {mode === "params" ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="col-span-2 space-y-2">
-                        <Label htmlFor="host">Host</Label>
-                        <Input
-                          id="host"
-                          placeholder={selectedDb.defaults.host}
-                          value={formData.host}
-                          onChange={(e) => updateField("host", e.target.value)}
-                          className={cn(errors.host && "border-destructive")}
-                        />
-                        {errors.host && <p className="text-xs text-destructive">{errors.host}</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="port">Port</Label>
-                        <Input
-                          id="port"
-                          type="number"
-                          placeholder={selectedDb.defaults.port}
-                          value={formData.port}
-                          onChange={(e) => updateField("port", e.target.value)}
-                          className={cn(errors.port && "border-destructive")}
-                        />
-                        {errors.port && <p className="text-xs text-destructive">{errors.port}</p>}
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
-                      <Label htmlFor="database">
-                        {dbType === "redis" ? "Database Index" : "Database"}
+                      <Label htmlFor="port">Port</Label>
+                      <Input
+                        id="port"
+                        type="number"
+                        placeholder={selectedDb.defaults.port}
+                        value={formData.port}
+                        onChange={(e) => updateField("port", e.target.value)}
+                        className={cn("h-10 rounded-xl", errors.port && "border-destructive")}
+                      />
+                      {errors.port && <p className="text-xs text-destructive">{errors.port}</p>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="database">
+                      {dbType === "redis" ? "Database Index" : "Database"}
+                    </Label>
+                    <Input
+                      id="database"
+                      placeholder={selectedDb.defaults.database}
+                      value={formData.database}
+                      onChange={(e) => updateField("database", e.target.value)}
+                      className={cn("h-10 rounded-xl", errors.database && "border-destructive")}
+                    />
+                    {dbType === "redis" && (
+                      <p className="text-xs text-muted-foreground">
+                        Redis database index (0-15, default: 0)
+                      </p>
+                    )}
+                    {errors.database && (
+                      <p className="text-xs text-destructive">{errors.database}</p>
+                    )}
+                  </div>
+
+                  {dbType === "redis" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="password">
+                        Password <span className="text-muted-foreground">(optional)</span>
                       </Label>
                       <Input
-                        id="database"
-                        placeholder={selectedDb.defaults.database}
-                        value={formData.database}
-                        onChange={(e) => updateField("database", e.target.value)}
-                        className={cn(errors.database && "border-destructive")}
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={(e) => updateField("password", e.target.value)}
+                        className="h-10 rounded-xl"
                       />
-                      {dbType === "redis" && (
-                        <p className="text-xs text-muted-foreground">
-                          Redis database index (0-15, default: 0)
-                        </p>
-                      )}
-                      {errors.database && (
-                        <p className="text-xs text-destructive">{errors.database}</p>
-                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Enter password to test connection (not saved)
+                      </p>
                     </div>
-
-                    {dbType === "redis" ? (
+                  ) : dbType !== "sqlite" ? (
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="password">
-                          Password <span className="text-muted-foreground">(optional)</span>
-                        </Label>
+                        <Label htmlFor="username">Username</Label>
+                        <Input
+                          id="username"
+                          placeholder={selectedDb.defaults.username}
+                          value={formData.username}
+                          onChange={(e) => updateField("username", e.target.value)}
+                          className={cn("h-10 rounded-xl", errors.username && "border-destructive")}
+                        />
+                        {errors.username && (
+                          <p className="text-xs text-destructive">{errors.username}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
                         <Input
                           id="password"
                           type="password"
                           placeholder="••••••••"
                           value={formData.password}
                           onChange={(e) => updateField("password", e.target.value)}
+                          className="h-10 rounded-xl"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Enter password to test connection (not saved)
+                          Required for testing (not saved)
                         </p>
                       </div>
-                    ) : dbType !== "sqlite" ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="username">Username</Label>
-                          <Input
-                            id="username"
-                            placeholder={selectedDb.defaults.username}
-                            value={formData.username}
-                            onChange={(e) => updateField("username", e.target.value)}
-                            className={cn(errors.username && "border-destructive")}
-                          />
-                          {errors.username && (
-                            <p className="text-xs text-destructive">{errors.username}</p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="password">Password</Label>
-                          <Input
-                            id="password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={formData.password}
-                            onChange={(e) => updateField("password", e.target.value)}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Required for testing (not saved)
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : mode === "file" ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="connectionString">Database File</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="connectionString"
-                        placeholder="Select a SQLite database file..."
-                        value={formData.connectionString}
-                        onChange={(e) => updateField("connectionString", e.target.value)}
-                        className={cn(
-                          "font-mono text-sm flex-1",
-                          errors.connectionString && "border-destructive",
-                        )}
-                      />
-                      <input
-                        type="file"
-                        accept=".db,.sqlite,.sqlite3,.db3"
-                        className="hidden"
-                        id="sqlite-file-input"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const path = (file as any).path || file.name;
-                            updateField("connectionString", path);
-                          }
-                          e.target.value = "";
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => document.getElementById("sqlite-file-input")?.click()}
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                      </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Browse for a .db, .sqlite, or .sqlite3 file
-                    </p>
-                    {errors.connectionString && (
-                      <p className="text-xs text-destructive">{errors.connectionString}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="connectionString">Connection String</Label>
-                    <Textarea
+                  ) : null}
+                </div>
+              ) : mode === "file" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="connectionString">Database File</Label>
+                  <div className="flex gap-2">
+                    <Input
                       id="connectionString"
-                      placeholder={getConnectionStringPlaceholder()}
+                      placeholder="Select a SQLite database file..."
                       value={formData.connectionString}
                       onChange={(e) => updateField("connectionString", e.target.value)}
                       className={cn(
-                        "min-h-[80px] font-mono text-sm",
+                        "h-10 rounded-xl font-mono text-sm flex-1",
                         errors.connectionString && "border-destructive",
                       )}
                     />
-                    {errors.connectionString && (
-                      <p className="text-xs text-destructive">{errors.connectionString}</p>
-                    )}
+                    <input
+                      type="file"
+                      accept=".db,.sqlite,.sqlite3,.db3"
+                      className="hidden"
+                      id="sqlite-file-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const path = (file as any).path || file.name;
+                          updateField("connectionString", path);
+                        }
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => document.getElementById("sqlite-file-input")?.click()}
+                      className="h-10 w-10 rounded-xl"
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
                   </div>
-                )}
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => navigate({ to: "/" })}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleTest}
-                    disabled={testConnection.isPending}
-                  >
-                    {testConnection.isPending ? (
-                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    ) : tested ? (
-                      <CheckCircle2 className="mr-1.5 h-4 w-4 text-green-500" />
-                    ) : null}
-                    Test Connection
-                  </Button>
-                  <Button type="submit" disabled={saveConnection.isPending}>
-                    {saveConnection.isPending && (
-                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    )}
-                    Save Changes
-                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Browse for a .db, .sqlite, or .sqlite3 file
+                  </p>
+                  {errors.connectionString && (
+                    <p className="text-xs text-destructive">{errors.connectionString}</p>
+                  )}
                 </div>
-              </form>
-            </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="connectionString">Connection String</Label>
+                  <Textarea
+                    id="connectionString"
+                    placeholder={getConnectionStringPlaceholder()}
+                    value={formData.connectionString}
+                    onChange={(e) => updateField("connectionString", e.target.value)}
+                    className={cn(
+                      "min-h-[100px] rounded-xl font-mono text-sm",
+                      errors.connectionString && "border-destructive",
+                    )}
+                  />
+                  {errors.connectionString && (
+                    <p className="text-xs text-destructive">{errors.connectionString}</p>
+                  )}
+                </div>
+              )}
+
+              <Separator />
+              <div className="sticky bottom-0 -mx-5 -mb-5 mt-1 flex justify-end gap-3 rounded-b-2xl border-t border-border/60 bg-card/75 px-5 py-3 backdrop-blur">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate({ to: "/" })}
+                  className="rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleTest}
+                  disabled={testConnection.isPending}
+                  className="rounded-xl"
+                >
+                  {testConnection.isPending ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : tested ? (
+                    <CheckCircle2 className="mr-1.5 h-4 w-4 text-green-500" />
+                  ) : null}
+                  Test Connection
+                </Button>
+                <Button type="submit" disabled={saveConnection.isPending} className="rounded-xl">
+                  {saveConnection.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            </form>
           </div>
         </main>
       </div>

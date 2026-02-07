@@ -49,6 +49,13 @@ import { AddRedisKeyDialog } from "@/components/add-redis-key-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -934,7 +941,7 @@ export const TableViewer = memo(function TableViewer({
         </div>
       </div>
 
-      <div className="flex flex-1 gap-2 overflow-hidden p-2">
+      <div className="flex flex-1 overflow-hidden p-2">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/55 bg-card/20">
           <div className="sticky top-0 z-30 border-b border-border/55 bg-background">
             <div className="flex h-9 items-center gap-1.5 overflow-x-auto px-2.5 text-[11px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -973,7 +980,7 @@ export const TableViewer = memo(function TableViewer({
                     {visibleColumns.map((col) => (
                       <TableHead
                         key={col.name}
-                        className="sticky top-9 z-20 h-11 whitespace-nowrap border-r border-border/55 bg-background px-3 last:border-r-0"
+                        className="sticky top-0 z-20 h-11 whitespace-nowrap border-r border-border/55 bg-background px-3 last:border-r-0"
                       >
                         <div className="flex items-center gap-2">
                           {col.is_primary_key && <Key className="h-3 w-3 text-yellow-500" />}
@@ -1066,7 +1073,7 @@ export const TableViewer = memo(function TableViewer({
                                       }}
                                     >
                                       <Search className="h-4 w-4" />
-                                      Open in side editor
+                                      Open row editor
                                     </ContextMenuItem>
                                     <ContextMenuItem
                                       variant="destructive"
@@ -1092,164 +1099,168 @@ export const TableViewer = memo(function TableViewer({
             </motion.div>
           </div>
         </div>
+      </div>
 
-        {selectedRecord && (
-          <aside className="hidden w-80 shrink-0 flex-col rounded-xl border border-border/55 bg-card/30 lg:flex">
-            <div className="border-b border-border/55 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Selected Row</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {selectedTable.schema}.{selectedTable.name}
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {selectedFieldEntries.length} fields
-                </Badge>
+      <Sheet
+        open={Boolean(selectedRecord)}
+        onOpenChange={(open) => {
+          if (!open) {
+            clearSelectedRow();
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-[92vw] gap-0 border-border/55 bg-card/85 p-0 backdrop-blur sm:max-w-xl"
+        >
+          <SheetHeader className="border-b border-border/55 p-3 pr-10">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <SheetTitle className="text-sm font-semibold text-foreground">
+                  Selected Row
+                </SheetTitle>
+                <SheetDescription className="text-[11px] text-muted-foreground">
+                  {selectedTable.schema}.{selectedTable.name}
+                </SheetDescription>
               </div>
-              <div className="mt-2 flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px]">
+                {selectedFieldEntries.length} fields
+              </Badge>
+            </div>
+            <div className="mt-2 flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg px-2.5 text-xs"
+                onClick={handleCopySelectedRow}
+              >
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+                Copy JSON
+              </Button>
+              {connection?.db_type !== "redis" && selectedRowRaw && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-lg px-2.5 text-xs"
-                  onClick={handleCopySelectedRow}
+                  className="h-8 rounded-lg border-red-500/35 px-2.5 text-xs text-red-200 hover:bg-red-500/10 hover:text-red-100"
+                  onClick={() => handleDeleteRowClick(selectedRowRaw)}
                 >
-                  <Copy className="mr-1.5 h-3.5 w-3.5" />
-                  Copy JSON
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Delete
                 </Button>
-                {connection?.db_type !== "redis" && selectedRowRaw && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-lg border-red-500/35 px-2.5 text-xs text-red-200 hover:bg-red-500/10 hover:text-red-100"
-                    onClick={() => handleDeleteRowClick(selectedRowRaw)}
-                  >
-                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                    Delete
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="ml-auto h-8 w-8 rounded-lg"
-                  onClick={clearSelectedRow}
-                  title="Clear selection"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              )}
             </div>
+          </SheetHeader>
 
-            <div className="flex-1 space-y-2 overflow-y-auto p-3">
-              {allColumns.map((field) => {
-                const isNull = rowNullFields.has(field.name);
-                const value = editedForm[field.name] ?? "";
-                const inputType = getInputType(field.data_type);
-                const fieldIsBoolean = isBooleanType(field.data_type);
-                const fieldIsTextarea = shouldUseTextarea(field.data_type) && !fieldIsBoolean;
-                const boolValue = value.toLowerCase() === "true";
+          <div className="flex-1 space-y-2 overflow-y-auto p-3">
+            {allColumns.map((field) => {
+              const isNull = rowNullFields.has(field.name);
+              const value = editedForm[field.name] ?? "";
+              const inputType = getInputType(field.data_type);
+              const fieldIsBoolean = isBooleanType(field.data_type);
+              const fieldIsTextarea = shouldUseTextarea(field.data_type) && !fieldIsBoolean;
+              const boolValue = value.toLowerCase() === "true";
 
-                return (
-                  <div
-                    key={field.name}
-                    className="rounded-lg border border-border/50 bg-background/40 p-2.5"
-                  >
-                    <div className="mb-1 flex items-center justify-between gap-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-medium text-foreground">{field.name}</p>
-                        <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-normal">
-                          {field.data_type}
+              return (
+                <div
+                  key={field.name}
+                  className="rounded-lg border border-border/50 bg-background/40 p-2.5"
+                >
+                  <div className="mb-1 flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-medium text-foreground">{field.name}</p>
+                      <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-normal">
+                        {field.data_type}
+                      </Badge>
+                      {field.is_primary_key && (
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">
+                          PK
                         </Badge>
-                        {field.is_primary_key && (
-                          <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">
-                            PK
-                          </Badge>
-                        )}
-                      </div>
-                      {field.is_nullable && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted-foreground">NULL</span>
-                          <Switch
-                            checked={isNull}
-                            onCheckedChange={(checked) => toggleInlineNull(field.name, checked)}
-                          />
-                        </div>
                       )}
                     </div>
-                    {fieldIsBoolean ? (
-                      <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
-                        <span className={cn("text-xs", isNull && "text-muted-foreground")}>
-                          {isNull ? "NULL" : boolValue ? "True" : "False"}
-                        </span>
+                    {field.is_nullable && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground">NULL</span>
                         <Switch
-                          checked={boolValue}
-                          onCheckedChange={(checked) =>
-                            handleInlineFieldChange(field.name, checked ? "true" : "false")
-                          }
-                          disabled={isNull}
+                          checked={isNull}
+                          onCheckedChange={(checked) => toggleInlineNull(field.name, checked)}
                         />
                       </div>
-                    ) : fieldIsTextarea ? (
-                      <Textarea
-                        value={isNull ? "" : value}
-                        onChange={(e) => handleInlineFieldChange(field.name, e.target.value)}
-                        disabled={isNull}
-                        placeholder={isNull ? "NULL" : `Enter ${field.data_type}`}
-                        className="min-h-20 font-mono text-xs"
-                      />
-                    ) : (
-                      <Input
-                        type={inputType}
-                        value={isNull ? "" : value}
-                        onChange={(e) => handleInlineFieldChange(field.name, e.target.value)}
-                        disabled={isNull}
-                        placeholder={isNull ? "NULL" : `Enter ${field.data_type}`}
-                        step={inputType === "number" ? "any" : undefined}
-                        className="h-8 font-mono text-xs"
-                      />
                     )}
                   </div>
-                );
-              })}
-            </div>
-            <div className="border-t border-border/55 p-3">
-              <div className="flex items-center justify-between gap-2">
+                  {fieldIsBoolean ? (
+                    <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
+                      <span className={cn("text-xs", isNull && "text-muted-foreground")}>
+                        {isNull ? "NULL" : boolValue ? "True" : "False"}
+                      </span>
+                      <Switch
+                        checked={boolValue}
+                        onCheckedChange={(checked) =>
+                          handleInlineFieldChange(field.name, checked ? "true" : "false")
+                        }
+                        disabled={isNull}
+                      />
+                    </div>
+                  ) : fieldIsTextarea ? (
+                    <Textarea
+                      value={isNull ? "" : value}
+                      onChange={(e) => handleInlineFieldChange(field.name, e.target.value)}
+                      disabled={isNull}
+                      placeholder={isNull ? "NULL" : `Enter ${field.data_type}`}
+                      className="min-h-20 font-mono text-xs"
+                    />
+                  ) : (
+                    <Input
+                      type={inputType}
+                      value={isNull ? "" : value}
+                      onChange={(e) => handleInlineFieldChange(field.name, e.target.value)}
+                      disabled={isNull}
+                      placeholder={isNull ? "NULL" : `Enter ${field.data_type}`}
+                      step={inputType === "number" ? "any" : undefined}
+                      className="h-8 font-mono text-xs"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-border/55 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg px-2.5 text-xs"
+                onClick={() => {
+                  setEditedForm({ ...originalForm });
+                  setRowNullFields(new Set(originalNullFields));
+                }}
+                disabled={!hasInlineChanges || isSavingInline}
+              >
+                Reset
+              </Button>
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   className="h-8 rounded-lg px-2.5 text-xs"
-                  onClick={() => {
-                    setEditedForm({ ...originalForm });
-                    setRowNullFields(new Set(originalNullFields));
-                  }}
+                  onClick={clearSelectedRow}
+                >
+                  Close
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 rounded-lg px-2.5 text-xs"
+                  onClick={() => void handleSaveInlineRow()}
                   disabled={!hasInlineChanges || isSavingInline}
                 >
-                  Reset
+                  <Save className="mr-1.5 h-3.5 w-3.5" />
+                  {isSavingInline ? "Saving..." : "Save Row"}
                 </Button>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 rounded-lg px-2.5 text-xs"
-                    onClick={clearSelectedRow}
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-8 rounded-lg px-2.5 text-xs"
-                    onClick={() => void handleSaveInlineRow()}
-                    disabled={!hasInlineChanges || isSavingInline}
-                  >
-                    <Save className="mr-1.5 h-3.5 w-3.5" />
-                    {isSavingInline ? "Saving..." : "Save Row"}
-                  </Button>
-                </div>
               </div>
             </div>
-          </aside>
-        )}
-      </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {connectionId && allColumns.length > 0 && (
         <>
