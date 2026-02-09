@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Plus, Pencil, Trash2, Command, Database, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Command, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSavedConnections, useCanSaveConnection, useDeleteSavedConnection } from "@/lib/hooks";
 import { getLastConnectionId, useAIQueryStore } from "@/lib/store";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { SavedConnection } from "@/lib/types";
 import { DatabaseIcon } from "./sidebar";
 import { Spinner } from "./ui/spinner";
+import { authClient } from "@/lib/auth-client";
 
 interface WelcomeScreenProps {
   onNewConnection: () => void;
@@ -24,6 +25,7 @@ export function WelcomeScreen({
   const { canSave, currentSaved, maxSaved, isPro } = useCanSaveConnection();
   const autoReconnect = useAIQueryStore((s) => s.autoReconnect);
   const deleteConnection = useDeleteSavedConnection();
+  const session = authClient.useSession();
 
   const connectionTypeCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -92,6 +94,7 @@ export function WelcomeScreen({
 
       <div className="relative flex flex-1 items-center justify-center px-4 pb-6 pt-3">
         <div className="w-full max-w-5xl rounded-3xl border border-border/60 bg-card/45 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6">
+          {session.data && <></>}
           <div className="grid gap-4 lg:grid-cols-[0.95fr_1.45fr]">
             <section className="rounded-2xl border border-border/55 bg-background/55 p-4 md:p-5">
               <div className="mb-4 flex items-center justify-between">

@@ -62,6 +62,11 @@ export interface ExtendedUser {
   isPro?: boolean | null;
   licenseKey?: string | null;
   cancelAtPeriodEnd?: boolean | null;
+  termsAndPrivacyAccepted: {
+    type: "boolean";
+    required: false;
+    defaultValue: false;
+  };
 }
 
 /**

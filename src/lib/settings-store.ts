@@ -43,6 +43,7 @@ function pickSettings(state: SettingsStoreState): AppSettings {
     multiConnectionsEnabled: state.multiConnectionsEnabled,
     experimentalTerminal: state.experimentalTerminal,
     experimentalPlugins: state.experimentalPlugins,
+    experimentalOpencode: state.experimentalOpencode,
     debugMode: state.debugMode,
     customFontFamily: state.customFontFamily,
     uiFontScale: state.uiFontScale,

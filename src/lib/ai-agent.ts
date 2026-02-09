@@ -48,6 +48,7 @@ export function getModelProvider(modelId: ModelId): AIProviderType {
   if (modelId.startsWith("openrouter/")) return "openrouter";
   if (modelId.startsWith("vercel/")) return "vercel";
   if (modelId.startsWith("copilot/")) return "copilot";
+  if (modelId.startsWith("opencode/")) return "opencode";
   return "openai";
 }
 
@@ -238,6 +239,13 @@ export class AIAgent {
     const history = this.messageHistory.map(messageToAgentMessage);
     const eventName = `ai-stream-${sessionId}`;
 
+    console.info(
+      `[AIAgent] stream start [session=${sessionId}] model=${this.model} conn=${this.connectionId} db=${this.dbType}`,
+    );
+    console.debug(
+      `[AIAgent] stream message preview [session=${sessionId}]: ${userMessage.slice(0, 100)}`,
+    );
+
     // Stream state
     const chunkQueue: string[] = [];
     const pendingToolCalls = new Map<string, ToolCall>();
@@ -245,20 +253,28 @@ export class AIAgent {
     let finalContent = "";
     let error: string | null = null;
     let isDone = false;
+    let eventCount = 0;
+    let contentChunkCount = 0;
 
     // Listen for backend events
     this.unlistenFn = await listen<AgentEventType>(eventName, (event) => {
       if (this.isCancelled) return;
 
       const { type, data } = event.payload;
+      eventCount += 1;
+      console.debug(`[AIAgent] stream event [session=${sessionId}] #${eventCount}: ${type}`);
 
       switch (type) {
         case "Content":
+          contentChunkCount += 1;
           chunkQueue.push(data);
           this.notifyStream();
           break;
 
         case "ToolCallStart":
+          console.info(
+            `[AIAgent] tool start [session=${sessionId}] id=${data.id} name=${data.name}`,
+          );
           pendingToolCalls.set(data.id, { id: data.id, name: data.name, arguments: "" });
           onToolCall?.({
             id: data.id,
@@ -276,6 +292,9 @@ export class AIAgent {
         case "ToolResult":
           const resultTc = pendingToolCalls.get(data.id);
           if (resultTc) {
+            console.info(
+              `[AIAgent] tool result [session=${sessionId}] id=${data.id} name=${data.name}`,
+            );
             resultTc.result = data.result;
             completedToolCalls.push(resultTc);
             pendingToolCalls.delete(data.id);
@@ -291,12 +310,16 @@ export class AIAgent {
         case "Done":
           finalContent = data.content;
           isDone = true;
+          console.info(
+            `[AIAgent] stream done [session=${sessionId}] events=${eventCount} chunks=${contentChunkCount} tools=${completedToolCalls.length} chars=${finalContent.length}`,
+          );
           this.notifyStream();
           break;
 
         case "Error":
           error = data;
           isDone = true;
+          console.error(`[AIAgent] stream error [session=${sessionId}]:`, data);
           this.notifyStream();
           break;
       }
@@ -337,6 +360,11 @@ export class AIAgent {
       this.addToHistory("user", userMessage);
       this.addToHistory("assistant", finalContent, completedToolCalls);
     } finally {
+      if (this.isCancelled) {
+        console.info(
+          `[AIAgent] stream cancelled [session=${sessionId}] events=${eventCount} chunks=${contentChunkCount}`,
+        );
+      }
       this.cleanup();
     }
   }

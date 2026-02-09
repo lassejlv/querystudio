@@ -18,6 +18,7 @@ import {
   ClipboardPaste,
   Loader2,
   Settings,
+  RefreshCcwDotIcon,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -46,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { openSettingsWindow } from "@/lib/settings-window";
 import { useNavigate } from "@tanstack/react-router";
+import { relaunch } from "@tauri-apps/plugin-process";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -442,6 +444,13 @@ export function CommandPalette({
                 }}
               >
                 <Settings /> Settings
+              </CommandItem>
+              <CommandItem
+                onSelect={() => {
+                  void relaunch();
+                }}
+              >
+                Reload Workspace
               </CommandItem>
               <CommandItem disabled className={cn(itemClassName, "opacity-70")}>
                 <Info className={iconClassName} />
