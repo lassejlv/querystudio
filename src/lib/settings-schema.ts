@@ -16,6 +16,7 @@ export interface AppSettings {
   multiConnectionsEnabled: boolean;
   experimentalTerminal: boolean;
   experimentalPlugins: boolean;
+  experimentalOpencode: boolean;
   debugMode: boolean;
   customFontFamily: string;
   uiFontScale: UIFontScale;
@@ -34,6 +35,7 @@ export const defaultAppSettings: AppSettings = {
   multiConnectionsEnabled: true,
   experimentalTerminal: false,
   experimentalPlugins: false,
+  experimentalOpencode: false,
   debugMode: false,
   customFontFamily: "",
   uiFontScale: "default",

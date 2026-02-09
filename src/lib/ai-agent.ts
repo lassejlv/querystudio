@@ -48,6 +48,7 @@ export function getModelProvider(modelId: ModelId): AIProviderType {
   if (modelId.startsWith("openrouter/")) return "openrouter";
   if (modelId.startsWith("vercel/")) return "vercel";
   if (modelId.startsWith("copilot/")) return "copilot";
+  if (modelId.startsWith("opencode/")) return "opencode";
   return "openai";
 }
 

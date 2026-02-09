@@ -37,6 +37,7 @@ const PROVIDER_LOGO_MAP: Record<string, string> = {
   "x-ai": "x",
   xai: "x",
   nvidia: "nvidia",
+  opencode: "opencode",
 };
 
 // Cache for fetched SVG content

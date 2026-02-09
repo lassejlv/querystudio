@@ -111,6 +111,9 @@ export const api = {
 
   aiFetchCopilotModels: () => invoke<AIModelInfo[]>("ai_fetch_copilot_models"),
 
+  aiFetchOpenCodeModels: (baseUrl: string) =>
+    invoke<AIModelInfo[]>("ai_fetch_opencode_models", { baseUrl }),
+
   // User status API (synced from auth session)
   setUserProStatus: (isPro: boolean) => invoke<void>("set_user_pro_status", { isPro }),
 

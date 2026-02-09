@@ -191,6 +191,8 @@ interface AIQueryState {
   setExperimentalTerminal: (enabled: boolean) => void;
   experimentalPlugins: boolean;
   setExperimentalPlugins: (enabled: boolean) => void;
+  experimentalOpencode: boolean;
+  setExperimentalOpencode: (enabled: boolean) => void;
 
   // Debug settings (persisted)
   debugMode: boolean;
@@ -304,6 +306,12 @@ export const useAIQueryStore = create<AIQueryState>()((set, get) => ({
   setExperimentalPlugins: (enabled: boolean) => {
     set({ experimentalPlugins: enabled });
     void useSettingsStore.getState().updateSettings({ experimentalPlugins: enabled });
+  },
+
+  experimentalOpencode: useSettingsStore.getState().experimentalOpencode,
+  setExperimentalOpencode: (enabled: boolean) => {
+    set({ experimentalOpencode: enabled });
+    void useSettingsStore.getState().updateSettings({ experimentalOpencode: enabled });
   },
 
   debugMode: useSettingsStore.getState().debugMode,

@@ -77,6 +77,7 @@ const GOOGLE_API_KEY_STORAGE_KEY = "querystudio_google_api_key";
 const OPENROUTER_API_KEY_STORAGE_KEY = "querystudio_openrouter_api_key";
 const VERCEL_API_KEY_STORAGE_KEY = "querystudio_vercel_api_key";
 const COPILOT_ENABLED_STORAGE_KEY = "querystudio_copilot_enabled";
+const OPENCODE_URL_STORAGE_KEY = "querystudio_opencode_url";
 const SELECTED_MODEL_KEY = "querystudio_selected_model";
 
 type ProviderKeys = {
@@ -86,6 +87,7 @@ type ProviderKeys = {
   openrouter: string;
   vercel: string;
   copilot: string;
+  opencode: string;
 };
 
 function getProviderForModel(model: ModelId, allModels: AIModelInfo[]): string {
@@ -99,6 +101,7 @@ function getApiKeyForModel(model: ModelId, allModels: AIModelInfo[], keys: Provi
   if (provider === "openrouter") return keys.openrouter;
   if (provider === "vercel") return keys.vercel;
   if (provider === "copilot") return keys.copilot;
+  if (provider === "opencode") return keys.opencode;
   return keys.openai;
 }
 
@@ -774,6 +777,7 @@ export const AIChat = memo(function AIChat() {
   const connection = useConnectionStore((s) => s.getActiveConnection());
   const selectedTable = useConnectionStore((s) => s.selectedTable);
   const selectedRowsContext = useAIQueryStore((s) => s.selectedRowsContext);
+  const experimentalOpencode = useAIQueryStore((s) => s.experimentalOpencode);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -797,6 +801,9 @@ export const AIChat = memo(function AIChat() {
   const [copilotEnabled, setCopilotEnabled] = useState(
     () => localStorage.getItem(COPILOT_ENABLED_STORAGE_KEY) === "true",
   );
+  const [opencodeUrl, setOpencodeUrl] = useState(
+    () => localStorage.getItem(OPENCODE_URL_STORAGE_KEY) || "",
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [tempOpenaiKey, setTempOpenaiKey] = useState("");
   const [tempAnthropicKey, setTempAnthropicKey] = useState("");
@@ -804,6 +811,7 @@ export const AIChat = memo(function AIChat() {
   const [tempOpenrouterKey, setTempOpenrouterKey] = useState("");
   const [tempVercelKey, setTempVercelKey] = useState("");
   const [tempCopilotEnabled, setTempCopilotEnabled] = useState(false);
+  const [tempOpencodeUrl, setTempOpencodeUrl] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => {
     return localStorage.getItem(SELECTED_MODEL_KEY) || "gpt-5";
   });
@@ -814,6 +822,7 @@ export const AIChat = memo(function AIChat() {
   const [vercelModels, setVercelModels] = useState<AIModelInfo[]>([]);
   const [copilotModels, setCopilotModels] = useState<AIModelInfo[]>([]);
   const [copilotModelsLoading, setCopilotModelsLoading] = useState(false);
+  const [opencodeModels, setOpencodeModels] = useState<AIModelInfo[]>([]);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
 
   // Fetch OpenAI models when API key changes
@@ -916,6 +925,26 @@ export const AIChat = memo(function AIChat() {
     };
   }, [vercelApiKey]);
 
+  // Fetch OpenCode models when URL changes (only if experimental feature is enabled)
+  useEffect(() => {
+    if (!experimentalOpencode || !opencodeUrl.trim()) {
+      setOpencodeModels([]);
+      return;
+    }
+    let cancelled = false;
+    api.aiFetchOpenCodeModels(opencodeUrl).then(
+      (models) => {
+        if (!cancelled) setOpencodeModels(models);
+      },
+      () => {
+        if (!cancelled) setOpencodeModels([]);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [opencodeUrl, experimentalOpencode]);
+
   const fetchCopilotModels = useCallback(async () => {
     if (!copilotEnabled) {
       setCopilotModels([]);
@@ -946,6 +975,7 @@ export const AIChat = memo(function AIChat() {
       ...openrouterModels,
       ...vercelModels,
       ...copilotModels,
+      ...(experimentalOpencode ? opencodeModels : []),
     ];
 
     const seen = new Set<string>();
@@ -956,7 +986,16 @@ export const AIChat = memo(function AIChat() {
       seen.add(model.id);
       return true;
     });
-  }, [openaiModels, geminiModels, anthropicModels, openrouterModels, vercelModels, copilotModels]);
+  }, [
+    openaiModels,
+    geminiModels,
+    anthropicModels,
+    openrouterModels,
+    vercelModels,
+    copilotModels,
+    opencodeModels,
+    experimentalOpencode,
+  ]);
 
   const selectedModelInfo = useMemo(
     () => allModels.find((m) => m.id === selectedModel),
@@ -975,8 +1014,17 @@ export const AIChat = memo(function AIChat() {
       openrouter: openrouterApiKey,
       vercel: vercelApiKey,
       copilot: copilotEnabled ? "enabled" : "",
+      opencode: opencodeUrl,
     }),
-    [openaiApiKey, anthropicApiKey, googleApiKey, openrouterApiKey, vercelApiKey, copilotEnabled],
+    [
+      openaiApiKey,
+      anthropicApiKey,
+      googleApiKey,
+      openrouterApiKey,
+      vercelApiKey,
+      copilotEnabled,
+      opencodeUrl,
+    ],
   );
 
   const agentRef = useRef<AIAgent | null>(null);
@@ -1160,12 +1208,14 @@ export const AIChat = memo(function AIChat() {
     setOpenrouterApiKey(tempOpenrouterKey);
     setVercelApiKey(tempVercelKey);
     setCopilotEnabled(tempCopilotEnabled);
+    setOpencodeUrl(tempOpencodeUrl);
     localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, tempOpenaiKey);
     localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, tempAnthropicKey);
     localStorage.setItem(GOOGLE_API_KEY_STORAGE_KEY, tempGoogleKey);
     localStorage.setItem(OPENROUTER_API_KEY_STORAGE_KEY, tempOpenrouterKey);
     localStorage.setItem(VERCEL_API_KEY_STORAGE_KEY, tempVercelKey);
     localStorage.setItem(COPILOT_ENABLED_STORAGE_KEY, tempCopilotEnabled ? "true" : "false");
+    localStorage.setItem(OPENCODE_URL_STORAGE_KEY, tempOpencodeUrl);
     setShowSettings(false);
   };
 
@@ -1607,7 +1657,8 @@ export const AIChat = memo(function AIChat() {
     apiKeys.google.trim() ||
     apiKeys.openrouter.trim() ||
     apiKeys.vercel.trim() ||
-    apiKeys.copilot.trim()
+    apiKeys.copilot.trim() ||
+    (experimentalOpencode && apiKeys.opencode.trim())
   );
 
   if (!hasAnyApiKey) {
@@ -1618,8 +1669,9 @@ export const AIChat = memo(function AIChat() {
             <p className="text-lg font-medium text-foreground">API Key Required</p>
             <p className="text-sm text-muted-foreground">
               To use AI features, you need to provide at least one API key (OpenAI, Anthropic,
-              Google, OpenRouter, Vercel AI Gateway) or enable GitHub Copilot CLI. Your keys are
-              stored locally.
+              Google, OpenRouter, Vercel AI Gateway)
+              {experimentalOpencode ? ", connect to an OpenCode server," : ""} or enable GitHub
+              Copilot CLI. Your keys are stored locally.
             </p>
           </div>
           <Button
@@ -1630,6 +1682,7 @@ export const AIChat = memo(function AIChat() {
               setTempOpenrouterKey(openrouterApiKey);
               setTempVercelKey(vercelApiKey);
               setTempCopilotEnabled(copilotEnabled);
+              setTempOpencodeUrl(opencodeUrl);
               setShowSettings(true);
             }}
           >
@@ -1643,7 +1696,8 @@ export const AIChat = memo(function AIChat() {
                 <DialogTitle>API Keys</DialogTitle>
                 <DialogDescription>
                   Enter your API keys to enable Querybuddy. You can use OpenAI, Anthropic, Google,
-                  OpenRouter, Vercel AI Gateway, or GitHub Copilot CLI.
+                  OpenRouter, Vercel AI Gateway{experimentalOpencode ? ", OpenCode," : ""} or GitHub
+                  Copilot CLI.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -1719,6 +1773,22 @@ export const AIChat = memo(function AIChat() {
                     No API key needed. Install Copilot CLI and run `copilot login`.
                   </p>
                 </div>
+                {experimentalOpencode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="opencodeUrl">OpenCode Server URL (Experimental)</Label>
+                    <Input
+                      id="opencodeUrl"
+                      type="text"
+                      placeholder="http://127.0.0.1:4096"
+                      value={tempOpencodeUrl}
+                      onChange={(e) => setTempOpencodeUrl(e.target.value)}
+                    />
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                      Experimental: OpenCode uses its own tools — QueryStudio database tools are not
+                      available.
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -1732,7 +1802,8 @@ export const AIChat = memo(function AIChat() {
                     !tempGoogleKey.trim() &&
                     !tempOpenrouterKey.trim() &&
                     !tempVercelKey.trim() &&
-                    !tempCopilotEnabled
+                    !tempCopilotEnabled &&
+                    !tempOpencodeUrl.trim()
                   }
                 >
                   Save
@@ -1846,6 +1917,7 @@ export const AIChat = memo(function AIChat() {
                 setTempOpenrouterKey(openrouterApiKey);
                 setTempVercelKey(vercelApiKey);
                 setTempCopilotEnabled(copilotEnabled);
+                setTempOpencodeUrl(opencodeUrl);
                 setShowSettings(true);
               }}
             >
@@ -2114,7 +2186,8 @@ export const AIChat = memo(function AIChat() {
           <DialogHeader>
             <DialogTitle>AI Settings</DialogTitle>
             <DialogDescription>
-              Configure your API keys or enable GitHub Copilot CLI for Querybuddy.
+              Configure your API keys{experimentalOpencode ? ", connect to OpenCode," : ""} or
+              enable GitHub Copilot CLI for Querybuddy.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -2188,6 +2261,22 @@ export const AIChat = memo(function AIChat() {
                 No API key needed. Install Copilot CLI and run `copilot auth login`.
               </p>
             </div>
+            {experimentalOpencode && (
+              <div className="space-y-2">
+                <Label htmlFor="opencodeUrl2">OpenCode Server URL (Experimental)</Label>
+                <Input
+                  id="opencodeUrl2"
+                  type="text"
+                  placeholder="http://127.0.0.1:4096"
+                  value={tempOpencodeUrl}
+                  onChange={(e) => setTempOpencodeUrl(e.target.value)}
+                />
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                  Experimental: OpenCode uses its own tools — QueryStudio database tools are not
+                  available.
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowSettings(false)}>
@@ -2201,7 +2290,8 @@ export const AIChat = memo(function AIChat() {
                 !tempGoogleKey.trim() &&
                 !tempOpenrouterKey.trim() &&
                 !tempVercelKey.trim() &&
-                !tempCopilotEnabled
+                !tempCopilotEnabled &&
+                !tempOpencodeUrl.trim()
               }
             >
               Save

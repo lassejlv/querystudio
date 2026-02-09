@@ -68,6 +68,7 @@ export type AIProviderType =
   | "openrouter"
   | "vercel"
   | "copilot"
+  | "opencode"
   | "acp";
 
 export type AIModelId = string;
