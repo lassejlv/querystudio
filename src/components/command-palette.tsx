@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   ClipboardPaste,
   Loader2,
+  Settings,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -43,6 +44,8 @@ import { useAuthDeepLink } from "@/hooks/use-auth-deep-link";
 import { getVersion } from "@tauri-apps/api/app";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { openSettingsWindow } from "@/lib/settings-window";
+import { useNavigate } from "@tanstack/react-router";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -84,6 +87,7 @@ export function CommandPalette({
     enableSessionSync: false,
   });
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+  const navigate = useNavigate();
 
   const handlePasteAuthUrl = useCallback(async () => {
     try {
@@ -431,6 +435,13 @@ export function CommandPalette({
                   <ClipboardPaste className={iconClassName} />
                 )}
                 <span>{isProcessingAuth ? "Processing..." : "Paste Auth URL"}</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => {
+                  void openSettingsWindow({ fallback: () => navigate({ to: "/settings" }) });
+                }}
+              >
+                <Settings /> Settings
               </CommandItem>
               <CommandItem disabled className={cn(itemClassName, "opacity-70")}>
                 <Info className={iconClassName} />
