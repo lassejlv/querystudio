@@ -22,7 +22,7 @@ const Spinner: React.FC<SpinnerProps> = ({
       fill="none"
       width={sizeValue}
       height={sizeValue}
-      className={`animate-spin ${className}`}
+      className={`animate-spin text-white ${className}`}
       style={style}
     >
       <path

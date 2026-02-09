@@ -6,6 +6,7 @@ import { getLastConnectionId, useAIQueryStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { SavedConnection } from "@/lib/types";
 import { DatabaseIcon } from "./sidebar";
+import { Spinner } from "./ui/spinner";
 
 interface WelcomeScreenProps {
   onNewConnection: () => void;
@@ -116,34 +117,17 @@ export function WelcomeScreen({
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {[
-                  { label: "Postgres", count: connectionTypeCounts.postgres, key: "postgres" },
-                  { label: "Redis", count: connectionTypeCounts.redis, key: "redis" },
-                  { label: "MySQL", count: connectionTypeCounts.mysql, key: "mysql" },
-                  { label: "SQLite", count: connectionTypeCounts.sqlite, key: "sqlite" },
-                  { label: "MongoDB", count: connectionTypeCounts.mongodb, key: "mongodb" },
-                ]
-                  .filter((item) => item.count > 0)
-                  .map((item) => (
-                    <span
-                      key={item.key}
-                      className="rounded-full border border-border/55 bg-background/55 px-2 py-1 text-[11px] text-muted-foreground"
-                    >
-                      {item.label} {item.count}
-                    </span>
-                  ))}
-              </div>
-
               <div className="mt-5 space-y-2">
                 <Button
                   onClick={onNewConnection}
                   className="h-10 w-full rounded-xl"
                   disabled={!canSave}
+                  variant="secondary"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   New Connection
                 </Button>
+
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex items-center rounded-md border border-border/60 bg-background/70 px-2 py-1 font-mono text-[11px]">
                     <Command className="mr-1 h-3 w-3" />K
@@ -163,11 +147,11 @@ export function WelcomeScreen({
 
               {isLoading ? (
                 <div className="flex h-56 items-center justify-center text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Spinner className="mr-2 h-4 w-4 animate-spin" />
                   Loading connections...
                 </div>
               ) : savedConnections && savedConnections.length > 0 ? (
-                <div className="max-h-[380px] space-y-1.5 overflow-y-auto pr-1">
+                <div className="max-h-95 space-y-1.5 overflow-y-auto pr-1">
                   {savedConnections.map((connection) => (
                     <div
                       key={connection.id}

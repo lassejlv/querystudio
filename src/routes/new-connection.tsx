@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
+import { CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { PasswordPromptDialog } from "@/components/password-prompt-dialog";
 import { useGlobalShortcuts } from "@/lib/use-global-shortcuts";
 import { openSettingsWindow } from "@/lib/settings-window";
+import { Spinner } from "@/components/ui/spinner";
 
 export const Route = createFileRoute("/new-connection")({
   component: NewConnectionPage,
@@ -578,7 +579,7 @@ function NewConnectionPage() {
                   className="rounded-xl"
                 >
                   {testConnection.isPending ? (
-                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    <Spinner />
                   ) : tested ? (
                     <CheckCircle2 className="mr-1.5 h-4 w-4 text-green-500" />
                   ) : null}
@@ -589,7 +590,7 @@ function NewConnectionPage() {
                   disabled={connect.isPending || !canSave}
                   className="rounded-xl"
                 >
-                  {connect.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                  {connect.isPending && <Spinner />}
                   Connect
                 </Button>
               </div>
