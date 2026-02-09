@@ -727,8 +727,8 @@ export const AISettingsModal = memo(function AISettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[900px] gap-0 overflow-hidden p-0">
-        <div className="flex h-[600px]">
+      <DialogContent className="sm:max-w-225 gap-0 overflow-hidden p-0">
+        <div className="flex h-150">
           {/* Sidebar */}
           <div className="flex w-80 shrink-0 flex-col border-r border-border/50 bg-muted/20">
             <div className="border-b border-border/50 px-4 py-4">

@@ -304,16 +304,21 @@ export function useConnect() {
         .getState()
         .activeConnections.filter((connection) => connection.id !== id);
 
-      if (!isPro && multiConnectionsEnabled) {
+      // Free tier: only one active connection per database type (dialect)
+      // This check is always enforced, regardless of multiConnectionsEnabled
+      if (!isPro) {
         const hasExistingDialect = existingConnections.some(
           (connection) => connection.db_type === db_type,
         );
         if (hasExistingDialect) {
           const dialectLabel = getDatabaseTypeLabel(db_type);
-          throw new Error(`Free tier allows only one active ${dialectLabel} connection at a time.`);
+          throw new Error(
+            `Free tier allows only one active ${dialectLabel} connection at a time. Disconnect your existing ${dialectLabel} connection or upgrade to Pro.`,
+          );
         }
       }
 
+      // Free tier: only one saved connection per database type
       if (!isPro && save) {
         const savedConnections = await api.getSavedConnections();
         const hasSavedDialect = savedConnections.connections.some(
@@ -322,10 +327,13 @@ export function useConnect() {
 
         if (hasSavedDialect) {
           const dialectLabel = getDatabaseTypeLabel(db_type);
-          throw new Error(`Free tier allows only one saved ${dialectLabel} connection.`);
+          throw new Error(
+            `Free tier allows only one saved ${dialectLabel} connection. Delete your existing ${dialectLabel} connection or upgrade to Pro.`,
+          );
         }
       }
 
+      // If multi-connections is disabled, disconnect all other connections first
       if (!multiConnectionsEnabled) {
         for (const connection of existingConnections) {
           try {
@@ -445,23 +453,53 @@ export function useSavedConnectionCount() {
   });
 }
 
-export function useCanConnect() {
+export function useCanConnect(excludeConnectionId?: string, targetDbType?: DatabaseType) {
   const { data: session } = authClient.useSession();
   const { data: connectionCount } = useConnectionCount();
+  const activeConnections = useConnectionStore((s) => s.activeConnections);
   // Cast user to ExtendedUser to access custom fields from the server
   const user = session?.user as ExtendedUser | undefined;
 
   const isPro = user?.isPro ?? false;
   const maxConnections = isPro ? Infinity : MAX_FREE_CONNECTIONS;
+
+  // If excludeConnectionId is provided, check if it's already active
+  // If it is, we're reconnecting and shouldn't count it against the limit
+  const isReconnecting = excludeConnectionId
+    ? activeConnections.some((c) => c.id === excludeConnectionId)
+    : false;
+
   const currentConnections = connectionCount ?? 0;
-  const canConnect = currentConnections < maxConnections;
+  const effectiveConnections = isReconnecting ? currentConnections - 1 : currentConnections;
+
+  // Check total connection limit
+  const withinTotalLimit = effectiveConnections < maxConnections;
+
+  // Check dialect limit for free tier (only 1 active connection per database type)
+  let withinDialectLimit = true;
+  let dialectLimitMessage: string | undefined;
+
+  if (!isPro && targetDbType) {
+    const existingDialectConnection = activeConnections.find(
+      (c) => c.db_type === targetDbType && c.id !== excludeConnectionId,
+    );
+    if (existingDialectConnection) {
+      withinDialectLimit = false;
+      const dialectLabel = getDatabaseTypeLabel(targetDbType);
+      dialectLimitMessage = `Free tier allows only one active ${dialectLabel} connection at a time.`;
+    }
+  }
+
+  const canConnect = withinTotalLimit && withinDialectLimit;
 
   return {
     canConnect,
-    currentConnections,
+    currentConnections: effectiveConnections,
     maxConnections,
     isPro,
-    remainingConnections: Math.max(0, maxConnections - currentConnections),
+    remainingConnections: Math.max(0, maxConnections - effectiveConnections),
+    withinDialectLimit,
+    dialectLimitMessage,
   };
 }
 
