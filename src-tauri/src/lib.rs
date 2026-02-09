@@ -297,6 +297,30 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        // Single instance plugin - ensures deep links on Windows go to existing instance
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            info!("Single instance callback triggered with args: {:?}", argv);
+
+            // Focus the main window when a second instance tries to start
+            if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.set_focus();
+                let _ = main_window.unminimize();
+            }
+
+            // On Windows, deep link URLs come through argv when using single-instance
+            // Check for any querystudio:// URLs in the arguments
+            for arg in argv.iter() {
+                if arg.starts_with("querystudio://") {
+                    info!("Deep link URL from single instance: {}", arg);
+                    // Emit the deep link URL to the frontend via the standard Tauri event system
+                    // The frontend's onOpenUrl listener expects the "deep-link://new-url" event
+                    if let Err(e) = app.emit("deep-link://new-url", vec![arg.clone()]) {
+                        error!("Failed to emit deep link event: {}", e);
+                    }
+                    break;
+                }
+            }
+        }))
         .manage(db_state)
         .manage(terminal_state)
         .manage(debug_state)

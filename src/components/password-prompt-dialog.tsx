@@ -32,7 +32,11 @@ export function PasswordPromptDialog({
   const navigate = useNavigate();
   const connect = useConnect();
   const connectingRef = useRef(false);
-  const { canConnect, maxConnections } = useCanConnect();
+  // Pass connection ID and db_type to check both total and dialect limits
+  const { canConnect, maxConnections, dialectLimitMessage } = useCanConnect(
+    connection?.id,
+    connection?.db_type,
+  );
   const multiConnectionsEnabled = useAIQueryStore((s) => s.multiConnectionsEnabled);
   const canAttemptConnection = canConnect || !multiConnectionsEnabled;
 
@@ -44,7 +48,8 @@ export function PasswordPromptDialog({
     if (!isConnectionString && !isSqlite) return;
     if (connectingRef.current) return;
     if (!canAttemptConnection) {
-      toast.error(`Connection limit reached. Free tier allows ${maxConnections} connections.`);
+      const errorMsg = dialectLimitMessage || `Connection limit reached. Free tier allows ${maxConnections} connections.`;
+      toast.error(errorMsg);
       onOpenChange(false);
       return;
     }
@@ -89,7 +94,8 @@ export function PasswordPromptDialog({
     if ("connection_string" in connection.config) return;
 
     if (!canAttemptConnection) {
-      toast.error(`Connection limit reached. Free tier allows ${maxConnections} connections.`);
+      const errorMsg = dialectLimitMessage || `Connection limit reached. Free tier allows ${maxConnections} connections.`;
+      toast.error(errorMsg);
       return;
     }
 
@@ -153,8 +159,8 @@ export function PasswordPromptDialog({
             <div className="flex-1 space-y-2">
               <p className="text-sm font-medium text-amber-500">Connection limit reached</p>
               <p className="text-xs text-muted-foreground">
-                Free tier allows {maxConnections} simultaneous connections. Disconnect an existing
-                connection or upgrade to Pro.
+                {dialectLimitMessage ||
+                  `Free tier allows ${maxConnections} simultaneous connections. Disconnect an existing connection or upgrade to Pro.`}
               </p>
               <Button
                 variant="outline"

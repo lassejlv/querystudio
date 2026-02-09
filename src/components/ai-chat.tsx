@@ -22,17 +22,8 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -49,8 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConnectionStore, useAIQueryStore, useLastChatStore } from "@/lib/store";
 import {
@@ -69,128 +59,26 @@ import { api } from "@/lib/api";
 import type { AIModelInfo, MessageUsage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ProviderIcon, preloadProviderIcons } from "@/components/ui/provider-icon";
-import { Badge } from "./ui/badge";
 
-const OPENAI_API_KEY_STORAGE_KEY = "querystudio_openai_api_key";
-const ANTHROPIC_API_KEY_STORAGE_KEY = "querystudio_anthropic_api_key";
-const GOOGLE_API_KEY_STORAGE_KEY = "querystudio_google_api_key";
-const OPENROUTER_API_KEY_STORAGE_KEY = "querystudio_openrouter_api_key";
-const VERCEL_API_KEY_STORAGE_KEY = "querystudio_vercel_api_key";
-const COPILOT_ENABLED_STORAGE_KEY = "querystudio_copilot_enabled";
-const OPENCODE_URL_STORAGE_KEY = "querystudio_opencode_url";
-const SELECTED_MODEL_KEY = "querystudio_selected_model";
-
-type ProviderKeys = {
-  openai: string;
-  anthropic: string;
-  google: string;
-  openrouter: string;
-  vercel: string;
-  copilot: string;
-  opencode: string;
-};
-
-function getProviderForModel(model: ModelId, allModels: AIModelInfo[]): string {
-  return allModels.find((m) => m.id === model)?.provider ?? "openai";
-}
-
-function getApiKeyForModel(model: ModelId, allModels: AIModelInfo[], keys: ProviderKeys): string {
-  const provider = getProviderForModel(model, allModels);
-  if (provider === "anthropic") return keys.anthropic;
-  if (provider === "google") return keys.google;
-  if (provider === "openrouter") return keys.openrouter;
-  if (provider === "vercel") return keys.vercel;
-  if (provider === "copilot") return keys.copilot;
-  if (provider === "opencode") return keys.opencode;
-  return keys.openai;
-}
-
-function isModelAvailable(model: ModelId, allModels: AIModelInfo[], keys: ProviderKeys): boolean {
-  const key = getApiKeyForModel(model, allModels, keys);
-  return !!key.trim();
-}
-
-const DEFAULT_MODEL_MAX_CONTEXT_TOKENS = 128_000;
-
-function inferModelMaxContextTokens(modelId: string, provider?: string): number {
-  const id = modelId.toLowerCase();
-  const normalizedProvider = provider?.toLowerCase();
-
-  // OpenAI family
-  if (id === "gpt-5" || id === "gpt-5-mini") return 400_000;
-  if (
-    id.startsWith("gpt-4.1") ||
-    id.startsWith("gpt-4o") ||
-    id.startsWith("o1") ||
-    id.startsWith("o3") ||
-    id.startsWith("o4")
-  ) {
-    return 128_000;
-  }
-
-  // Anthropic family
-  if (id.includes("claude")) return 200_000;
-
-  // Gemini family
-  if (id.includes("gemini-2.5") || id.includes("gemini-3")) return 1_000_000;
-
-  // OpenRouter/Vercel/Copilot are mixed catalogs; keep a safe fallback.
-  if (
-    normalizedProvider === "openrouter" ||
-    normalizedProvider === "vercel" ||
-    normalizedProvider === "copilot"
-  ) {
-    if (id.includes("claude")) return 200_000;
-    if (id.includes("gemini")) return 1_000_000;
-    return DEFAULT_MODEL_MAX_CONTEXT_TOKENS;
-  }
-
-  // Provider-level defaults
-  if (normalizedProvider === "google") return 1_000_000;
-  if (normalizedProvider === "anthropic") return 200_000;
-  if (normalizedProvider === "openai") return 128_000;
-
-  return DEFAULT_MODEL_MAX_CONTEXT_TOKENS;
-}
-
-function estimateTextTokens(text: string): number {
-  if (!text) return 0;
-  // UTF-8 bytes / 4 gives a reasonable rough token estimate across providers.
-  const byteLength = new TextEncoder().encode(text).length;
-  return Math.max(1, Math.round(byteLength / 4));
-}
-
-function estimateToolCallsTokens(toolCalls?: ToolCall[]): number {
-  if (!toolCalls?.length) return 0;
-  let total = 0;
-  for (const tc of toolCalls) {
-    total += estimateTextTokens(tc.name);
-    total += estimateTextTokens(tc.arguments);
-    total += estimateTextTokens(tc.result ?? "");
-    total += 12; // structural overhead
-  }
-  return total;
-}
-
-function estimateMessageTokens(message: Pick<Message, "content" | "toolCalls">): number {
-  return estimateTextTokens(message.content) + estimateToolCallsTokens(message.toolCalls) + 8;
-}
-
-function estimateConversationTokens(messages: Message[]): number {
-  return messages.reduce((sum, message) => sum + estimateMessageTokens(message), 18);
-}
-
-function formatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(2)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}k`;
-  return String(tokens);
-}
-
-function getContextUsageColorClass(percent: number): string {
-  if (percent >= 90) return "text-red-500";
-  if (percent >= 75) return "text-amber-500";
-  return "text-emerald-500";
-}
+import { AISettingsModal, type AISettingsValues } from "./ai-settings-modal";
+import {
+  OPENAI_API_KEY_STORAGE_KEY,
+  ANTHROPIC_API_KEY_STORAGE_KEY,
+  GOOGLE_API_KEY_STORAGE_KEY,
+  OPENROUTER_API_KEY_STORAGE_KEY,
+  VERCEL_API_KEY_STORAGE_KEY,
+  COPILOT_ENABLED_STORAGE_KEY,
+  OPENCODE_URL_STORAGE_KEY,
+  SELECTED_MODEL_KEY,
+  getApiKeyForModel,
+  isModelAvailable,
+  inferModelMaxContextTokens,
+  estimateTextTokens,
+  estimateMessageTokens,
+  estimateConversationTokens,
+  formatTokenCount,
+  getContextUsageColorClass,
+} from "@/lib/model-config";
 
 // ============================================================================
 // Memoized Code Block Component
@@ -805,13 +693,6 @@ export const AIChat = memo(function AIChat() {
     () => localStorage.getItem(OPENCODE_URL_STORAGE_KEY) || "",
   );
   const [showSettings, setShowSettings] = useState(false);
-  const [tempOpenaiKey, setTempOpenaiKey] = useState("");
-  const [tempAnthropicKey, setTempAnthropicKey] = useState("");
-  const [tempGoogleKey, setTempGoogleKey] = useState("");
-  const [tempOpenrouterKey, setTempOpenrouterKey] = useState("");
-  const [tempVercelKey, setTempVercelKey] = useState("");
-  const [tempCopilotEnabled, setTempCopilotEnabled] = useState(false);
-  const [tempOpencodeUrl, setTempOpencodeUrl] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => {
     return localStorage.getItem(SELECTED_MODEL_KEY) || "gpt-5";
   });
@@ -1201,23 +1082,22 @@ export const AIChat = memo(function AIChat() {
   // Filter sessions for current connection
   const connectionSessions = sessions.filter((s) => s.connectionId === connection?.id);
 
-  const handleSaveApiKeys = () => {
-    setOpenaiApiKey(tempOpenaiKey);
-    setAnthropicApiKey(tempAnthropicKey);
-    setGoogleApiKey(tempGoogleKey);
-    setOpenrouterApiKey(tempOpenrouterKey);
-    setVercelApiKey(tempVercelKey);
-    setCopilotEnabled(tempCopilotEnabled);
-    setOpencodeUrl(tempOpencodeUrl);
-    localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, tempOpenaiKey);
-    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, tempAnthropicKey);
-    localStorage.setItem(GOOGLE_API_KEY_STORAGE_KEY, tempGoogleKey);
-    localStorage.setItem(OPENROUTER_API_KEY_STORAGE_KEY, tempOpenrouterKey);
-    localStorage.setItem(VERCEL_API_KEY_STORAGE_KEY, tempVercelKey);
-    localStorage.setItem(COPILOT_ENABLED_STORAGE_KEY, tempCopilotEnabled ? "true" : "false");
-    localStorage.setItem(OPENCODE_URL_STORAGE_KEY, tempOpencodeUrl);
-    setShowSettings(false);
-  };
+  const handleSaveApiKeys = useCallback((settings: AISettingsValues) => {
+    setOpenaiApiKey(settings.openaiApiKey);
+    setAnthropicApiKey(settings.anthropicApiKey);
+    setGoogleApiKey(settings.googleApiKey);
+    setOpenrouterApiKey(settings.openrouterApiKey);
+    setVercelApiKey(settings.vercelApiKey);
+    setCopilotEnabled(settings.copilotEnabled);
+    setOpencodeUrl(settings.opencodeUrl);
+    localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, settings.openaiApiKey);
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, settings.anthropicApiKey);
+    localStorage.setItem(GOOGLE_API_KEY_STORAGE_KEY, settings.googleApiKey);
+    localStorage.setItem(OPENROUTER_API_KEY_STORAGE_KEY, settings.openrouterApiKey);
+    localStorage.setItem(VERCEL_API_KEY_STORAGE_KEY, settings.vercelApiKey);
+    localStorage.setItem(COPILOT_ENABLED_STORAGE_KEY, settings.copilotEnabled ? "true" : "false");
+    localStorage.setItem(OPENCODE_URL_STORAGE_KEY, settings.opencodeUrl);
+  }, []);
 
   const handleNewChat = () => {
     if (!connection?.id) return;
@@ -1674,143 +1554,24 @@ export const AIChat = memo(function AIChat() {
               Copilot CLI. Your keys are stored locally.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setTempOpenaiKey(openaiApiKey);
-              setTempAnthropicKey(anthropicApiKey);
-              setTempGoogleKey(googleApiKey);
-              setTempOpenrouterKey(openrouterApiKey);
-              setTempVercelKey(vercelApiKey);
-              setTempCopilotEnabled(copilotEnabled);
-              setTempOpencodeUrl(opencodeUrl);
-              setShowSettings(true);
-            }}
-          >
+          <Button onClick={() => setShowSettings(true)}>
             <Settings className="mr-2 h-4 w-4" />
             Configure API Keys
           </Button>
 
-          <Dialog open={showSettings} onOpenChange={setShowSettings}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>API Keys</DialogTitle>
-                <DialogDescription>
-                  Enter your API keys to enable Querybuddy. You can use OpenAI, Anthropic, Google,
-                  OpenRouter, Vercel AI Gateway{experimentalOpencode ? ", OpenCode," : ""} or GitHub
-                  Copilot CLI.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="openaiKey">OpenAI API Key</Label>
-                  <Input
-                    id="openaiKey"
-                    type="password"
-                    placeholder="sk-..."
-                    value={tempOpenaiKey}
-                    onChange={(e) => setTempOpenaiKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">For GPT models</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="anthropicKey">Anthropic API Key</Label>
-                  <Input
-                    id="anthropicKey"
-                    type="password"
-                    placeholder="sk-ant-..."
-                    value={tempAnthropicKey}
-                    onChange={(e) => setTempAnthropicKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">For Claude models</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="googleKey">Google API Key</Label>
-                  <Input
-                    id="googleKey"
-                    type="password"
-                    placeholder="AIza..."
-                    value={tempGoogleKey}
-                    onChange={(e) => setTempGoogleKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">For Gemini models</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="openrouterKey">OpenRouter API Key</Label>
-                  <Input
-                    id="openrouterKey"
-                    type="password"
-                    placeholder="sk-or-..."
-                    value={tempOpenrouterKey}
-                    onChange={(e) => setTempOpenrouterKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    For OpenRouter models (Claude, DeepSeek, etc.)
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vercelKey">Vercel AI Gateway Key</Label>
-                  <Input
-                    id="vercelKey"
-                    type="password"
-                    placeholder="sk-..."
-                    value={tempVercelKey}
-                    onChange={(e) => setTempVercelKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">For Vercel AI Gateway models</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="copilotEnabled">
-                      GitHub Copilot CLI <Badge variant="outline">Experimental</Badge>
-                    </Label>
-                    <Switch
-                      id="copilotEnabled"
-                      checked={tempCopilotEnabled}
-                      onCheckedChange={setTempCopilotEnabled}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    No API key needed. Install Copilot CLI and run `copilot login`.
-                  </p>
-                </div>
-                {experimentalOpencode && (
-                  <div className="space-y-2">
-                    <Label htmlFor="opencodeUrl">OpenCode Server URL (Experimental)</Label>
-                    <Input
-                      id="opencodeUrl"
-                      type="text"
-                      placeholder="http://127.0.0.1:4096"
-                      value={tempOpencodeUrl}
-                      onChange={(e) => setTempOpencodeUrl(e.target.value)}
-                    />
-                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                      Experimental: OpenCode uses its own tools — QueryStudio database tools are not
-                      available.
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowSettings(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSaveApiKeys}
-                  disabled={
-                    !tempOpenaiKey.trim() &&
-                    !tempAnthropicKey.trim() &&
-                    !tempGoogleKey.trim() &&
-                    !tempOpenrouterKey.trim() &&
-                    !tempVercelKey.trim() &&
-                    !tempCopilotEnabled &&
-                    !tempOpencodeUrl.trim()
-                  }
-                >
-                  Save
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <AISettingsModal
+            open={showSettings}
+            onOpenChange={setShowSettings}
+            experimentalOpencode={experimentalOpencode}
+            openaiApiKey={openaiApiKey}
+            anthropicApiKey={anthropicApiKey}
+            googleApiKey={googleApiKey}
+            openrouterApiKey={openrouterApiKey}
+            vercelApiKey={vercelApiKey}
+            copilotEnabled={copilotEnabled}
+            opencodeUrl={opencodeUrl}
+            onSave={handleSaveApiKeys}
+          />
         </div>
       </div>
     );
@@ -1910,16 +1671,7 @@ export const AIChat = memo(function AIChat() {
               variant="ghost"
               size="icon"
               className="h-7 w-7 rounded-lg border border-transparent hover:border-border/60 hover:bg-muted/70"
-              onClick={() => {
-                setTempOpenaiKey(openaiApiKey);
-                setTempAnthropicKey(anthropicApiKey);
-                setTempGoogleKey(googleApiKey);
-                setTempOpenrouterKey(openrouterApiKey);
-                setTempVercelKey(vercelApiKey);
-                setTempCopilotEnabled(copilotEnabled);
-                setTempOpencodeUrl(opencodeUrl);
-                setShowSettings(true);
-              }}
+              onClick={() => setShowSettings(true)}
             >
               <Settings className="h-3.5 w-3.5" />
             </Button>
@@ -2180,125 +1932,20 @@ export const AIChat = memo(function AIChat() {
         </form>
       </div>
 
-      {/* Settings Dialog */}
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>AI Settings</DialogTitle>
-            <DialogDescription>
-              Configure your API keys{experimentalOpencode ? ", connect to OpenCode," : ""} or
-              enable GitHub Copilot CLI for Querybuddy.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="openaiKey2">OpenAI API Key</Label>
-              <Input
-                id="openaiKey2"
-                type="password"
-                placeholder="sk-..."
-                value={tempOpenaiKey}
-                onChange={(e) => setTempOpenaiKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">For GPT models</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="anthropicKey2">Anthropic API Key</Label>
-              <Input
-                id="anthropicKey2"
-                type="password"
-                placeholder="sk-ant-..."
-                value={tempAnthropicKey}
-                onChange={(e) => setTempAnthropicKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">For Claude models</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="googleKey2">Google API Key</Label>
-              <Input
-                id="googleKey2"
-                type="password"
-                placeholder="AIza..."
-                value={tempGoogleKey}
-                onChange={(e) => setTempGoogleKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">For Gemini models</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="openrouterKey2">OpenRouter API Key</Label>
-              <Input
-                id="openrouterKey2"
-                type="password"
-                placeholder="sk-or-..."
-                value={tempOpenrouterKey}
-                onChange={(e) => setTempOpenrouterKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                For OpenRouter models (Claude, DeepSeek, etc.)
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="vercelKey2">Vercel AI Gateway Key</Label>
-              <Input
-                id="vercelKey2"
-                type="password"
-                placeholder="sk-..."
-                value={tempVercelKey}
-                onChange={(e) => setTempVercelKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">For Vercel AI Gateway models</p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="copilotEnabled2">GitHub Copilot CLI</Label>
-                <Switch
-                  id="copilotEnabled2"
-                  checked={tempCopilotEnabled}
-                  onCheckedChange={setTempCopilotEnabled}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                No API key needed. Install Copilot CLI and run `copilot auth login`.
-              </p>
-            </div>
-            {experimentalOpencode && (
-              <div className="space-y-2">
-                <Label htmlFor="opencodeUrl2">OpenCode Server URL (Experimental)</Label>
-                <Input
-                  id="opencodeUrl2"
-                  type="text"
-                  placeholder="http://127.0.0.1:4096"
-                  value={tempOpencodeUrl}
-                  onChange={(e) => setTempOpencodeUrl(e.target.value)}
-                />
-                <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  Experimental: OpenCode uses its own tools — QueryStudio database tools are not
-                  available.
-                </p>
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowSettings(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveApiKeys}
-              disabled={
-                !tempOpenaiKey.trim() &&
-                !tempAnthropicKey.trim() &&
-                !tempGoogleKey.trim() &&
-                !tempOpenrouterKey.trim() &&
-                !tempVercelKey.trim() &&
-                !tempCopilotEnabled &&
-                !tempOpencodeUrl.trim()
-              }
-            >
-              Save
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Settings Modal */}
+      <AISettingsModal
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        experimentalOpencode={experimentalOpencode}
+        openaiApiKey={openaiApiKey}
+        anthropicApiKey={anthropicApiKey}
+        googleApiKey={googleApiKey}
+        openrouterApiKey={openrouterApiKey}
+        vercelApiKey={vercelApiKey}
+        copilotEnabled={copilotEnabled}
+        opencodeUrl={opencodeUrl}
+        onSave={handleSaveApiKeys}
+      />
     </div>
   );
 });
