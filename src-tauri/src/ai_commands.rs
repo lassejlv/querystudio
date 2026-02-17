@@ -182,3 +182,10 @@ pub async fn ai_fetch_copilot_models() -> Result<Vec<ModelInfo>, String> {
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn ai_fetch_opencode_models(base_url: String) -> Result<Vec<ModelInfo>, String> {
+    providers::opencode::fetch_models(&base_url)
+        .await
+        .map_err(|e| e.to_string())
+}

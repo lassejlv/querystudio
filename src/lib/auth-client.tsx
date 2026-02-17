@@ -29,12 +29,17 @@ async function tauriFetchWithOrigin(
 }
 
 /**
- * Custom fetch implementation that uses Tauri's HTTP plugin on macOS
- * and regular fetch elsewhere
+ * Custom fetch implementation that uses Tauri's HTTP plugin on desktop platforms
+ * to avoid CORS issues when communicating with the auth server.
+ * On macOS and Windows with tauri:// protocol, we use tauriFetch.
  */
 function customFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  if (isTauri() && platform() === "macos" && window.location.protocol === "tauri:") {
-    return tauriFetchWithOrigin(input, init);
+  if (isTauri() && window.location.protocol === "tauri:") {
+    const currentPlatform = platform();
+    // Use tauriFetch on macOS and Windows to avoid CORS issues
+    if (currentPlatform === "macos" || currentPlatform === "windows") {
+      return tauriFetchWithOrigin(input, init);
+    }
   }
   return fetch(input, init);
 }
@@ -62,6 +67,11 @@ export interface ExtendedUser {
   isPro?: boolean | null;
   licenseKey?: string | null;
   cancelAtPeriodEnd?: boolean | null;
+  termsAndPrivacyAccepted: {
+    type: "boolean";
+    required: false;
+    defaultValue: false;
+  };
 }
 
 /**

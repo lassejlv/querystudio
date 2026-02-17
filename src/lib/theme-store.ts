@@ -96,31 +96,44 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       removeCustomTheme: (themeId: string) => {
-        const { activeTheme } = get();
-
-        // Don't allow removing built-in themes
-        if (BUILTIN_THEMES[themeId]) {
-          console.error(`Cannot remove built-in theme "${themeId}"`);
-          return;
-        }
-
-        // Switch to default theme if removing active theme
-        if (activeTheme === themeId) {
-          get().setActiveTheme(DEFAULT_THEME_ID);
-        }
+        const { refreshTheme } = get();
 
         set((state) => {
+          const customTheme = state.customThemes[themeId];
+
+          if (!customTheme) {
+            console.error(`Custom theme "${themeId}" not found`);
+            return state;
+          }
+
           const newThemes = { ...state.themes };
           const newCustomThemes = { ...state.customThemes };
 
-          delete newThemes[themeId];
           delete newCustomThemes[themeId];
+
+          if (BUILTIN_THEMES[themeId]) {
+            newThemes[themeId] = BUILTIN_THEMES[themeId];
+          } else {
+            delete newThemes[themeId];
+          }
+
+          let nextActiveTheme = state.activeTheme;
+          if (state.activeTheme === themeId) {
+            if (newThemes[DEFAULT_THEME_ID]) {
+              nextActiveTheme = DEFAULT_THEME_ID;
+            } else {
+              nextActiveTheme = Object.keys(newThemes)[0] || DEFAULT_THEME_ID;
+            }
+          }
 
           return {
             themes: newThemes,
             customThemes: newCustomThemes,
+            activeTheme: nextActiveTheme,
           };
         });
+
+        refreshTheme();
       },
 
       importTheme: (themeJson: string) => {

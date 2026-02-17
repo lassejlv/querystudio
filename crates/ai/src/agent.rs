@@ -416,7 +416,10 @@ impl Agent {
                 }
             }
             _ => ToolResult::Error(ToolError {
-                error: format!("Unknown tool: {}", tool_call.name),
+                error: format!(
+                    "Unknown tool: {}. Available tools: list_tables, get_table_columns, execute_select_query, get_table_sample. Use one of these names exactly.",
+                    tool_call.name
+                ),
             }),
         };
         println!(

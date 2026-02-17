@@ -5,6 +5,7 @@ use super::{
 use async_trait::async_trait;
 use copilot_sdk::{Client, CopilotError, SessionConfig, SessionEventData, Tool};
 use std::collections::HashSet;
+use std::env;
 use tokio::sync::mpsc;
 
 pub struct CopilotProvider {
@@ -17,6 +18,8 @@ impl CopilotProvider {
     }
 
     fn create_client() -> Result<Client, AIProviderError> {
+        ensure_copilot_path();
+
         Client::builder()
             .use_stdio(true)
             .build()
@@ -58,7 +61,7 @@ impl CopilotProvider {
 
             let mut events = session.subscribe();
             session
-                .send(build_prompt(&messages))
+                .send(build_prompt(&messages, tools))
                 .await
                 .map_err(map_copilot_error)?;
 
@@ -151,7 +154,40 @@ impl CopilotProvider {
     }
 }
 
-fn build_prompt(messages: &[ChatMessage]) -> String {
+fn ensure_copilot_path() {
+    #[cfg(target_os = "macos")]
+    {
+        let current_path = env::var("PATH").unwrap_or_default();
+        let path_contains = |p: &str| current_path.split(':').any(|entry| entry == p);
+
+        let mut path_entries: Vec<String> = [
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+        ]
+        .into_iter()
+        .filter(|path| !path_contains(path))
+        .map(str::to_string)
+        .collect();
+
+        if !current_path.is_empty() {
+            path_entries.push(current_path);
+        }
+
+        for path in ["/usr/bin", "/bin", "/usr/sbin", "/sbin"] {
+            if !path_entries.iter().any(|entry| entry == path) {
+                path_entries.push(path.to_string());
+            }
+        }
+
+        if !path_entries.is_empty() {
+            env::set_var("PATH", path_entries.join(":"));
+        }
+    }
+}
+
+fn build_prompt(messages: &[ChatMessage], tools: &[ToolDefinition]) -> String {
     let mut system_sections = Vec::new();
     let mut transcript_lines = Vec::new();
 
@@ -202,6 +238,19 @@ fn build_prompt(messages: &[ChatMessage]) -> String {
         prompt_sections.push(format!(
             "Conversation transcript:\n{}",
             transcript_lines.join("\n")
+        ));
+    }
+
+    if !tools.is_empty() {
+        let tool_lines = tools
+            .iter()
+            .map(|tool| format!("- {}: {}", tool.name, tool.description))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        prompt_sections.push(format!(
+            "Available tools (ONLY these exact names are valid):\n{}\n\nDo not invent or call any other tool names. If none of these tools fit, respond normally without tool calls.",
+            tool_lines
         ));
     }
 

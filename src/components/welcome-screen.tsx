@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Plus, Pencil, Trash2, Command, Database, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Command, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSavedConnections, useCanSaveConnection, useDeleteSavedConnection } from "@/lib/hooks";
 import { getLastConnectionId, useAIQueryStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { SavedConnection } from "@/lib/types";
 import { DatabaseIcon } from "./sidebar";
+import { Spinner } from "./ui/spinner";
+import { authClient } from "@/lib/auth-client";
 
 interface WelcomeScreenProps {
   onNewConnection: () => void;
@@ -23,6 +25,7 @@ export function WelcomeScreen({
   const { canSave, currentSaved, maxSaved, isPro } = useCanSaveConnection();
   const autoReconnect = useAIQueryStore((s) => s.autoReconnect);
   const deleteConnection = useDeleteSavedConnection();
+  const session = authClient.useSession();
 
   const connectionTypeCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -91,6 +94,7 @@ export function WelcomeScreen({
 
       <div className="relative flex flex-1 items-center justify-center px-4 pb-6 pt-3">
         <div className="w-full max-w-5xl rounded-3xl border border-border/60 bg-card/45 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6">
+          {session.data && <></>}
           <div className="grid gap-4 lg:grid-cols-[0.95fr_1.45fr]">
             <section className="rounded-2xl border border-border/55 bg-background/55 p-4 md:p-5">
               <div className="mb-4 flex items-center justify-between">
@@ -116,34 +120,17 @@ export function WelcomeScreen({
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {[
-                  { label: "Postgres", count: connectionTypeCounts.postgres, key: "postgres" },
-                  { label: "Redis", count: connectionTypeCounts.redis, key: "redis" },
-                  { label: "MySQL", count: connectionTypeCounts.mysql, key: "mysql" },
-                  { label: "SQLite", count: connectionTypeCounts.sqlite, key: "sqlite" },
-                  { label: "MongoDB", count: connectionTypeCounts.mongodb, key: "mongodb" },
-                ]
-                  .filter((item) => item.count > 0)
-                  .map((item) => (
-                    <span
-                      key={item.key}
-                      className="rounded-full border border-border/55 bg-background/55 px-2 py-1 text-[11px] text-muted-foreground"
-                    >
-                      {item.label} {item.count}
-                    </span>
-                  ))}
-              </div>
-
               <div className="mt-5 space-y-2">
                 <Button
                   onClick={onNewConnection}
                   className="h-10 w-full rounded-xl"
                   disabled={!canSave}
+                  variant="secondary"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   New Connection
                 </Button>
+
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex items-center rounded-md border border-border/60 bg-background/70 px-2 py-1 font-mono text-[11px]">
                     <Command className="mr-1 h-3 w-3" />K
@@ -163,11 +150,11 @@ export function WelcomeScreen({
 
               {isLoading ? (
                 <div className="flex h-56 items-center justify-center text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Spinner className="mr-2 h-4 w-4 animate-spin" />
                   Loading connections...
                 </div>
               ) : savedConnections && savedConnections.length > 0 ? (
-                <div className="max-h-[380px] space-y-1.5 overflow-y-auto pr-1">
+                <div className="max-h-95 space-y-1.5 overflow-y-auto pr-1">
                   {savedConnections.map((connection) => (
                     <div
                       key={connection.id}

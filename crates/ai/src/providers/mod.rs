@@ -2,6 +2,7 @@ pub mod anthropic;
 pub mod copilot;
 pub mod gemini;
 pub mod openai;
+pub mod opencode;
 pub mod openrouter;
 pub mod vercel;
 
@@ -19,6 +20,7 @@ pub enum AIProviderType {
     OpenRouter,
     Vercel,
     Copilot,
+    OpenCode,
 }
 
 impl fmt::Display for AIProviderType {
@@ -30,6 +32,7 @@ impl fmt::Display for AIProviderType {
             AIProviderType::OpenRouter => write!(f, "OpenRouter"),
             AIProviderType::Vercel => write!(f, "Vercel"),
             AIProviderType::Copilot => write!(f, "Copilot"),
+            AIProviderType::OpenCode => write!(f, "OpenCode"),
         }
     }
 }
@@ -53,6 +56,8 @@ pub enum AIModel {
     Vercel(String),
     /// Dynamic GitHub Copilot model — holds the raw model slug (e.g. "gpt-5", "claude-sonnet-4")
     Copilot(String),
+    /// Dynamic OpenCode model — holds the raw model slug (e.g. "anthropic/claude-sonnet-4")
+    OpenCode(String),
 }
 
 impl AIModel {
@@ -68,6 +73,7 @@ impl AIModel {
             AIModel::OpenRouter(slug) => format!("openrouter/{}", slug),
             AIModel::Vercel(slug) => format!("vercel/{}", slug),
             AIModel::Copilot(slug) => format!("copilot/{}", slug),
+            AIModel::OpenCode(slug) => format!("opencode/{}", slug),
         }
     }
 
@@ -81,6 +87,7 @@ impl AIModel {
             AIModel::OpenRouter(_) => AIProviderType::OpenRouter,
             AIModel::Vercel(_) => AIProviderType::Vercel,
             AIModel::Copilot(_) => AIProviderType::Copilot,
+            AIModel::OpenCode(_) => AIProviderType::OpenCode,
         }
     }
 
@@ -93,7 +100,8 @@ impl AIModel {
             | AIModel::Gemini(slug)
             | AIModel::OpenRouter(slug)
             | AIModel::Vercel(slug)
-            | AIModel::Copilot(slug) => slug.clone(),
+            | AIModel::Copilot(slug)
+            | AIModel::OpenCode(slug) => slug.clone(),
             other => other.as_str(),
         }
     }
@@ -142,6 +150,10 @@ impl std::str::FromStr for AIModel {
             s if s.starts_with("copilot/") => {
                 let slug = s.strip_prefix("copilot/").unwrap().to_string();
                 Ok(AIModel::Copilot(slug))
+            }
+            s if s.starts_with("opencode/") => {
+                let slug = s.strip_prefix("opencode/").unwrap().to_string();
+                Ok(AIModel::OpenCode(slug))
             }
             _ => Err(AIProviderError::new(format!("Unknown model: {}", s))),
         }
@@ -366,6 +378,10 @@ pub fn create_ai_provider(
         }
         AIProviderType::Copilot => {
             let provider = copilot::CopilotProvider::new(api_key);
+            Ok(Box::new(provider))
+        }
+        AIProviderType::OpenCode => {
+            let provider = opencode::OpenCodeProvider::new(api_key);
             Ok(Box::new(provider))
         }
     }

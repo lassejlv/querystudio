@@ -10,8 +10,8 @@ mod user_state;
 
 use ai_commands::{
     ai_chat, ai_chat_stream, ai_fetch_anthropic_models, ai_fetch_copilot_models,
-    ai_fetch_gemini_models, ai_fetch_openai_models, ai_fetch_openrouter_models,
-    ai_fetch_vercel_models, ai_get_models, ai_validate_key,
+    ai_fetch_gemini_models, ai_fetch_openai_models, ai_fetch_opencode_models,
+    ai_fetch_openrouter_models, ai_fetch_vercel_models, ai_get_models, ai_validate_key,
 };
 use chat_storage::{get_chat_history, set_chat_history};
 use database::{test_connection, ConnectionConfig, ConnectionManager};
@@ -49,7 +49,8 @@ async fn connect(
 
     let is_pro = user_state.is_pro().await;
     let max_connections = user_state.get_max_connections().await;
-    let current_connections = state.connection_count();
+    let current_connections = state.connection_count_excluding(&id);
+    let requested_db_type = config.db_type;
 
     if current_connections >= max_connections {
         warn!(
@@ -69,6 +70,17 @@ async fn connect(
             } else {
                 "Upgrade to Pro for unlimited connections."
             }
+        ));
+    }
+
+    if !is_pro && state.has_database_type_connection_excluding(requested_db_type, &id) {
+        warn!(
+            "Dialect limit reached for free tier: {:?} [id={}]",
+            requested_db_type, id
+        );
+        return Err(format!(
+            "Free tier allows only one active {} connection at a time. Disconnect your existing {} connection or upgrade to Pro.",
+            requested_db_type, requested_db_type
         ));
     }
 
@@ -285,6 +297,30 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        // Single instance plugin - ensures deep links on Windows go to existing instance
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            info!("Single instance callback triggered with args: {:?}", argv);
+
+            // Focus the main window when a second instance tries to start
+            if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.set_focus();
+                let _ = main_window.unminimize();
+            }
+
+            // On Windows, deep link URLs come through argv when using single-instance
+            // Check for any querystudio:// URLs in the arguments
+            for arg in argv.iter() {
+                if arg.starts_with("querystudio://") {
+                    info!("Deep link URL from single instance: {}", arg);
+                    // Emit the deep link URL to the frontend via the standard Tauri event system
+                    // The frontend's onOpenUrl listener expects the "deep-link://new-url" event
+                    if let Err(e) = app.emit("deep-link://new-url", vec![arg.clone()]) {
+                        error!("Failed to emit deep link event: {}", e);
+                    }
+                    break;
+                }
+            }
+        }))
         .manage(db_state)
         .manage(terminal_state)
         .manage(debug_state)
@@ -498,6 +534,7 @@ pub fn run() {
             ai_fetch_openrouter_models,
             ai_fetch_vercel_models,
             ai_fetch_copilot_models,
+            ai_fetch_opencode_models,
             // User state commands
             set_user_pro_status,
             get_user_status,

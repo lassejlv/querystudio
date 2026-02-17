@@ -630,6 +630,8 @@ function ExperimentalSettings() {
   const setExperimentalTerminal = useAIQueryStore((s) => s.setExperimentalTerminal);
   const experimentalPlugins = useAIQueryStore((s) => s.experimentalPlugins);
   const setExperimentalPlugins = useAIQueryStore((s) => s.setExperimentalPlugins);
+  const experimentalOpencode = useAIQueryStore((s) => s.experimentalOpencode);
+  const setExperimentalOpencode = useAIQueryStore((s) => s.setExperimentalOpencode);
 
   return (
     <div className="space-y-6">
@@ -663,6 +665,19 @@ function ExperimentalSettings() {
             </p>
           </div>
           <Switch checked={experimentalPlugins} onCheckedChange={setExperimentalPlugins} />
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base">OpenCode Provider</Label>
+            <p className="text-sm text-muted-foreground">
+              Enable OpenCode as an AI provider. Connect to a local{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">opencode serve</code> instance.
+              Tool support is limited — OpenCode uses its own built-in tools rather than
+              QueryStudio's database tools.
+            </p>
+          </div>
+          <Switch checked={experimentalOpencode} onCheckedChange={setExperimentalOpencode} />
         </div>
       </div>
 

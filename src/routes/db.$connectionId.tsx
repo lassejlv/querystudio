@@ -4,6 +4,7 @@ import { useConnectionStore } from "@/lib/store";
 import { useConnect, useSavedConnections } from "@/lib/hooks";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 
 // This route redirects to the new multi-connection /db route
 // and ensures the specified connection is added to active connections
@@ -98,7 +99,15 @@ function LegacyConnectionRedirect() {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">{isReconnecting ? "Connecting..." : "Loading..."}</p>
+          <p className="text-muted-foreground">
+            {isReconnecting ? (
+              <>
+                <Spinner /> Connecting...
+              </>
+            ) : (
+              "Loading..."
+            )}
+          </p>
         </div>
       </div>
     </div>
