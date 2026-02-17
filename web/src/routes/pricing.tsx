@@ -92,8 +92,8 @@ function PricingPage() {
                 onValueChange={(v) => setBillingCycle(v as "monthly" | "annually")}
               >
                 <TabsList className="rounded-full">
-                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                  <TabsTrigger value="annually">Annually</TabsTrigger>
+                  <TabsTrigger className="rounded-full" value="monthly">Monthly</TabsTrigger>
+                  <TabsTrigger className="rounded-full" value="annually">Annually</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
