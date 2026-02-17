@@ -4,7 +4,7 @@
 
 body {
   @apply m-0;
-  font-family: "IBM Plex Serif", Georgia, Cambria, "Times New Roman", Times, serif;
+   font-family: "Geist", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
