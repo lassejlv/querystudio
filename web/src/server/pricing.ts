@@ -1,63 +1,63 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from '@tanstack/react-start'
 
 const pricing = {
   tiers: {
     free: {
-      name: "Free",
+      name: 'Free',
       price: 0,
       features: {
         maxConnections: 2,
-        dialects: ["all"],
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         personalUseOnly: true,
-        ai: "byok",
+        ai: 'byok',
       },
     },
     proMonthly: {
-      name: "Pro",
+      name: 'Pro',
       price: 4.99,
-      licenseType: "monthly",
+      licenseType: 'monthly',
       features: {
         maxConnections: Infinity,
-        dialects: ["all"],
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         personalUseOnly: false,
-        ai: "byok",
+        ai: 'byok',
       },
     },
     proAnnually: {
-      name: "Pro",
+      name: 'Pro',
       price: 49.99,
-      licenseType: "annually",
+      licenseType: 'annually',
       features: {
         maxConnections: Infinity,
-        dialects: ["all"],
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         personalUseOnly: false,
-        ai: "byok",
+        ai: 'byok',
       },
     },
     pro: {
-      name: "Onetime-purchase",
-      price: 39.99,
-      earlyBirdPrice: 27.99,
-      licenseType: "one-time",
+      name: 'Onetime-purchase',
+      price: 49.99,
+      earlyBirdPrice: 34.99,
+      licenseType: 'one-time',
       features: {
         maxConnections: Infinity,
-        dialects: ["all"],
+        dialects: ['all'],
         sqlRunner: true,
         autoComplete: true,
         personalUseOnly: false,
-        ai: "byok",
+        ai: 'byok',
       },
     },
   },
   ai: {
-    supportedProviders: ["openai", "anthropic", "google"],
+    supportedProviders: ['openai', 'anthropic', 'google'],
   },
-} as const;
+} as const
 
-export const getPricing = createServerFn({ method: "GET" }).handler(async () => pricing);
+export const getPricing = createServerFn({ method: 'GET' }).handler(async () => pricing)
