@@ -85,7 +85,9 @@ export async function discoverFontFamilies(
 
   if (isTauri()) {
     try {
-      const commandName = options?.forceRefresh ? "refresh_local_fonts_cache" : "list_local_fonts";
+      const commandName = options?.forceRefresh
+        ? "refresh_local_fonts_cache"
+        : "list_local_fonts";
       const localFamilies = await invoke<string[]>(commandName);
       for (const familyName of localFamilies) {
         const family = normalizeCustomFontFamily(familyName);

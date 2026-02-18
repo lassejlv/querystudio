@@ -1,5 +1,7 @@
 import * as React from "react";
 import { AlignLeft, Copy, Trash2, Sparkles } from "lucide-react";
+import { format as sqlFormat } from "sql-formatter";
+import type { SqlLanguage } from "sql-formatter";
 import type { TabContentProps } from "@/lib/tab-sdk";
 import type { LocalPluginModule } from "@/lib/local-plugins";
 import type { TabPluginRegistration } from "@/lib/tab-sdk";
@@ -21,164 +23,36 @@ import { cn } from "@/lib/utils";
 // SQL Formatting Logic
 // ============================================================================
 
-const SQL_KEYWORDS = [
-  "SELECT",
-  "FROM",
-  "WHERE",
-  "AND",
-  "OR",
-  "ORDER BY",
-  "GROUP BY",
-  "HAVING",
-  "LIMIT",
-  "OFFSET",
-  "JOIN",
-  "LEFT JOIN",
-  "RIGHT JOIN",
-  "INNER JOIN",
-  "OUTER JOIN",
-  "FULL JOIN",
-  "CROSS JOIN",
-  "ON",
-  "AS",
-  "INSERT INTO",
-  "VALUES",
-  "UPDATE",
-  "SET",
-  "DELETE FROM",
-  "CREATE TABLE",
-  "ALTER TABLE",
-  "DROP TABLE",
-  "CREATE INDEX",
-  "DROP INDEX",
-  "UNION",
-  "UNION ALL",
-  "INTERSECT",
-  "EXCEPT",
-  "WITH",
-  "CASE",
-  "WHEN",
-  "THEN",
-  "ELSE",
-  "END",
-  "IF",
-  "EXISTS",
-  "NOT NULL",
-  "PRIMARY KEY",
-  "FOREIGN KEY",
-  "REFERENCES",
-  "DEFAULT",
-  "UNIQUE",
-  "CHECK",
-  "CONSTRAINT",
-  "INDEX",
-  "VIEW",
-  "TRIGGER",
-  "PROCEDURE",
-  "FUNCTION",
-  "RETURN",
-  "DECLARE",
-  "BEGIN",
-  "COMMIT",
-  "ROLLBACK",
-  "TRANSACTION",
-];
+const DB_TYPE_TO_LANGUAGE: Record<string, SqlLanguage> = {
+  postgres: "postgresql",
+  mysql: "mysql",
+  sqlite: "sqlite",
+  mssql: "transactsql",
+  oracle: "plsql",
+  mariadb: "mariadb",
+};
 
-function formatSQL(sql: string, options: FormatOptions): string {
-  if (!sql.trim()) return "";
-
-  let formatted = sql.trim();
-
-  // Normalize whitespace
-  formatted = formatted.replace(/\s+/g, " ");
-
-  // Add newlines before major keywords
-  const keywords = [
-    "SELECT",
-    "FROM",
-    "WHERE",
-    "ORDER BY",
-    "GROUP BY",
-    "HAVING",
-    "LIMIT",
-    "OFFSET",
-    "JOIN",
-    "LEFT JOIN",
-    "RIGHT JOIN",
-    "INNER JOIN",
-    "OUTER JOIN",
-    "FULL JOIN",
-    "CROSS JOIN",
-    "ON",
-    "INSERT INTO",
-    "VALUES",
-    "UPDATE",
-    "SET",
-    "DELETE FROM",
-    "CREATE TABLE",
-    "ALTER TABLE",
-    "DROP TABLE",
-    "UNION",
-    "UNION ALL",
-    "INTERSECT",
-    "EXCEPT",
-    "WITH",
-  ];
-
-  // Sort by length (longest first) to avoid partial matches
-  keywords.sort((a, b) => b.length - a.length);
-
-  keywords.forEach((keyword) => {
-    const regex = new RegExp(`\\b${keyword}\\b`, "gi");
-    formatted = formatted.replace(regex, `\n${keyword}`);
-  });
-
-  // Handle AND/OR in WHERE clauses - indent them
-  formatted = formatted.replace(/\n(AND|OR)\b/gi, "\n  $1");
-
-  // Handle commas in SELECT - put each column on new line
-  formatted = formatted.replace(/,\s*/g, ",\n  ");
-
-  // Clean up multiple newlines
-  formatted = formatted.replace(/\n\s*\n/g, "\n").trim();
-
-  // Apply indentation based on indent size
-  const indent = " ".repeat(options.indentSize);
-  const lines = formatted.split("\n");
-  let indentLevel = 0;
-  const indentedLines = lines.map((line) => {
-    const trimmedLine = line.trim();
-
-    // Decrease indent for closing keywords
-    if (/^(END|COMMIT|ROLLBACK)/i.test(trimmedLine)) {
-      indentLevel = Math.max(0, indentLevel - 1);
-    }
-
-    const result = indent.repeat(indentLevel) + trimmedLine;
-
-    // Increase indent after opening keywords
-    if (
-      /^(SELECT|FROM|WHERE|JOIN|INSERT|UPDATE|DELETE|CREATE|ALTER|WITH|CASE|BEGIN)/i.test(
-        trimmedLine,
-      )
-    ) {
-      indentLevel++;
-    }
-
-    return result;
-  });
-
-  formatted = indentedLines.join("\n");
-
-  // Uppercase keywords if option is enabled
-  if (options.uppercaseKeywords) {
-    SQL_KEYWORDS.forEach((keyword) => {
-      const regex = new RegExp(`\\b${keyword}\\b`, "gi");
-      formatted = formatted.replace(regex, keyword);
-    });
+function resolveSqlLanguage(databaseType: string | null): SqlLanguage {
+  if (!databaseType) {
+    return "sql";
   }
 
-  return formatted;
+  return DB_TYPE_TO_LANGUAGE[databaseType.toLowerCase()] ?? "sql";
+}
+
+function formatSQL(
+  sql: string,
+  options: FormatOptions,
+  databaseType: string | null,
+): string {
+  if (!sql.trim()) return "";
+
+  return sqlFormat(sql, {
+    language: resolveSqlLanguage(databaseType),
+    tabWidth: options.indentSize,
+    useTabs: false,
+    keywordCase: options.uppercaseKeywords ? "upper" : "preserve",
+  });
 }
 
 // ============================================================================
@@ -204,7 +78,14 @@ export const plugin: TabPluginRegistration = {
   priority: 70,
   experimental: false,
   // This plugin is disabled by default and only shown for SQL databases
-  supportedDatabases: ["postgres", "mysql", "sqlite", "mssql", "oracle", "mariadb"],
+  supportedDatabases: [
+    "postgres",
+    "mysql",
+    "sqlite",
+    "mssql",
+    "oracle",
+    "mariadb",
+  ],
 };
 
 // ============================================================================
@@ -227,13 +108,13 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
     }
 
     try {
-      const formatted = formatSQL(input, options);
+      const formatted = formatSQL(input, options, sdk.connection.databaseType);
       setOutput(formatted);
       sdk.utils.toast.success("SQL formatted successfully");
-    } catch (error) {
+    } catch {
       sdk.utils.toast.error("Failed to format SQL");
     }
-  }, [input, options, sdk.utils.toast]);
+  }, [input, options, sdk.connection.databaseType, sdk.utils.toast]);
 
   const handleCopy = React.useCallback(async () => {
     if (!output) {
@@ -290,7 +171,12 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
             <Copy className="h-4 w-4" />
             Copy
           </Button>
-          <Button onClick={handleClear} variant="outline" size="sm" className="gap-2">
+          <Button
+            onClick={handleClear}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
             <Trash2 className="h-4 w-4" />
             Clear
           </Button>
@@ -337,7 +223,9 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
       <div className="flex flex-1 gap-4 min-h-0">
         {/* Input Panel */}
         <div className="flex flex-1 flex-col gap-2">
-          <Label className="text-sm font-medium text-muted-foreground">Input SQL</Label>
+          <Label className="text-sm font-medium text-muted-foreground">
+            Input SQL
+          </Label>
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -352,12 +240,17 @@ export function Component({ tabId, paneId, connectionId }: TabContentProps) {
 
         {/* Output Panel */}
         <div className="flex flex-1 flex-col gap-2">
-          <Label className="text-sm font-medium text-muted-foreground">Formatted SQL</Label>
+          <Label className="text-sm font-medium text-muted-foreground">
+            Formatted SQL
+          </Label>
           <Textarea
             value={output}
             readOnly
             placeholder="Formatted SQL will appear here..."
-            className={cn("flex-1 resize-none font-mono text-sm", "bg-muted/30")}
+            className={cn(
+              "flex-1 resize-none font-mono text-sm",
+              "bg-muted/30",
+            )}
             spellCheck={false}
           />
         </div>

@@ -14,13 +14,16 @@ import type {
 } from "./types";
 
 export const api = {
-  connect: (id: string, config: ConnectionConfig) => invoke<void>("connect", { id, config }),
+  connect: (id: string, config: ConnectionConfig) =>
+    invoke<void>("connect", { id, config }),
 
   disconnect: (id: string) => invoke<void>("disconnect", { id }),
 
-  testConnection: (config: ConnectionConfig) => invoke<void>("test_connection_handler", { config }),
+  testConnection: (config: ConnectionConfig) =>
+    invoke<void>("test_connection_handler", { config }),
 
-  listTables: (connectionId: string) => invoke<TableInfo[]>("list_tables", { connectionId }),
+  listTables: (connectionId: string) =>
+    invoke<TableInfo[]>("list_tables", { connectionId }),
 
   getTableColumns: (connectionId: string, schema: string, table: string) =>
     invoke<ColumnInfo[]>("get_table_columns", { connectionId, schema, table }),
@@ -47,10 +50,19 @@ export const api = {
     invoke<number>("get_table_count", { connectionId, schema, table }),
 
   // MongoDB document operations
-  insertDocument: (connectionId: string, collection: string, document: string) =>
+  insertDocument: (
+    connectionId: string,
+    collection: string,
+    document: string,
+  ) =>
     invoke<string>("insert_document", { connectionId, collection, document }),
 
-  updateDocument: (connectionId: string, collection: string, filter: string, update: string) =>
+  updateDocument: (
+    connectionId: string,
+    collection: string,
+    filter: string,
+    update: string,
+  ) =>
     invoke<number>("update_document", {
       connectionId,
       collection,
@@ -80,7 +92,8 @@ export const api = {
   // Storage operations - now using SQLite via storage module
   getSavedConnections: () => storage.getSavedConnections(),
 
-  saveConnection: (connection: SavedConnection) => storage.saveConnection(connection),
+  saveConnection: (connection: SavedConnection) =>
+    storage.saveConnection(connection),
 
   deleteSavedConnection: (id: string) => storage.deleteSavedConnection(id),
 
@@ -90,9 +103,11 @@ export const api = {
   aiValidateKey: (apiKey: string, model: string) =>
     invoke<boolean>("ai_validate_key", { apiKey, model }),
 
-  aiChat: (request: ChatRequest) => invoke<ChatResponse>("ai_chat", { request }),
+  aiChat: (request: ChatRequest) =>
+    invoke<ChatResponse>("ai_chat", { request }),
 
-  aiChatStream: (request: ChatRequest) => invoke<void>("ai_chat_stream", { request }),
+  aiChatStream: (request: ChatRequest) =>
+    invoke<void>("ai_chat_stream", { request }),
 
   aiFetchAnthropicModels: (apiKey: string) =>
     invoke<AIModelInfo[]>("ai_fetch_anthropic_models", { apiKey }),
@@ -115,7 +130,8 @@ export const api = {
     invoke<AIModelInfo[]>("ai_fetch_opencode_models", { baseUrl }),
 
   // User status API (synced from auth session)
-  setUserProStatus: (isPro: boolean) => invoke<void>("set_user_pro_status", { isPro }),
+  setUserProStatus: (isPro: boolean) =>
+    invoke<void>("set_user_pro_status", { isPro }),
 
   getUserStatus: () => invoke<UserStatus>("get_user_status"),
 
