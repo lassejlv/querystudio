@@ -1,4 +1,4 @@
-import { UseSend } from "usesend-js";
-import { env } from "@/lib/env";
+import { Resend } from 'resend'
+import { env } from '@/lib/env'
 
-export const emailer = new UseSend(env.USESEND_API_KEY);
+export const emailer = new Resend(env.USESEND_API_KEY)
